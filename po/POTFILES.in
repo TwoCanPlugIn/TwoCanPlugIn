@@ -1,0 +1,6 @@
+src/twocanerror.cpp
+src/twocandevice.cpp
+src/twocanplugin.cpp
+src/twocansettings.cpp
+src/twocansettingsbase.cpp
+src/twocanutils.cpp
