@@ -1,0 +1,243 @@
+// Copyright(C) 2018 by Steven Adler
+//
+// This file is part of TwoCan, a plugin for OpenCPN.
+//
+// TwoCan is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// TwoCan is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
+//
+// NMEA2000® is a registered Trademark of the National Marine Electronics Association
+
+#ifndef TWOCAN_DEVICE_H
+#define TWOCAN_DEVICE_H
+
+#include "twocanerror.h"
+
+// wxWidgets
+// BUG BUG work out which ones we really need
+#include <wx/defs.h>
+// String Format, Comparisons etc.
+#include <wx/string.h>
+// For converting NMEA 2000 date & time data
+#include <wx/datetime.h>
+// Raise events to the plugin
+#include <wx/event.h>
+// Perform read operations in their own thread
+#include <wx/thread.h>
+// Logging (Info & Errors)
+#include <wx/log.h>
+// Logging (raw NMEA 2000 frames)
+#include <wx/file.h>
+// User's paths/documents folder
+#include <wx/stdpaths.h>
+
+// Based on an old 'c' code base
+// Events and Mutexes
+#define CONST_EVENT_NAME L"Global\\DataReceived"
+#define CONST_MUTEX_NAME L"Global\\DataMutex"
+
+const int FRAME_RECEIVED_EVENT = wxID_HIGHEST + 1;
+extern const wxEventType wxEVT_FRAME_RECEIVED_EVENT;
+
+// NMEA 2000 Raw frame log file
+// BUG BUG Should enable user to select file location/name
+// However at present hardcode to user's document folder which matches location used by LogFile reader
+#define CONST_LOGFILE_NAME L"twocanraw.log"
+
+// Utility functions for constants, bit twiddling and array manipulation for NMEA 2000 Messages
+#include "twocanutils.h"
+
+// Flag of bit values indicating what PGN's the plug-in converts
+extern int supportedPGN;
+
+// Flag of bit values to indicate whether to log raw NMEA frames, or perhaps any other format in the future
+extern int logLevel;
+
+// Network Map
+extern DeviceInformation networkMap[CONST_MAX_DEVICES];
+
+// NMEA 2000 imported driver function prototypes
+// Note to self, cast to wxChar for OpenCPN/wxWidgets wxString stuff
+
+typedef wxChar *(*LPFNDLLManufacturerName)(void);
+typedef wxChar *(*LPFNDLLDriverName)(void);
+typedef wxChar *(*LPFNDLLDriverVersion)(void);
+typedef int(*LPFNDLLOpen)(void);
+typedef int(*LPFNDLLClose)(void);
+typedef int(*LPFNDLLRead)(byte *frame);
+//BUG BUG Add an IsInstalled function to the drivers so that they can be automagically detected
+
+// NMEA 2000 Product Information, transmitted in PGN 126996 NMEA Product Information
+typedef struct ProductInformation {
+	unsigned int dataBaseVersion;
+	unsigned int productCode;
+	// Note these are transmitted as unterminated 32 bit strings, allow for a terminating NULL
+	char modelId[33];
+	char softwareVersion[33];
+	char modelVersion[33];
+	char serialNumber[33];
+	byte certificationLevel;
+	byte loadEquivalency;
+} ProductInformation;
+
+// Buffer Used to re-assemble sequences of multi frame Fast Packet messages
+typedef struct FastMessageEntry {
+	byte IsFree; // indicate whether this entry is free
+	time_t timeArrived; // time of last message. garbage collector will remove stale entries
+	CanHeader header; // the header of the message. Used to "map" the incoming fast message fragments
+	unsigned int sid; // message sequence identifier, used to check if a received message is the next message in the sequence
+	unsigned int expectedLength; // total data length obtained from first frame
+	unsigned int cursor; // cursor into the current position in the below data
+	byte *data; // pointer to memory allocated for the data. Note: must be freed when IsFree is set to TRUE.
+} FastMessageEntry;
+
+
+// Implements a NMEA 2000 Network device
+class TwoCanDevice : public wxThread {
+
+public:
+	// Constructor and destructor
+	TwoCanDevice(wxEvtHandler *handler);
+	~TwoCanDevice(void);
+
+	// Reference to event handler address, ie. the TwoCan PlugIn
+	wxEvtHandler *eventHandlerAddress;
+
+	// Event raised when a NMEA 2000 message is received and converted to a NMEA 0183 sentence
+	void RaiseEvent(wxString sentence);
+
+	// Initialize & DeInitialize the device.
+	// As we don't throw errors in the ctor, invoke functions that may fail from these
+	int Init(wxString driverPath);
+	int Deinit(void);
+	
+protected:
+	// wxThread overridden functions
+	virtual wxThread::ExitCode Entry();
+	virtual void OnExit();
+	
+private:
+	// To reuse existing 'c' CAN Adapter stuff
+	byte canFrame[CONST_FRAME_LENGTH];
+	BOOL freeResult = FALSE;
+	HINSTANCE dllHandle = NULL;
+	WIN32_FIND_DATA findFileData;
+	HANDLE fileHandle = NULL;
+	HANDLE eventHandle = NULL;
+	HANDLE mutexHandle = NULL;
+	LPDWORD threadId = NULL;
+
+	// Statistics
+#define TWOCAN_CONST_DROPPEDFRAME_THRESHOLD 200
+#define TWOCAN_CONST_DROPPEDFRAME_PERIOD 5
+	int receivedFrames;
+	int transmittedFrames;
+	int droppedFrames;
+	wxDateTime droppedFrameTime;
+	
+	// Functions to control the CAN Adapter
+	int LoadDriver(wxString driverPath);
+	int ReadDriver();
+	int UnloadDriver();
+
+	// Log raw frame data
+	wxFile rawLogFile;
+
+	// All the NMEA 2000 goodness
+
+	// ISO Address Claim
+	DeviceInformation deviceInformation;
+
+	// NMEA 2000 Product Information
+	ProductInformation productInformation;
+
+	// Decode four byte array into a CAN v2.0 29 bit header
+	int DecodeCanHeader(const byte *buf, CanHeader *header);
+
+	// Determine whether frame is a single frame message or multiframe Fast Packet message
+	bool IsFastMessage(const CanHeader header);
+
+	// The Fast Packet buffer - used to reassemble Fast packet messages
+	FastMessageEntry fastMessages[CONST_MAX_MESSAGES];
+
+	// Assemble sequence of Fast Messages
+	void AssembleFastMessage(const CanHeader header, const byte *message);
+
+	// Add,Append,Find entries in the FastMessage buffer
+	void MapInitialize(void);
+	void MapLockRange(const int start, const int end);
+	int MapFindFreeEntry(void);
+	void MapInsertEntry(const CanHeader header, const byte *data, const int position);
+	int MapAppendEntry(const CanHeader header, const byte *data, const int position);
+	int MapFindMatchingEntry(const CanHeader header);
+	int MapGarbageCollector(void);
+
+	// Big switch statement to determine which function is called to decode each received NMEA 2000 message
+	void ParseMessage(const CanHeader header, const byte *payload);
+
+	// Decode PGN 60928 ISO Address Claim
+	int DecodePGN60928(const byte *payload, DeviceInformation *device_Information);
+
+	// Decode PGN 126996 NMEA Product Information
+	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
+
+	// Decode PGN 126992 NMEA System Time
+	 wxString DecodePGN126992(const byte *payload);
+
+	// Decode PGN 127250 NMEA Vessel Heading
+	 wxString DecodePGN127250(const byte *payload);
+
+	// Decode PGN 128259 NMEA Speed & Heading
+	 wxString DecodePGN128259(const byte *payload);
+
+	// Decode PGN 128267 NMEA Depth
+	 wxString DecodePGN128267(const byte *payload);
+
+	// Decode PGN 129025 NMEA Position Rapid Update
+	 wxString DecodePGN129025(const byte *payload);
+
+	// Decode PGN 129026 NMEA COG SOG Rapid Update
+	 wxString DecodePGN129026(const byte *payload);
+
+	// Decode PGN 129029 NMEA GNSS Position
+	 wxString DecodePGN129029(const byte *payload);
+
+	// Decode PGN 129033 NMEA Date & Time
+	 wxString DecodePGN129033(const byte *payload);
+
+	// Decode PGN 130306 NMEA Wind
+	 wxString DecodePGN130306(const byte *payload);
+
+	// Decode PGN 130310 NMEA Water & Air Temperature and Pressure
+	 wxString DecodePGN130310(const byte *payload);
+
+	// Decode PGN 130312 NMEA Temperature
+	 wxString DecodePGN130312(const byte *payload);
+
+	// Transmit an ISO Address Claim
+	int ClaimAddress();
+
+	// Transmit NMEA 2000 Product Information
+	int TransmitProductInformation();
+
+	// Respond to ISO Rqsts
+	int ISORqstResponse();
+
+	// Adds '*' and Checksum to NMEA 183 Sentence prior to sending to OpenCPN
+	void SendNMEASentence(wxString sentence);
+
+	// Computes the NMEA 0183 XOR checksum
+	wxString ComputeChecksum(wxString sentence);
+
+};
+
+#endif
