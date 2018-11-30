@@ -22,6 +22,13 @@
 
 #include "twocanerror.h"
 
+// STL
+// used for AIS stuff
+#include <vector>
+#include <algorithm>
+#include <bitset>
+#include <iostream>
+
 // wxWidgets
 // BUG BUG work out which ones we really need
 #include <wx/defs.h>
@@ -119,14 +126,14 @@ public:
 	// As we don't throw errors in the ctor, invoke functions that may fail from these
 	int Init(wxString driverPath);
 	int Deinit(void);
-	
+
 protected:
 	// wxThread overridden functions
 	virtual wxThread::ExitCode Entry();
 	virtual void OnExit();
-	
+
 private:
-	// To reuse existing 'c' CAN Adapter stuff
+	// To reuse existing 'C' CAN Adapter exported functions
 	byte canFrame[CONST_FRAME_LENGTH];
 	BOOL freeResult = FALSE;
 	HINSTANCE dllHandle = NULL;
@@ -143,7 +150,7 @@ private:
 	int transmittedFrames;
 	int droppedFrames;
 	wxDateTime droppedFrameTime;
-	
+
 	// Functions to control the CAN Adapter
 	int LoadDriver(wxString driverPath);
 	int ReadDriver();
@@ -162,6 +169,9 @@ private:
 
 	// Decode four byte array into a CAN v2.0 29 bit header
 	int DecodeCanHeader(const byte *buf, CanHeader *header);
+
+	// and the converse, encode a CAN v2.0 29 bit header into a four byte array
+	int EncodeCanHeader(byte *buf, const CanHeader *header);
 
 	// Determine whether frame is a single frame message or multiframe Fast Packet message
 	bool IsFastMessage(const CanHeader header);
@@ -191,37 +201,94 @@ private:
 	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
 
 	// Decode PGN 126992 NMEA System Time
-	 wxString DecodePGN126992(const byte *payload);
+	wxString DecodePGN126992(const byte *payload);
 
 	// Decode PGN 127250 NMEA Vessel Heading
-	 wxString DecodePGN127250(const byte *payload);
+	wxString DecodePGN127250(const byte *payload);
+
+	// Decode PGN 127251 NMEA Rate of Turn (ROT)
+	wxString DecodePGN127251(const byte *payload);
+
+	// Decode PGN 127258 NMEA Magnetic Variation
+	wxString DecodePGN127258(const byte *payload);
 
 	// Decode PGN 128259 NMEA Speed & Heading
-	 wxString DecodePGN128259(const byte *payload);
+	wxString DecodePGN128259(const byte *payload);
 
 	// Decode PGN 128267 NMEA Depth
-	 wxString DecodePGN128267(const byte *payload);
+	wxString DecodePGN128267(const byte *payload);
+
+	// Decode PGN 128275 Distance Log
+	wxString DecodePGN128275(const byte *payload);
 
 	// Decode PGN 129025 NMEA Position Rapid Update
-	 wxString DecodePGN129025(const byte *payload);
+	wxString DecodePGN129025(const byte *payload);
 
 	// Decode PGN 129026 NMEA COG SOG Rapid Update
-	 wxString DecodePGN129026(const byte *payload);
+	wxString DecodePGN129026(const byte *payload);
 
 	// Decode PGN 129029 NMEA GNSS Position
-	 wxString DecodePGN129029(const byte *payload);
+	wxString DecodePGN129029(const byte *payload);
 
 	// Decode PGN 129033 NMEA Date & Time
-	 wxString DecodePGN129033(const byte *payload);
+	wxString DecodePGN129033(const byte *payload);
+
+	// Decode PGN 129038 AIS Class A Position Report
+	wxString DecodePGN129038(const byte *payload);
+
+	// Deocde PGN 129039 AIS Class B Position Report
+	wxString DecodePGN129039(const byte *payload);
+
+	// Decode PGN 129040 AIS Class B Extended Position Report
+	wxString DecodePGN129040(const byte *payload);
+
+	// Decode PGN 129041 AIS Aids To Navigation (AToN) Report
+	wxString DecodePGN129041(const byte *payload);
+
+	// Decode PGN 129283 NMEA Cross Track Error (XTE)
+	wxString DecodePGN129283(const byte *payload);
+
+	// Decode PGN 129793 AIS Date and Time report
+	wxString DecodePGN129793(const byte * payload);
+
+	// Decode PGN 129794 AIS Class A Static Data
+	wxString DecodePGN129794(const byte *payload);
+
+	// Decode PGN 129796 AIS Acknowledge 
+	// Decode PGN 129797 AIS Binary Broadcast Message 
+
+	//	Decode PGN 129798 AIS SAR Aircraft Position Report
+	wxString DecodePGN129798(const byte *payload);
+
+	//	Decode PGN 129801 AIS Addressed Safety Related Message
+	wxString DecodePGN129801(const byte *payload);
+
+	// Decode PGN 129802 AIS Safety Related Broadcast Message 
+	wxString DecodePGN129802(const byte *payload);
+
+	// Decode PGN 129803 AIS Interrogation
+	// Decode PGN 129804 AIS Assignment Mode Command 
+	// Decode PGN 129805 AIS Data Link Management Message 
+	// Decode PGN 129806 AIS Channel Management
+	// Decode PGN 129807 AIS Group Assignment
+
+	// Decode PGN 129808 DSC Message
+	wxString DecodePGN129808(const byte *payload);
+
+	// Decode PGN 129809 AIS Class B Static Data Report, Part A 
+	wxString DecodePGN129809(const byte *payload);
+
+	// Decode PGN 129810 AIS Class B Static Data Report, Part B 
+	wxString DecodePGN129810(const byte *payload);
 
 	// Decode PGN 130306 NMEA Wind
-	 wxString DecodePGN130306(const byte *payload);
+	wxString DecodePGN130306(const byte *payload);
 
 	// Decode PGN 130310 NMEA Water & Air Temperature and Pressure
-	 wxString DecodePGN130310(const byte *payload);
+	wxString DecodePGN130310(const byte *payload);
 
 	// Decode PGN 130312 NMEA Temperature
-	 wxString DecodePGN130312(const byte *payload);
+	wxString DecodePGN130312(const byte *payload);
 
 	// Transmit an ISO Address Claim
 	int ClaimAddress();
@@ -237,6 +304,35 @@ private:
 
 	// Computes the NMEA 0183 XOR checksum
 	wxString ComputeChecksum(wxString sentence);
+
+	// Assemnble NMEA 183 VDM & VDO sentences
+	// BUG BUG is this used anywhere ??
+	std::vector<wxString> AssembleAISMessage(const std::vector<bool> binaryPayload, const int messageType);
+
+	// Insert an integer value into AIS 6 bit encoded binary data, prior to AIS encoding
+	void AISInsertInteger(std::vector<bool>& binaryData, int start, int length, int value);
+
+	// Insert a date value into AIS 6 bit encoded binary data, prior to AIS encoding
+	void AISInsertDate(std::vector<bool>& binaryData, int start, int length, int day, int month, int hour, int minute);
+
+	// Insert a string value into AIS 6 bit encoded binary data, prior to AIS encoding
+	void AISInsertString(std::vector<bool>& binaryData, int start, int length, std::string value);
+
+	// Encode an 8 bit ASCII character using NMEA 0183 6 bit encoding
+	char AISEncodeCharacter(char value);
+
+	// Create the NMEA 0183 AIS VDM/VDO payload from the 6 bit encoded binary data
+	wxString AISEncodePayload(std::vector<bool>& binaryData);
+
+	// Just for completeness, in case one day we convert NMEA 183 to NMEA 2000 
+	// and need to decode NMEA183 VDM/VDO messages to NMEA 2000 PGN's
+	// although we may be able to use the OpenCPN WANTS_AIS_SENTENCES setting.
+
+	// Decode an 8 bit ASCII character using NMEA 0183 6 bit encoding
+	char AISDecodeCharacter(char value);
+
+	// Decode the NMEA 0183 AIS VDM/VDO payload to a bit array of 6 bit characters
+	std::vector<bool> AISDecodePayload(wxString SixBitData);
 
 };
 
