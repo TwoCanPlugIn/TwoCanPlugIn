@@ -74,6 +74,7 @@ typedef struct DeviceInformation {
 #define CONVERT_FATHOMS_FEET 6
 #define CONVERT_METRES_FEET 3.28084
 #define CONVERT_METRES_FATHOMS (CONVERT_METRES_FEET / CONVERT_FATHOMS_FEET)
+#define CONVERT_METRES_NATICAL_MILES 0.000539957
 
 // Kelvin to celsius
 #define CONST_KELVIN -273.15
@@ -140,13 +141,17 @@ typedef struct DeviceInformation {
 #define FLAGS_ZDA 64
 #define FLAGS_MWV 128
 #define FLAGS_MWT 256
+#define FLAGS_DSC 512
+#define FLAGS_AIS 1024
 
 
 // Bit values to determine what Logging to support
 // RAW is the only mode currently implemented
-#define FLAGS_LOG_RAW 1
+#define FLAGS_LOG_RAW 1 // My format 12 pairs of hex digits, 4 the CAN 2.0 Id, 8 the payload 
 #define FLAGS_LOG_KEES 2 // I recall seeing this format used in Open Skipper
 #define FLAGS_LOG_ACTISENSE 4 // And this one as well.
+#define FLAGS_LOG_YACHTDEVICES 8 
+#define FLAGS_LOG_CANDUMP 16
 
 
 // All the NMEA 2000 data is transmitted as an unsigned char which for convenience sake, I call a byte
