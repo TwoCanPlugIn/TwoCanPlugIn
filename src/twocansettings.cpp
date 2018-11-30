@@ -98,6 +98,8 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("129033 ") + _("Time") + _T(" (ZDA)"));
 	pgn->Add(_T("130306 ") + _("Wind") + _T(" (MWV)"));
 	pgn->Add(_T("130310 ") + _("Water Temperature") + _(" (MWT)"));
+	pgn->Add(_T("129808 ") + _("Digital Selective Calling") + _T(" (DSC)"));
+	pgn->Add(_T("129038..41") + _("AIS Class A & B messages") + _T(" (VDM)"));
 
 	// Populate the listbox and check/uncheck as appropriate
 	for (size_t i = 0; i < pgn->Count(); i++) {

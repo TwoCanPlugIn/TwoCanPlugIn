@@ -260,8 +260,8 @@ bool TwoCan::SaveConfiguration(void) {
 
 void TwoCan::StopDevice(void) {
 	wxThread::ExitCode threadExitCode;
-	wxThreadError threadError = twoCanDevice->Delete(&threadExitCode, wxTHREAD_WAIT_DEFAULT);
-	wxLogMessage(_T("TwoCan Plugin, Device Thread Error Code: %d Exit Code: %d"), threadError, threadExitCode);
+	wxThreadError threadError = twoCanDevice->Delete(&threadExitCode, wxTHREAD_WAIT_BLOCK); // Changed from wxTHREAD_WAIT_DEFAULT
+	wxLogMessage(_T("TwoCan Plugin, Device Thread Delete, Error Code: %d Exit Code: %d"), threadError, threadExitCode);
 }
 
 void TwoCan::StartDevice(void) {
