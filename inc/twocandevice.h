@@ -201,70 +201,70 @@ private:
 	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
 
 	// Decode PGN 126992 NMEA System Time
-	wxString DecodePGN126992(const byte *payload);
+	bool DecodePGN126992(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 127250 NMEA Vessel Heading
-	wxString DecodePGN127250(const byte *payload);
+	bool DecodePGN127250(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 127251 NMEA Rate of Turn (ROT)
-	wxString DecodePGN127251(const byte *payload);
+	bool DecodePGN127251(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 127258 NMEA Magnetic Variation
-	wxString DecodePGN127258(const byte *payload);
+	bool DecodePGN127258(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 128259 NMEA Speed & Heading
-	wxString DecodePGN128259(const byte *payload);
+	bool DecodePGN128259(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 128267 NMEA Depth
-	wxString DecodePGN128267(const byte *payload);
+	bool DecodePGN128267(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 128275 Distance Log
-	wxString DecodePGN128275(const byte *payload);
+	bool DecodePGN128275(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129025 NMEA Position Rapid Update
-	wxString DecodePGN129025(const byte *payload);
+	bool DecodePGN129025(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129026 NMEA COG SOG Rapid Update
-	wxString DecodePGN129026(const byte *payload);
+	bool DecodePGN129026(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129029 NMEA GNSS Position
-	wxString DecodePGN129029(const byte *payload);
+	bool DecodePGN129029(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129033 NMEA Date & Time
-	wxString DecodePGN129033(const byte *payload);
+	bool DecodePGN129033(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129038 AIS Class A Position Report
-	wxString DecodePGN129038(const byte *payload);
+	bool DecodePGN129038(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Deocde PGN 129039 AIS Class B Position Report
-	wxString DecodePGN129039(const byte *payload);
+	bool DecodePGN129039(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129040 AIS Class B Extended Position Report
-	wxString DecodePGN129040(const byte *payload);
+	bool DecodePGN129040(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129041 AIS Aids To Navigation (AToN) Report
-	wxString DecodePGN129041(const byte *payload);
+	bool DecodePGN129041(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129283 NMEA Cross Track Error (XTE)
-	wxString DecodePGN129283(const byte *payload);
+	bool DecodePGN129283(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129793 AIS Date and Time report
-	wxString DecodePGN129793(const byte * payload);
+	bool DecodePGN129793(const byte * payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129794 AIS Class A Static Data
-	wxString DecodePGN129794(const byte *payload);
+	bool DecodePGN129794(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129796 AIS Acknowledge 
 	// Decode PGN 129797 AIS Binary Broadcast Message 
 
 	//	Decode PGN 129798 AIS SAR Aircraft Position Report
-	wxString DecodePGN129798(const byte *payload);
+	bool DecodePGN129798(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	//	Decode PGN 129801 AIS Addressed Safety Related Message
-	wxString DecodePGN129801(const byte *payload);
+	bool DecodePGN129801(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129802 AIS Safety Related Broadcast Message 
-	wxString DecodePGN129802(const byte *payload);
+	bool DecodePGN129802(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129803 AIS Interrogation
 	// Decode PGN 129804 AIS Assignment Mode Command 
@@ -273,22 +273,25 @@ private:
 	// Decode PGN 129807 AIS Group Assignment
 
 	// Decode PGN 129808 DSC Message
-	wxString DecodePGN129808(const byte *payload);
+	bool DecodePGN129808(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129809 AIS Class B Static Data Report, Part A 
-	wxString DecodePGN129809(const byte *payload);
+	bool DecodePGN129809(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129810 AIS Class B Static Data Report, Part B 
-	wxString DecodePGN129810(const byte *payload);
+	bool DecodePGN129810(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 130306 NMEA Wind
-	wxString DecodePGN130306(const byte *payload);
+	bool DecodePGN130306(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 130310 NMEA Water & Air Temperature and Pressure
-	wxString DecodePGN130310(const byte *payload);
+	bool DecodePGN130310(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 130312 NMEA Temperature
-	wxString DecodePGN130312(const byte *payload);
+	bool DecodePGN130312(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 130577 NMEA Direction Data
+	bool DecodePGN130577(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Transmit an ISO Address Claim
 	int ClaimAddress();
@@ -299,7 +302,7 @@ private:
 	// Respond to ISO Rqsts
 	int ISORqstResponse();
 
-	// Adds '*' and Checksum to NMEA 183 Sentence prior to sending to OpenCPN
+	// Appends '*' and Checksum to NMEA 183 Sentence prior to sending to OpenCPN
 	void SendNMEASentence(wxString sentence);
 
 	// Computes the NMEA 0183 XOR checksum

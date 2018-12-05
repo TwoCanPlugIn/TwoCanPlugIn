@@ -576,7 +576,8 @@ int TwoCanDevice::MapGarbageCollector(void) {
 
 // Big switch statement to parse received NMEA 2000 messages
 void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
-	wxString nmeaSentence;
+	std::vector<wxString> nmeaSentences;
+	bool result;
 	switch (header.pgn) {
 	case 60928: // ISO Address Claim
 		DecodePGN60928(payload, &deviceInformation);
@@ -597,7 +598,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 
 	case 126992: // System Time
 		if (supportedPGN & FLAGS_ZDA) {
-			nmeaSentence = DecodePGN126992(payload);
+			result = DecodePGN126992(payload, &nmeaSentences);
 		}
 		break;
 	case 126996: // Product Information
@@ -614,114 +615,114 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		break;
 	case 127250: // Heading
 		if (supportedPGN & FLAGS_HDG) {
-			nmeaSentence = DecodePGN127250(payload);
+			result = DecodePGN127250(payload, &nmeaSentences);
 		}
 		break;
 	case 127251: // Rate of Turn
 		// BUG BUG Needs a flag >>
-		nmeaSentence = DecodePGN127251(payload);
+		result = DecodePGN127251(payload, &nmeaSentences);
 		break;
 	case 127258: // Magnetic Variation
 		// BUG BUG needs flags 
 		// BUG BUG Not actually used anywhere
-		nmeaSentence = DecodePGN127258(payload);
+		result = DecodePGN127258(payload, &nmeaSentences);
 		break;
 	case 128259: // Boat Speed
 		if (supportedPGN & FLAGS_VHW) {
-			nmeaSentence = DecodePGN128259(payload);
+			result = DecodePGN128259(payload, &nmeaSentences);
 		}
 		break;
 	case 128267: // Water Depth
 		if (supportedPGN & FLAGS_DPT) {
-			nmeaSentence = DecodePGN128267(payload);
+			result = DecodePGN128267(payload, &nmeaSentences);
 		}
 		break;
 	case 129025: // Position - Rapid Update
 		if (supportedPGN & FLAGS_GLL) {
-			nmeaSentence = DecodePGN129025(payload);
+			result = DecodePGN129025(payload, &nmeaSentences);
 		}
 		break;
 	case 129026: // COG, SOG - Rapid Update
 		if (supportedPGN & FLAGS_VTG) {
-			nmeaSentence = DecodePGN129026(payload);
+			result = DecodePGN129026(payload, &nmeaSentences);
 		}
 		break;
 	case 129029: // GNSS Position
 		if (supportedPGN & FLAGS_GGA) {
-			nmeaSentence = DecodePGN129029(payload);
+			result = DecodePGN129029(payload, &nmeaSentences);
 		}
 		break;
 	case 129033: // Time & Date
 		if (supportedPGN & FLAGS_ZDA) {
-			nmeaSentence = DecodePGN129033(payload);
+			result = DecodePGN129033(payload, &nmeaSentences);
 		}
 	case 129038: // AIS Class A Position Report
 		if (supportedPGN & FLAGS_AIS) {
-			nmeaSentence = DecodePGN129038(payload);
+			result = DecodePGN129038(payload, &nmeaSentences);
 		}
 		break;
 	case 129039: // AIS Class B Position Report
 		if (supportedPGN & FLAGS_AIS) {
-			nmeaSentence = DecodePGN129039(payload);
+			result = DecodePGN129039(payload, &nmeaSentences);
 		}
 		break;
 	case 129040: // AIS Class B Extended Position Report
 		if (supportedPGN & FLAGS_AIS) {
-			nmeaSentence = DecodePGN129040(payload);
+			result = DecodePGN129040(payload, &nmeaSentences);
 		}
 		break;
 	case 129041: // AIS Aids To Navigation (AToN) Position Report
 		if (supportedPGN & FLAGS_AIS) {
-			nmeaSentence = DecodePGN129041(payload);
+			result = DecodePGN129041(payload, &nmeaSentences);
 		}
 		break;
 	case 129283: // Cross Track Error
 		// BUG BUG Needs a flag ??
-		nmeaSentence = DecodePGN129283(payload);
+		result = DecodePGN129283(payload, &nmeaSentences);
 		break;
 
 	case 129793: // AIS Position and Date Report
 		if (supportedPGN & FLAGS_AIS) {
-			nmeaSentence = DecodePGN129793(payload);
+			result = DecodePGN129793(payload, &nmeaSentences);
 		}
 		break;
 	case 129794: // AIS Class A Static & Voyage Related Data
 		if (supportedPGN & FLAGS_AIS) {
-			nmeaSentence = DecodePGN129794(payload);
+			result = DecodePGN129794(payload, &nmeaSentences);
 		}
 		break;
 	case 129798: // AIS Search and Rescue (SAR) Position Report
 		if (supportedPGN & FLAGS_AIS) {
-			nmeaSentence = DecodePGN129798(payload);
+			result = DecodePGN129798(payload, &nmeaSentences);
 		}
 		break;
 	case 129808: // Digital Selective Calling (DSC)
 		if (supportedPGN & FLAGS_DSC) {
-			nmeaSentence = DecodePGN129808(payload);
+			result = DecodePGN129808(payload, &nmeaSentences);
 		}
 	case 129809: // AIS Class B Static Data, Part A
 		if (supportedPGN & FLAGS_AIS) {
-			nmeaSentence = DecodePGN129809(payload);
+			result = DecodePGN129809(payload, &nmeaSentences);
 		}
 		break;
 	case 129810: // Class B Static Data, Part B
 		if (supportedPGN & FLAGS_AIS) {
-			nmeaSentence = DecodePGN129810(payload);
+			result = DecodePGN129810(payload, &nmeaSentences);
 		}
 		break;
 	case 130306: // Wind data
 		if (supportedPGN & FLAGS_MWV) {
-			nmeaSentence = DecodePGN130306(payload);
+			result = DecodePGN130306(payload, &nmeaSentences);
 		}
 		break;
 	case 130310: // Environmental Parameters
 		if (supportedPGN & FLAGS_MWT) {
-			nmeaSentence = DecodePGN130310(payload);
+			result = DecodePGN130310(payload, &nmeaSentences);
 		}
 		break;
 	case 130312: // Temperature
 		if (supportedPGN & FLAGS_MWT) {
-			nmeaSentence = DecodePGN130312(payload);
+			result = DecodePGN130312(payload, &nmeaSentences);
 		}
 		break;
 			
@@ -729,12 +730,13 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		// BUG BUG Should we log an unsupported PGN error ??
 		break;
 	}
-	// BUG BUG Broken for DSC and AIS where we may need to send multiple sentences
-	// either use a vector of strings or separate multiple string with CrLf and split the strings
-	if (nmeaSentence.Length() > 0 ) {
-		SendNMEASentence(nmeaSentence);
-		nmeaSentence.Clear();
+	// Send each NMEA 0183 Sentence to OpenCPN
+	if (result == TRUE) {
+		for (std::vector<wxString>::iterator it = nmeaSentences.begin(); it != nmeaSentences.end(); ++it) {
+			SendNMEASentence(*it);
+		}
 	}
+	
 }
 
 // Decodes a 29 bit CAN header
@@ -882,7 +884,7 @@ int TwoCanDevice::DecodePGN126996(const byte *payload, ProductInformation *produ
 
 // Decode PGN 126992 NMEA System Time
 // $--ZDA, hhmmss.ss, xx, xx, xxxx, xx, xx*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN126992(const byte *payload) {
+bool TwoCanDevice::DecodePGN126992(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -901,17 +903,18 @@ wxString TwoCanDevice::DecodePGN126992(const byte *payload) {
 		tm.ParseDateTime("00:00:00 01-01-1970");
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight /10000);
-		return wxString::Format("$IIZDA,%s", tm.Format("%H%M%S.00,%d,%m,%Y,%z"));
+		nmeaSentences->push_back(wxString::Format("$IIZDA,%s", tm.Format("%H%M%S.00,%d,%m,%Y,%z")));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 127250 NMEA Vessel Heading
 // $--HDG, x.x, x.x, a, x.x, a*hh<CR><LF>
 // $--HDT,x.x,T*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN127250(const byte *payload) {
+bool TwoCanDevice::DecodePGN127250(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -931,18 +934,19 @@ wxString TwoCanDevice::DecodePGN127250(const byte *payload) {
 
 		//BUG BUG sign of variation and deviation corresponds to East (E) or West (W)
 
-		return wxString::Format("$IIHDG,%.2f,%.2f,%c,%.2f,%c", RADIANS_TO_DEGREES((float)heading / 10000), \
+		nmeaSentences->push_back(wxString::Format("$IIHDG,%.2f,%.2f,%c,%.2f,%c", RADIANS_TO_DEGREES((float)heading / 10000), \
 			RADIANS_TO_DEGREES((float)deviation / 10000), deviation >= 0 ? 'E' : 'W', \
-			RADIANS_TO_DEGREES((float)variation / 10000), variation >= 0 ? 'E' : 'W');
+			RADIANS_TO_DEGREES((float)variation / 10000), variation >= 0 ? 'E' : 'W'));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 127251 NMEA Rate of Turn (ROT)
 // $--ROT,x.x,A*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN127251(const byte *payload) {
+bool TwoCanDevice::DecodePGN127251(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -954,15 +958,16 @@ wxString TwoCanDevice::DecodePGN127251(const byte *payload) {
 		// convert radians per second to degress per minute
 		// -ve sign means turning to port
 
-		return wxString::Format("$IIROT,%.2f,A", RADIANS_TO_DEGREES((float)rateOfTurn / 600000));
+		nmeaSentences->push_back(wxString::Format("$IIROT,%.2f,A", RADIANS_TO_DEGREES((float)rateOfTurn / 600000)));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 127258 NMEA Magnetic Variation
-wxString TwoCanDevice::DecodePGN127258(const byte *payload) {
+bool TwoCanDevice::DecodePGN127258(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -981,17 +986,17 @@ wxString TwoCanDevice::DecodePGN127258(const byte *payload) {
 
 		// BUG BUG Needs too be added to other sentences such as HDG and RMC conversions
 		// As there is no direct NMEA 0183 sentence just for variation
-		return wxEmptyString;
+		return FALSE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 
 // Decode PGN 128259 NMEA Speed & Heading
 // $--VHW, x.x, T, x.x, M, x.x, N, x.x, K*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN128259(const byte *payload) {
+bool TwoCanDevice::DecodePGN128259(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -1004,18 +1009,19 @@ wxString TwoCanDevice::DecodePGN128259(const byte *payload) {
 		speedGroundReferenced = payload[3] | (payload[4] << 8);
 
 		// BUG BUG Maintain heading globally from other sources to insert corresponding values into sentence	
-		return wxString::Format("$IIVHW,,T,,M,%.2f,N,%.2f,K", (float)speedWaterReferenced * CONVERT_MS_KNOTS / 100, \
-			(float)speedWaterReferenced * CONVERT_MS_KMH / 100);
+		nmeaSentences->push_back(wxString::Format("$IIVHW,,T,,M,%.2f,N,%.2f,K", (float)speedWaterReferenced * CONVERT_MS_KNOTS / 100, \
+			(float)speedWaterReferenced * CONVERT_MS_KMH / 100));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 128267 NMEA Depth
 // $--DPT,x.x,x.x,x.x*hh<CR><LF>
 // $--DBT,x.x,f,x.x,M,x.x,F*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN128267(const byte *payload) {
+bool TwoCanDevice::DecodePGN128267(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -1034,12 +1040,12 @@ wxString TwoCanDevice::DecodePGN128267(const byte *payload) {
 		//	((maxRange != 0xFFFF) && (maxRange > 0)) ? maxRange / 100 : (int)NULL);
 
 		// OpenCPN Dashboard only accepts DBT sentence
-		return wxString::Format("$IIDBT,%.2f,f,%.2f,M,%.2f,F", CONVERT_METRES_FEET * (double) depth / 100, \
-			(double)depth / 100, CONVERT_METRES_FATHOMS * (double)depth / 100);
-
+		nmeaSentences->push_back(wxString::Format("$IIDBT,%.2f,f,%.2f,M,%.2f,F", CONVERT_METRES_FEET * (double)depth / 100, \
+			(double)depth / 100, CONVERT_METRES_FATHOMS * (double)depth / 100));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;;
+		return FALSE;
 	}
 }
 
@@ -1050,7 +1056,7 @@ wxString TwoCanDevice::DecodePGN128267(const byte *payload) {
 //          |      Total cumulative ground distance, Nm
 //          Ground distance since reset, Nm
 
-wxString TwoCanDevice::DecodePGN128275(const byte *payload) {
+bool TwoCanDevice::DecodePGN128275(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		unsigned int daysSinceEpoch;
@@ -1070,10 +1076,11 @@ wxString TwoCanDevice::DecodePGN128275(const byte *payload) {
 		unsigned int tripDistance;
 		tripDistance = payload[11] | (payload[12] << 8) | (payload[13] << 16) | (payload[14] << 24);
 
-		return wxString::Format("$IIVLW,,,,,%.2f,N,%.2f,N", CONVERT_METRES_NATICAL_MILES * tripDistance, CONVERT_METRES_NATICAL_MILES * cumulativeDistance);
+		nmeaSentences->push_back(wxString::Format("$IIVLW,,,,,%.2f,N,%.2f,N", CONVERT_METRES_NATICAL_MILES * tripDistance, CONVERT_METRES_NATICAL_MILES * cumulativeDistance));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
@@ -1081,7 +1088,7 @@ wxString TwoCanDevice::DecodePGN128275(const byte *payload) {
 // $--GLL, llll.ll, a, yyyyy.yy, a, hhmmss.ss, A, a*hh<CR><LF>
 //                                           Status A valid, V invalid
 //                                               mode - note Status = A if Mode is A (autonomous) or D (differential)
-wxString TwoCanDevice::DecodePGN129025(const byte *payload) {
+bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		double latitude;
@@ -1106,17 +1113,18 @@ wxString TwoCanDevice::DecodePGN129025(const byte *payload) {
 		wxDateTime tm;
 		tm = wxDateTime::Now();
 		
-		return wxString::Format("$IIGLL,%02d%05.2f,%c,%03d%05.2f,%c,%s,%c,%c", abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', \
-			abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', tm.Format("%H%M%S.00").ToAscii(), gpsMode, ((gpsMode == 'A') || (gpsMode == 'D')) ? 'A' : 'V');
+		nmeaSentences->push_back(wxString::Format("$IIGLL,%02d%05.2f,%c,%03d%05.2f,%c,%s,%c,%c", abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', \
+			abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', tm.Format("%H%M%S.00").ToAscii(), gpsMode, ((gpsMode == 'A') || (gpsMode == 'D')) ? 'A' : 'V'));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 129026 NMEA COG SOG Rapid Update
 // $--VTG,x.x,T,x.x,M,x.x,N,x.x,K,a*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN129026(const byte *payload) {
+bool TwoCanDevice::DecodePGN129026(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -1135,12 +1143,13 @@ wxString TwoCanDevice::DecodePGN129026(const byte *payload) {
 		// BUG BUG if Heading Ref = True (0), then ignore %.2f,M and vice versa if Heading Ref = Magnetic (1), ignore %.2f,T
 		// BUG BUG GPS Mode should be obtained rather than assumed
 
-		return wxString::Format("$IIVTG,%.2f,T,%.2f,M,%.2f,N,%.2f,K,%c", RADIANS_TO_DEGREES((float)courseOverGround / 10000), \
+		nmeaSentences->push_back(wxString::Format("$IIVTG,%.2f,T,%.2f,M,%.2f,N,%.2f,K,%c", RADIANS_TO_DEGREES((float)courseOverGround / 10000), \
 			RADIANS_TO_DEGREES((float)courseOverGround / 10000), (float)speedOverGround * CONVERT_MS_KNOTS / 100, \
-			(float)speedOverGround * CONVERT_MS_KMH / 100, GPS_MODE_AUTONOMOUS);
+			(float)speedOverGround * CONVERT_MS_KMH / 100, GPS_MODE_AUTONOMOUS));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}	
 }
 
@@ -1151,7 +1160,7 @@ wxString TwoCanDevice::DecodePGN129026(const byte *payload) {
 //                                             | sats
 //                                           fix Qualty
 
-wxString TwoCanDevice::DecodePGN129029(const byte *payload) {
+bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -1225,11 +1234,12 @@ wxString TwoCanDevice::DecodePGN129029(const byte *payload) {
 			referenceStationAge = (payload[45] | (payload[46] << 8));
 		}
 
-		return wxString::Format("$IIGGA,%s,%02d%05.4f,%c,%03d%05.4f,%c,%d,%d,%.2f,%.1f,M,%.1f,M,,", \
+		nmeaSentences->push_back(wxString::Format("$IIGGA,%s,%02d%05.4f,%c,%03d%05.4f,%c,%d,%d,%.2f,%.1f,M,%.1f,M,,", \
 			tm.Format("%H%M%S").ToAscii() , abs(latitudeDegrees), fabs(latitudeMinutes), latitudeDegrees >= 0 ? 'N' : 'S', \
 			abs(longitudeDegrees), fabs(longitudeMinutes), longitudeDegrees >= 0 ? 'E' : 'W', \
 			fixType, numberOfSatellites, (double)hDOP * 0.01f, (double)altitude * 1e-6, \
-			(double)geoidalSeparation * 0.01f);
+			(double)geoidalSeparation * 0.01f));
+		return TRUE;
 		
 		// BUG BUG for the time being ignore reference stations, too lazy to code this
 		//, \
@@ -1238,13 +1248,13 @@ wxString TwoCanDevice::DecodePGN129029(const byte *payload) {
 		//
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 129033 NMEA Date & Time
 // $--ZDA, hhmmss.ss, xx, xx, xxxx, xx, xx*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN129033(const byte *payload) {
+bool TwoCanDevice::DecodePGN129033(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 		unsigned int daysSinceEpoch;
 		daysSinceEpoch = payload[0] | (payload[1] << 8);
@@ -1260,10 +1270,11 @@ wxString TwoCanDevice::DecodePGN129033(const byte *payload) {
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 		
-		return wxString::Format("$IIZDA,%s,%s,%s", tm.Format("%H%M%S,%d,%m,%Y"),(int)localOffset/60, localOffset % 60);
+		nmeaSentences->push_back(wxString::Format("$IIZDA,%s,%s,%s", tm.Format("%H%M%S,%d,%m,%Y"), (int)localOffset / 60, localOffset % 60));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
@@ -1279,7 +1290,7 @@ wxString TwoCanDevice::DecodePGN129033(const byte *payload) {
 
 // Decode PGN 129038 NMEA AIS Class A Position Report
 // AIS Message Types 1,2 or 3
-wxString TwoCanDevice::DecodePGN129038(const byte *payload) {
+bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		std::vector<bool> binaryData(168);
@@ -1356,29 +1367,30 @@ wxString TwoCanDevice::DecodePGN129038(const byte *payload) {
 		AISInsertInteger(binaryData, 8, 30, userID);
 		AISInsertInteger(binaryData, 38, 4, navigationalStatus);
 		AISInsertInteger(binaryData, 42, 8, rateOfTurn);
-		AISInsertInteger(binaryData, 50, 10, speedOverGround);
+		AISInsertInteger(binaryData, 50, 10, CONVERT_MS_KNOTS * speedOverGround / 10); // tenth of knots
 		AISInsertInteger(binaryData, 60, 1, positionAccuracy);
 		AISInsertInteger(binaryData, 61, 28, longitudeMinutes);
 		AISInsertInteger(binaryData, 89, 27, latitudeMinutes);
-		AISInsertInteger(binaryData, 116, 12, courseOverGround);
-		AISInsertInteger(binaryData, 128, 9, trueHeading);
+		AISInsertInteger(binaryData, 116, 12, RADIANS_TO_DEGREES((float)courseOverGround) / 1000); //convert 0.0001 radians to tenths of degrees
+		AISInsertInteger(binaryData, 128, 9, RADIANS_TO_DEGREES((float)trueHeading) / 1000);
 		AISInsertInteger(binaryData, 137, 6, timeStamp);
 		AISInsertInteger(binaryData, 143, 2, manoeuvreIndicator);
 		AISInsertInteger(binaryData, 145, 3, spare);
 		AISInsertInteger(binaryData, 148, 1, raimFlag);
 		AISInsertInteger(binaryData, 149, 19, communicationState);
 
-		return wxString::Format("!AIVDM,1,1,,A,%s,0", AISEncodePayload(binaryData));
+		nmeaSentences->push_back(wxString::Format("!AIVDM,1,1,,A,%s,0", AISEncodePayload(binaryData)));
+		return TRUE;
 	}
 
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 129039 NMEA AIS Class B Position Report
 // AIS Message Type 18
-wxString TwoCanDevice::DecodePGN129039(const byte *payload) {
+bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		std::vector<bool> binaryData(168);
@@ -1479,17 +1491,18 @@ wxString TwoCanDevice::DecodePGN129039(const byte *payload) {
 		AISInsertInteger(binaryData, 148, 1, sotdmaFlag); 
 		AISInsertInteger(binaryData, 149, 19, communicationState);
 
-		return wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData));
+		nmeaSentences->push_back(wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData)));
+		return TRUE;
 	}
 
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 129040 AIS Class B Extended Position Report
 // AIS Message Type 19
-wxString TwoCanDevice::DecodePGN129040(const byte *payload) {
+bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		std::vector<bool> binaryData(312);
@@ -1610,17 +1623,17 @@ wxString TwoCanDevice::DecodePGN129040(const byte *payload) {
 		// To Calculate Fill Bits use binaryData.length % 6
 		// To calculate number of messages to send/break use (binaryData.length / 168 + 1)
 		// return wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData));
-		return wxEmptyString;
+		return TRUE;
 	}
 
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 129041 AIS Aids To Navigation (AToN) Report
 // AIS Message Type 21
-wxString TwoCanDevice::DecodePGN129041(const byte *payload) {
+bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		std::vector<bool> binaryData(358);
@@ -1746,16 +1759,16 @@ wxString TwoCanDevice::DecodePGN129041(const byte *payload) {
 		// BUG BUG broken because we need to transmit multiple sentences !!
 		// BUG BUG Probably broken because size of binaryData is variable.
 		// return wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData));
-		return wxEmptyString;
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 129283 NMEA Cross Track Error
 // $--XTE, A, A, x.x, a, N, a*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN129283(const byte *payload) {
+bool TwoCanDevice::DecodePGN129283(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -1770,16 +1783,17 @@ wxString TwoCanDevice::DecodePGN129283(const byte *payload) {
 		int crossTrackError;
 		crossTrackError = payload[2] | (payload[3] << 8) | (payload[4] << 16) | (payload[5] << 24);
 
-		return wxString::Format("$IIXTE,A,A,%.2f,%c,N", fabsf(CONVERT_METRES_NATICAL_MILES * crossTrackError * 0.01f), crossTrackError < 0 ? 'L' : 'R');
+		nmeaSentences->push_back(wxString::Format("$IIXTE,A,A,%.2f,%c,N", fabsf(CONVERT_METRES_NATICAL_MILES * crossTrackError * 0.01f), crossTrackError < 0 ? 'L' : 'R'));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 129793 AIS Date and Time report
 // AIS Message Type 4 and if date is present also Message Type 11
-wxString TwoCanDevice::DecodePGN129793(const byte * payload) {
+bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		std::vector<bool> binaryData(168);
@@ -1864,18 +1878,18 @@ wxString TwoCanDevice::DecodePGN129793(const byte * payload) {
 		AISInsertInteger(binaryData, 148, 1, raimFlag);
 		AISInsertInteger(binaryData, 149, 19, communicationState);
 		
-		return wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData));
-
+		nmeaSentences->push_back(wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData)));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 
 // Decode PGN 129794 NMEA AIS Class A Static and Voyage Related Data
 // AIS Message Type 5
-wxString TwoCanDevice::DecodePGN129794(const byte *payload) {
+bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		std::vector<bool> binaryData(1024);
@@ -1977,16 +1991,16 @@ wxString TwoCanDevice::DecodePGN129794(const byte *payload) {
 
 		// BUG BUG broken because we need to transmit multiple sentences !!
 		// return wxString::Format("!AIVDM,1,1,,B,%s,5d", AISEncodePayload(binaryData), fillBits);
-		return wxEmptyString;
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 //	Decode PGN 129798 AIS SAR Aircraft Position Report
 // AIS Message Type 9
-wxString TwoCanDevice::DecodePGN129798(const byte *payload) {
+bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		std::vector<bool> binaryData(1024);
@@ -2081,32 +2095,33 @@ wxString TwoCanDevice::DecodePGN129798(const byte *payload) {
 		AISInsertInteger(binaryData, 148, 1, sotdmaFlag);
 		AISInsertInteger(binaryData, 149, 19, communicationState);
 
-		return wxString::Format("!AIVDM,1,1,,A,%s,0", AISEncodePayload(binaryData));
+		nmeaSentences->push_back(wxString::Format("!AIVDM,1,1,,A,%s,0", AISEncodePayload(binaryData)));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 	
 //	Decode PGN 129801 AIS Addressed Safety Related Message
 // AIS Message Type 12
-wxString TwoCanDevice::DecodePGN129801(const byte *payload) {
+bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
-		return wxEmptyString;
+		return FALSE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 129802 AIS Safety Related Broadcast Message 
 // AIS Message Type 14
-wxString TwoCanDevice::DecodePGN129802(const byte *payload) {
+bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
-		return wxEmptyString;
+		return FALSE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
@@ -2122,7 +2137,7 @@ wxString TwoCanDevice::DecodePGN129802(const byte *payload) {
 // and
 // $--DSE
 
-wxString TwoCanDevice::DecodePGN129808(const byte *payload) {
+bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte formatSpecifier;
@@ -2204,17 +2219,17 @@ wxString TwoCanDevice::DecodePGN129808(const byte *payload) {
 
 		// above two fields repeated.
 
-		return wxEmptyString;
+		return FALSE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 
 }
 
 // Decode PGN 129809 AIS Class B Static Data Report, Part A 
 // AIS Message Type 24, Part A
-wxString TwoCanDevice::DecodePGN129809(const byte *payload) {
+bool TwoCanDevice::DecodePGN129809(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 		
 		std::vector<bool> binaryData(164);
@@ -2245,16 +2260,17 @@ wxString TwoCanDevice::DecodePGN129809(const byte *payload) {
 		fillBits = 160 % 6;
 		AISInsertInteger(binaryData, 160, fillBits, 0);
 				
-		return wxString::Format("!AIVDM,1,1,,B,%s,%d", AISEncodePayload(binaryData),fillBits);
+		nmeaSentences->push_back(wxString::Format("!AIVDM,1,1,,B,%s,%d", AISEncodePayload(binaryData), fillBits));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 129810 AIS Class B Static Data Report, Part B 
 // AIS Message Type 24, Part B
-wxString TwoCanDevice::DecodePGN129810(const byte *payload) {
+bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		std::vector<bool> binaryData(168);
@@ -2315,16 +2331,17 @@ wxString TwoCanDevice::DecodePGN129810(const byte *payload) {
 		AISInsertInteger(binaryData, 156, 6, refStarboard);
 		AISInsertInteger(binaryData, 162 ,6 , 0); //spare
 		
-		return wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData));
+		nmeaSentences->push_back(wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData)));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 130306 NMEA Wind
 // $--MWV,x.x,a,x.x,a,A*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN130306(const byte *payload) {
+bool TwoCanDevice::DecodePGN130306(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -2341,22 +2358,23 @@ wxString TwoCanDevice::DecodePGN130306(const byte *payload) {
 
 		if (windReference == WIND_REFERENCE_APPARENT) {
 
-			return wxString::Format("$IIMWV,%.2f,%c,%.2f,N,A", windAngle , \
-				(windReference == WIND_REFERENCE_APPARENT) ? 'R' : 'T', (double)windSpeed * CONVERT_MS_KNOTS / 100);
+			nmeaSentences->push_back(wxString::Format("$IIMWV,%.2f,%c,%.2f,N,A", windAngle, \
+				(windReference == WIND_REFERENCE_APPARENT) ? 'R' : 'T', (double)windSpeed * CONVERT_MS_KNOTS / 100));
+			return TRUE;
 
 		} 
 		else {
-			return wxEmptyString;
+			return FALSE;
 		}
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 130310 NMEA Water & Air Temperature and Pressure
 // $--MTW,x.x,C*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN130310(const byte *payload) {
+bool TwoCanDevice::DecodePGN130310(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -2371,16 +2389,17 @@ wxString TwoCanDevice::DecodePGN130310(const byte *payload) {
 		unsigned int airPressure;
 		airPressure = payload[5] | (payload[6] << 8);
 
-		return wxString::Format("$IIMTW,%.2f,C", (float)(waterTemperature * 0.01f) + CONST_KELVIN);
+		nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", (float)(waterTemperature * 0.01f) + CONST_KELVIN));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 130312 NMEA Temperature
 // $--MTW,x.x,C*hh<CR><LF>
-wxString TwoCanDevice::DecodePGN130312(const byte *payload) {
+bool TwoCanDevice::DecodePGN130312(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -2400,20 +2419,21 @@ wxString TwoCanDevice::DecodePGN130312(const byte *payload) {
 
 		if (source == TEMPERATURE_SEA) {
 
-			return wxString::Format("$IIMTW,%.2f,C", (float)(actualTemperature * 0.01f) + CONST_KELVIN);
+			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", (float)(actualTemperature * 0.01f) + CONST_KELVIN));
+			return TRUE;
 		}
 		else {
-			return wxEmptyString;
+			return FALSE;
 		}
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
 // Decode PGN 130577 NMEA Direction Data
 // BUG BUG Work out what to convert this to
-wxString DecodePGN130577(const byte *payload) {
+bool DecodePGN130577(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
 		// 0 - Autonomous, 1 - Differential enhanced, 2 - Estimated, 3 - Simulated, 4 - Manual
@@ -2446,12 +2466,13 @@ wxString DecodePGN130577(const byte *payload) {
 		drift = (payload[12] | (payload[13] << 8));
 
 
-		return wxString::Format("$IIVTG,%.2f,T,%.2f,M,%.2f,N,%.2f,K,%c", RADIANS_TO_DEGREES((float)courseOverGround / 10000), \
+		nmeaSentences->push_back(wxString::Format("$IIVTG,%.2f,T,%.2f,M,%.2f,N,%.2f,K,%c", RADIANS_TO_DEGREES((float)courseOverGround / 10000), \
 			RADIANS_TO_DEGREES((float)courseOverGround / 10000), (float)speedOverGround * CONVERT_MS_KNOTS / 100, \
-			(float)speedOverGround * CONVERT_MS_KMH / 100, GPS_MODE_AUTONOMOUS);
+			(float)speedOverGround * CONVERT_MS_KMH / 100, GPS_MODE_AUTONOMOUS));
+		return TRUE;
 	}
 	else {
-		return wxEmptyString;
+		return FALSE;
 	}
 }
 
