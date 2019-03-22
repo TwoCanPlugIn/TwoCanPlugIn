@@ -21,7 +21,7 @@
 // Description: NMEA 2000 plugin for OpenCPN
 // Unit: TwoCanLogReader - Reads log files on Linux 
 // Owner: twocanplugin@hotmail.com
-// Date: 20/2/2019
+// Date: 16/3/2019
 // Version History: 
 // 1.0 Initial Release
 //
@@ -68,16 +68,13 @@ int TwoCanLogReader::Open(const wchar_t *fileName) {
 	logFileStream.clear();
 	logFileStream.seekg(0, std::ios::beg); 
 	
-	wxLogMessage(_T("Debug: TwoCanLogReader::Open, Open file success, Log File Format: %u"),logFileFormat);
-	wxLogMessage(_T("Debug: TwoCanLogReader::Open, Queue Status: %d (true = %d)"),deviceQueue->IsOk(),true);
-
+	wxLogMessage(_T("TwoCanLogReader, File opened, Log File Format: %u"),logFileFormat);
 	return TWOCAN_RESULT_SUCCESS;
 }
 
 int TwoCanLogReader::Close(void) {
 	if (logFileStream.is_open()) {
 		logFileStream.close();
-		wxLogMessage(_T("Debug: TwoCanLogReader::Close"));
 	}
 	return TWOCAN_RESULT_SUCCESS;
 }
@@ -158,24 +155,21 @@ void TwoCanLogReader::ParseYachtDevices(std::string str) {
 }
 
 int TwoCanLogReader::TestFormat(std::string line) {
-	wxLogMessage(_T("Debug: TwoCanLogReader Line: %s"),line);
+	// BUG BUG Should check that the Regular Expression is valid
+	// eg. twoCanRegEx.IsValid()
 	twoCanRegEx.Compile(CONST_TWOCAN_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
-	wxLogMessage(_T("Debug %s Validity: %d\n"), CONST_TWOCAN_REGEX, twoCanRegEx.IsValid());
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
 		return TwoCanRaw;
 	}
 	twoCanRegEx.Compile(CONST_CANDUMP_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
-	wxLogMessage(_T("Debug %s Validity: %d\n"), CONST_CANDUMP_REGEX, twoCanRegEx.IsValid());
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
 		return CanDump;
 	}
 	twoCanRegEx.Compile(CONST_KEES_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
-	wxLogMessage(_T("Debug %s Validity: %d\n"), CONST_KEES_REGEX, twoCanRegEx.IsValid());
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT))  {
 		return Kees;
 	}
 	twoCanRegEx.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
-	wxLogMessage(_T("Debug %s Validity: %d\n"), CONST_YACHTDEVICES_REGEX, twoCanRegEx.IsValid());
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
 		return YachtDevices;
 	}
@@ -211,12 +205,10 @@ void TwoCanLogReader::Read() {
 			// BUG BUG Do we need to protect access to the canFrame using a mutex
 			memcpy(&foobar[0],&canFrame[0],CONST_FRAME_LENGTH);
 			deviceQueue->Post(foobar);
-			//wxLogMessage(_T("Debug, TwoCanLogReader::Read, Frame Posted"));
-		
 			wxThread::Sleep(20);
 		} 
 		else {
-			wxLogMessage(_T("Debug, TwoCanLogReader::Read, Thread Exiting"));
+			// Thread Exiting
 			break;
 		}
 		
@@ -225,22 +217,18 @@ void TwoCanLogReader::Read() {
 			logFileStream.clear();
 			logFileStream.seekg(0, std::ios::beg); 
 		}
-	} 
+	} // end while not eof
 	
 }
 
 // Entry, the method that is executed upon thread start
 wxThread::ExitCode TwoCanLogReader::Entry() {
 	// Merely loops continuously waiting for frames to be received by the CAN Adapter
-	wxLogMessage(_T("Debug, TwoCanLogReader::Entry, Thread Starting"));
 	Read();
-	wxLogMessage(_T("Debug, TwoCanLogReader::Entry, Thread Exited"));
 	return (wxThread::ExitCode)TWOCAN_RESULT_SUCCESS;
 }
 
 // OnExit, called when thread is being destroyed
 void TwoCanLogReader::OnExit() {
 	// Nothing to do ??
-	wxLogMessage(_T("Debug, TwoCanLogReader::Exit"));
-	
 }

@@ -21,7 +21,7 @@
 // Description: NMEA 2000 plugin for OpenCPN
 // Unit: TwoCanSocket - Implements SocketCAN interface for Linux devices
 // Owner: twocanplugin@hotmail.com
-// Date: 20/2/2019
+// Date: 16/3/2019
 // Version History: 
 // 1.0 Initial Release
 //
@@ -65,8 +65,6 @@ struct if_nameindex *interfaceNameIndexes, *nameIndex;
 
 // Open a socket descriptor
 int TwoCanSocket::Open(const char *port) {
-	
-	wxLogMessage(_T("Debug, TwoCanSocket::Open Can Adapter: %s"),port);
 	
 	canSocket = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 	if (canSocket < 0)
@@ -121,8 +119,6 @@ void TwoCanSocket::Read() {
 	std::vector<byte> postedFrame(CONST_FRAME_LENGTH);
 	int recvbytes = 0;
 	
-	wxLogMessage(_T("Debug, TwoCanSocket::Read called"));
-
 	canThreadIsAlive = 1;
 	while (canThreadIsAlive)
 	{
@@ -174,9 +170,7 @@ void TwoCanSocket::Read() {
 // Entry, the method that is executed upon thread start
 wxThread::ExitCode TwoCanSocket::Entry() {
 	// Merely loops continuously waiting for frames to be received by the CAN Adapter
-	wxLogMessage(_T("Debug, TwoCanSocket:Entry, Thread Starting"));
 	Read();
-	wxLogMessage(_T("Debug, TwoCanSocket::Entry, Thread Exited"));
 	return (wxThread::ExitCode)TWOCAN_RESULT_SUCCESS;
 }
 

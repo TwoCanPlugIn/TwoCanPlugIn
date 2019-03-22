@@ -31,7 +31,7 @@
 //     - Added PGN's 127251 (Rate of Turn), 127258 (Magnetic Variation), 129283 (Cross Track Error), 130577 (Direction Data)
 //     - Simplify totalDataLength calculation in MapInsertEntry
 //     - Change to DecodeHeader, misunderstood role of DataPage and PDU-F > 240
-// 1.3 - 1/3/2019, Linux support via SocketCAN
+// 1.3 - 16/3/2019, Linux support via SocketCAN
 // Outstanding Features: 
 // 1. Implement NetworkMap (requires NMEA2000 devices to send 60928 Address Claim & 12996 Product Information PGN's)
 // 2. Implement Active Device (Handle Address Claim, Product Information, ISO Commands etc.)
@@ -109,7 +109,6 @@ int TwoCanDevice::Init(wxString driverPath) {
 	else { 
 		// Load the SocketCAN interface
 		linuxSocket = new TwoCanSocket(canQueue);
-		wxLogMessage(_T("Debug, TwoCanDevice::Init Linux Socket created"));
 		returnCode = linuxSocket->Open(driverPath);
 	}
 	if (returnCode != TWOCAN_RESULT_SUCCESS) {
@@ -149,8 +148,6 @@ wxThread::ExitCode TwoCanDevice::Entry() {
 void TwoCanDevice::OnExit() {
 	// BUG BUG Should this be moved to DeInit ??
 	int returnCode;
-	
-	wxLogMessage(_T("Debug, TwoCanDevice::OnExit called"));
 
 #ifdef  __WXMSW__ 
 	// Unload the CAN Adapter DLL
@@ -161,15 +158,11 @@ void TwoCanDevice::OnExit() {
 	wxThread::ExitCode threadExitCode;
 	if (linuxDriverName.CmpNoCase("Log File Reader") == 0) {
 		returnCode = linuxLogReader->Delete(&threadExitCode,wxTHREAD_WAIT_BLOCK);
-		wxLogMessage(_T("Debug, TwoCanDevice::OnExit, Linux Thread Delete %d, Exit Code: %d"),returnCode, threadExitCode);	
 		returnCode = linuxLogReader->Close();
-		wxLogMessage(_T("Debug, TwoCanDevice::OnExit, Linux Driver Close %d"),returnCode);	
 	} 
 	else {
 		returnCode = linuxSocket->Delete(&threadExitCode,wxTHREAD_WAIT_BLOCK);
-		wxLogMessage(_T("Debug, TwoCanDevice::OnExit, Linux Thread Delete %d, Exit Code: %d"),returnCode, threadExitCode);	
 		returnCode = linuxSocket->Close();
-		wxLogMessage(_T("Debug, TwoCanDevice::OnExit, Linux Driver Close %d"),returnCode);	
 	}
 #endif
 
@@ -191,9 +184,7 @@ int TwoCanDevice::ReadLinuxDriver(void) {
 	byte payload[CONST_PAYLOAD_LENGTH];
 	wxMessageQueueError queueError;
 	std::vector<byte> postedFrame(CONST_FRAME_LENGTH);
-	
-	wxLogMessage(_T("Debug, TwoCanDevice::ReadLinuxDriver starting..."));
-	
+		
 	// Start the Linux Device's Read thread
 	if (linuxDriverName.CmpNoCase("Log File Reader") == 0) {
 		linuxLogReader->Run();

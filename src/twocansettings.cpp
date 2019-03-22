@@ -24,6 +24,7 @@
 // Owner: twocanplugin@hotmail.com
 // Date: 6/8/2018
 // Version: 1.0
+// 1.3 - Added Support for Linux (socketCAN interfaces)
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !

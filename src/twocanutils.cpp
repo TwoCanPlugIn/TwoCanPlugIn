@@ -25,8 +25,7 @@
 // Date: 6/8/2018
 // Version: 1.0
 // Outstanding Features: 
-// 1. Move DecodeCanHeader etc. from TwoCanDevice to here.
-// 3. Any additional functions ??
+// 1. Any additional functions ??
 //
 
 #include "twocanutils.h"
