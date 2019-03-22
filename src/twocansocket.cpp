@@ -144,21 +144,10 @@ void TwoCanSocket::Read() {
 					
 					// And the CAN Data
 					for (int i = 0; i < canSocketFrame.can_dlc; i++) {
-						postedFrame[4+i] = canSocketFrame.data[i];
+						postedFrame[CONST_HEADER_LENGTH + i] = canSocketFrame.data[i];
 					}
 					
 					// Post frame to the TwoCanDevice
-					//memcpy(&postedFrame[0],&canFrame[0],CONST_FRAME_LENGTH);
-					
-					CanHeader header;
-					TwoCanUtils::DecodeCanHeader(&postedFrame[0],&header);
-					wxLogMessage(_T("Header: %u"),canSocketFrame.can_id);
-					wxLogMessage(_T("PGN: %u"),header.pgn);
-					wxLogMessage(_T("Source: %u"),header.source);
-					wxLogMessage(_T("Destination: %u"),header.destination);
-					wxLogMessage(_T("Priority: %u"),header.priority);
-					wxLogMessage(_T("Length: %u"),canSocketFrame.can_dlc);
-					
 					deviceQueue->Post(postedFrame);
 				}
 			}
