@@ -26,8 +26,12 @@
 
 #include "twocanerror.h"
 
+
 char *GetErrorMessage(int win32ErrorCode) {
-	// Retrieve the system error message for the last-error code
+	
+#ifdef  __WXMSW__ 
+
+	// Retrieve the Windows system error message for the last-error code
 
 	LPVOID lpMsgBuf;
 	
@@ -42,4 +46,15 @@ char *GetErrorMessage(int win32ErrorCode) {
 		0, NULL);
 	return (char *)lpMsgBuf;
 	
+#endif
+
+#ifdef __LINUX__
+
+	// Retrieve the Linux system error message for the last-error code
+	
+	return (char *)strerror(errno);
+	
+#endif
+
 }
+

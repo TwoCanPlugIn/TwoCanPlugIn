@@ -20,8 +20,17 @@
 #ifndef TWOCAN_ERROR_H
 #define TWOCAN_ERROR_H
 
-#define WINDOWS_LEAN_AND_MEAN
-#include <windows.h>
+// Pre compiled headers 
+#include "wx/wxprec.h"
+
+#ifndef WX_PRECOMP
+#include <wx/wx.h>
+#endif
+
+#ifdef  __WXMSW__ 
+	#define WINDOWS_LEAN_AND_MEAN
+	#include <windows.h>
+#endif
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -30,8 +39,14 @@
 // Formatted debug output
 void DebugPrintf(wchar_t *fmt, ...);
 
-// Routine to retrieve human readable win32 error message
-char *GetErrorMessage(int win32ErrorCode);
+#ifdef  __WXMSW__ 
+	// Routine to retrieve human readable win32 error message
+	char *GetErrorMessage(int win32ErrorCode);
+#endif
+#ifdef __LINUX__
+	// Routine to retrieve human readable Linux error message
+	char *GetErrorMessage(int linuxErrorCode);
+#endif
 
 // Macros to set and print error codes
 
@@ -100,5 +115,11 @@ char *GetErrorMessage(int win32ErrorCode);
 #define TWOCAN_ERROR_PATH_NOT_FOUND 36
 #define TWOCAN_ERROR_FILE_NOT_FOUND 37
 #define TWOCAN_ERROR_ADAPTER_NOT_FOUND 38
-#define TWOCAN_ERROR_INVALID_LOGFILE_FORMAT 29
+#define TWOCAN_ERROR_INVALID_LOGFILE_FORMAT 39
+#define TWOCAN_ERROR_SOCKET_CREATE 40
+#define TWOCAN_ERROR_SOCKET_IOCTL 41
+#define TWOCAN_ERROR_SOCKET_BIND 42
+#define TWOCAN_ERROR_SOCKET_FLAGS 43
+#define TWOCAN_ERROR_SOCKET_READ 44
+#define TWOCAN_ERROR_SOCKET_DOWN 45
 #endif

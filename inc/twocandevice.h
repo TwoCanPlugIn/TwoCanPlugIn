@@ -20,7 +20,23 @@
 #ifndef TWOCAN_DEVICE_H
 #define TWOCAN_DEVICE_H
 
+// Pre compiled headers 
+#include "wx/wxprec.h"
+
+#ifndef WX_PRECOMP
+#include <wx/wx.h>
+#endif
+
+// Error constants and macros
 #include "twocanerror.h"
+// Constants, typedefs and utility functions for bit twiddling and array manipulation for NMEA 2000 Messages
+#include "twocanutils.h"
+
+#ifdef __LINUX__
+// For Linux , "baked in" classes for the Log File reader and SocketCAN interface
+#include "twocanlogreader.h"
+#include "twocansocket.h"
+#endif
 
 // STL
 // used for AIS stuff
@@ -47,21 +63,32 @@
 // User's paths/documents folder
 #include <wx/stdpaths.h>
 
+#ifdef __LINUX__
+	// redefine Windows safe snprintf function to an equivalent
+	#define _snprintf_s(a,b,c,...) snprintf(a,b,__VA_ARGS__)
+#endif
+
+#ifdef  __WXMSW__ 
 // Based on an old 'c' code base
-// Events and Mutexes
+// Events and Mutexes that Windows DLL's use
 #define CONST_EVENT_NAME L"Global\\DataReceived"
 #define CONST_MUTEX_NAME L"Global\\DataMutex"
+#endif
 
-const int FRAME_RECEIVED_EVENT = wxID_HIGHEST + 1;
-extern const wxEventType wxEVT_FRAME_RECEIVED_EVENT;
+// Events passed up to the plugin
+const int SENTENCE_RECEIVED_EVENT = wxID_HIGHEST + 1;
+extern const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT;
 
 // NMEA 2000 Raw frame log file
-// BUG BUG Should enable user to select file location/name
-// However at present hardcode to user's document folder which matches location used by LogFile reader
-#define CONST_LOGFILE_NAME L"twocanraw.log"
+// BUG BUG Should enable user to select file location and name. File name is generated automatically.
+// Location is set to user's document folder (which is also used by Log File Readers)
+#ifdef  __WXMSW__ 
+#define CONST_LOGFILE_NAME L"twocan.log"
+#endif
 
-// Utility functions for constants, bit twiddling and array manipulation for NMEA 2000 Messages
-#include "twocanutils.h"
+#ifdef __LINUX__
+#define CONST_LOGFILE_NAME _T("twocan.log")
+#endif
 
 // Flag of bit values indicating what PGN's the plug-in converts
 extern int supportedPGN;
@@ -72,16 +99,18 @@ extern int logLevel;
 // Network Map
 extern DeviceInformation networkMap[CONST_MAX_DEVICES];
 
+#ifdef  __WXMSW__ 
 // NMEA 2000 imported driver function prototypes
 // Note to self, cast to wxChar for OpenCPN/wxWidgets wxString stuff
-
+//BUG BUG Add an IsInstalled function to the drivers so that they can be automagically detected
+//BUG BUG Add a write function to enable the device to become active on the NMEA 2000 network (eg. ISO Address Claim, ISO Request)
 typedef wxChar *(*LPFNDLLManufacturerName)(void);
 typedef wxChar *(*LPFNDLLDriverName)(void);
 typedef wxChar *(*LPFNDLLDriverVersion)(void);
 typedef int(*LPFNDLLOpen)(void);
 typedef int(*LPFNDLLClose)(void);
 typedef int(*LPFNDLLRead)(byte *frame);
-//BUG BUG Add an IsInstalled function to the drivers so that they can be automagically detected
+#endif
 
 // NMEA 2000 Product Information, transmitted in PGN 126996 NMEA Product Information
 typedef struct ProductInformation {
@@ -107,7 +136,6 @@ typedef struct FastMessageEntry {
 	byte *data; // pointer to memory allocated for the data. Note: must be freed when IsFree is set to TRUE.
 } FastMessageEntry;
 
-
 // Implements a NMEA 2000 Network device
 class TwoCanDevice : public wxThread {
 
@@ -118,14 +146,17 @@ public:
 
 	// Reference to event handler address, ie. the TwoCan PlugIn
 	wxEvtHandler *eventHandlerAddress;
-
+#ifdef __LINUX__
+	// wxMessage Queue to receive CAN Frames from either the Linux LogFile Reader or SocketCAN interface
+	wxMessageQueue<std::vector<byte>> *canQueue;
+#endif
 	// Event raised when a NMEA 2000 message is received and converted to a NMEA 0183 sentence
 	void RaiseEvent(wxString sentence);
-
+	
 	// Initialize & DeInitialize the device.
 	// As we don't throw errors in the ctor, invoke functions that may fail from these
 	int Init(wxString driverPath);
-	int Deinit(void);
+	int DeInit(void);
 
 protected:
 	// wxThread overridden functions
@@ -135,6 +166,7 @@ protected:
 private:
 	// To reuse existing 'C' CAN Adapter exported functions
 	byte canFrame[CONST_FRAME_LENGTH];
+#ifdef  __WXMSW__ 
 	BOOL freeResult = FALSE;
 	HINSTANCE dllHandle = NULL;
 	WIN32_FIND_DATA findFileData;
@@ -142,6 +174,27 @@ private:
 	HANDLE eventHandle = NULL;
 	HANDLE mutexHandle = NULL;
 	LPDWORD threadId = NULL;
+#endif
+
+#ifdef __LINUX__
+	// BUG BUG implement these as derived classes from an abstract class ??
+	TwoCanLogReader *linuxLogReader; 
+	TwoCanSocket *linuxSocket;
+	// Need to save the name of the Linux Driver, either "Log File Reader" or can0
+	wxString linuxDriverName;
+#endif
+
+#ifdef  __WXMSW__ 
+	// Functions to control the Windows CAN Adapter
+	int LoadWindowsDriver(wxString driverPath);
+	int ReadWindowsDriver(void);
+	int UnloadWindowsDriver(void);
+#endif
+
+#ifdef __LINUX__	
+	// Functions to control the Linux CAN interface
+	int ReadLinuxDriver(void);
+#endif
 
 	// Statistics
 #define TWOCAN_CONST_DROPPEDFRAME_THRESHOLD 200
@@ -150,11 +203,6 @@ private:
 	int transmittedFrames;
 	int droppedFrames;
 	wxDateTime droppedFrameTime;
-
-	// Functions to control the CAN Adapter
-	int LoadDriver(wxString driverPath);
-	int ReadDriver();
-	int UnloadDriver();
 
 	// Log raw frame data
 	wxFile rawLogFile;
@@ -166,12 +214,6 @@ private:
 
 	// NMEA 2000 Product Information
 	ProductInformation productInformation;
-
-	// Decode four byte array into a CAN v2.0 29 bit header
-	int DecodeCanHeader(const byte *buf, CanHeader *header);
-
-	// and the converse, encode a CAN v2.0 29 bit header into a four byte array
-	int EncodeCanHeader(byte *buf, const CanHeader *header);
 
 	// Determine whether frame is a single frame message or multiframe Fast Packet message
 	bool IsFastMessage(const CanHeader header);
@@ -201,70 +243,70 @@ private:
 	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
 
 	// Decode PGN 126992 NMEA System Time
-	wxString DecodePGN126992(const byte *payload);
+	bool DecodePGN126992(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 127250 NMEA Vessel Heading
-	wxString DecodePGN127250(const byte *payload);
+	bool DecodePGN127250(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 127251 NMEA Rate of Turn (ROT)
-	wxString DecodePGN127251(const byte *payload);
+	bool DecodePGN127251(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 127258 NMEA Magnetic Variation
-	wxString DecodePGN127258(const byte *payload);
+	bool DecodePGN127258(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 128259 NMEA Speed & Heading
-	wxString DecodePGN128259(const byte *payload);
+	bool DecodePGN128259(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 128267 NMEA Depth
-	wxString DecodePGN128267(const byte *payload);
+	bool DecodePGN128267(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 128275 Distance Log
-	wxString DecodePGN128275(const byte *payload);
+	bool DecodePGN128275(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129025 NMEA Position Rapid Update
-	wxString DecodePGN129025(const byte *payload);
+	bool DecodePGN129025(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129026 NMEA COG SOG Rapid Update
-	wxString DecodePGN129026(const byte *payload);
+	bool DecodePGN129026(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129029 NMEA GNSS Position
-	wxString DecodePGN129029(const byte *payload);
+	bool DecodePGN129029(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129033 NMEA Date & Time
-	wxString DecodePGN129033(const byte *payload);
+	bool DecodePGN129033(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129038 AIS Class A Position Report
-	wxString DecodePGN129038(const byte *payload);
+	bool DecodePGN129038(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Deocde PGN 129039 AIS Class B Position Report
-	wxString DecodePGN129039(const byte *payload);
+	bool DecodePGN129039(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129040 AIS Class B Extended Position Report
-	wxString DecodePGN129040(const byte *payload);
+	bool DecodePGN129040(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129041 AIS Aids To Navigation (AToN) Report
-	wxString DecodePGN129041(const byte *payload);
+	bool DecodePGN129041(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129283 NMEA Cross Track Error (XTE)
-	wxString DecodePGN129283(const byte *payload);
+	bool DecodePGN129283(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129793 AIS Date and Time report
-	wxString DecodePGN129793(const byte * payload);
+	bool DecodePGN129793(const byte * payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129794 AIS Class A Static Data
-	wxString DecodePGN129794(const byte *payload);
+	bool DecodePGN129794(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129796 AIS Acknowledge 
 	// Decode PGN 129797 AIS Binary Broadcast Message 
 
 	//	Decode PGN 129798 AIS SAR Aircraft Position Report
-	wxString DecodePGN129798(const byte *payload);
+	bool DecodePGN129798(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	//	Decode PGN 129801 AIS Addressed Safety Related Message
-	wxString DecodePGN129801(const byte *payload);
+	bool DecodePGN129801(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129802 AIS Safety Related Broadcast Message 
-	wxString DecodePGN129802(const byte *payload);
+	bool DecodePGN129802(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129803 AIS Interrogation
 	// Decode PGN 129804 AIS Assignment Mode Command 
@@ -273,22 +315,25 @@ private:
 	// Decode PGN 129807 AIS Group Assignment
 
 	// Decode PGN 129808 DSC Message
-	wxString DecodePGN129808(const byte *payload);
+	bool DecodePGN129808(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129809 AIS Class B Static Data Report, Part A 
-	wxString DecodePGN129809(const byte *payload);
+	bool DecodePGN129809(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129810 AIS Class B Static Data Report, Part B 
-	wxString DecodePGN129810(const byte *payload);
+	bool DecodePGN129810(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 130306 NMEA Wind
-	wxString DecodePGN130306(const byte *payload);
+	bool DecodePGN130306(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 130310 NMEA Water & Air Temperature and Pressure
-	wxString DecodePGN130310(const byte *payload);
+	bool DecodePGN130310(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 130312 NMEA Temperature
-	wxString DecodePGN130312(const byte *payload);
+	bool DecodePGN130312(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 130577 NMEA Direction Data
+	bool DecodePGN130577(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Transmit an ISO Address Claim
 	int ClaimAddress();
@@ -299,7 +344,7 @@ private:
 	// Respond to ISO Rqsts
 	int ISORqstResponse();
 
-	// Adds '*' and Checksum to NMEA 183 Sentence prior to sending to OpenCPN
+	// Appends '*' and Checksum to NMEA 183 Sentence prior to sending to OpenCPN
 	void SendNMEASentence(wxString sentence);
 
 	// Computes the NMEA 0183 XOR checksum
@@ -333,6 +378,9 @@ private:
 
 	// Decode the NMEA 0183 AIS VDM/VDO payload to a bit array of 6 bit characters
 	std::vector<bool> AISDecodePayload(wxString SixBitData);
+
+	// AIS VDM Sequential message ID, 0 - 9 used to distinguish multi-sentence  NMEA 183 VDM messages
+	int AISsequentialMessageId;
 
 };
 

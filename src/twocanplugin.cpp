@@ -46,19 +46,19 @@ extern "C" DECL_EXP opencpn_plugin* create_pi(void *ppimgr) {
 }
 
 extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
-    delete p;
+	delete p;
 }
 
 // TwoCan plugin constructor. Note it inherits from wxEvtHandler so that we can receive events
 // from the NMEA 2000 device when a NMEA 2000 frame is received
 TwoCan::TwoCan(void *ppimgr) : wxEvtHandler(), opencpn_plugin_18(ppimgr) {
 	// Wire up the event handler
-	Connect(wxEVT_FRAME_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnFrameReceived));
+	Connect(wxEVT_SENTENCE_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnSentenceReceived));
 }
 
 TwoCan::~TwoCan(void) {
 	// Disconnect the event handler
-	Disconnect(wxEVT_FRAME_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnFrameReceived));
+	Disconnect(wxEVT_SENTENCE_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnSentenceReceived));
 }
 
 int TwoCan::Init(void) {
@@ -71,7 +71,7 @@ int TwoCan::Init(void) {
 	// Maintain a reference to the OpenCPN configuration object 
 	configSettings = GetOCPNConfigObject();
 
-    // TwoCan preferences dialog
+	// TwoCan preferences dialog
 	settingsDialog = NULL;
 
 	// Toggles display of captured NMEA 2000 frames in the "debug" tab of the preferences dialog
@@ -91,15 +91,15 @@ int TwoCan::Init(void) {
 	else {
 		wxLogError(_T("TwoCan Plugin, Load Configuration Error. Device not started"));
 	}
-		
+
 	// Notify OpenCPN what events we want to receive callbacks for
 	// WANTS_NMEA_SENTENCES could be used for future versions where we might convert NMEA 0183 sentences to NMEA 2000
-	return ( WANTS_PREFERENCES | WANTS_CONFIG);
+	return (WANTS_PREFERENCES | WANTS_CONFIG);
 }
 
 // OpenCPN is either closing down, or we have been disabled from the Preferences Dialog
 bool TwoCan::DeInit(void) {
-    // Terminate the TwoCan Device Thread, but only if we have a valid driver selected !
+	// Terminate the TwoCan Device Thread, but only if we have a valid driver selected !
 	if (canAdapter.CmpNoCase(_T("None")) != 0) {
 		if (twoCanDevice->IsRunning()) {
 			StopDevice();
@@ -111,21 +111,21 @@ bool TwoCan::DeInit(void) {
 
 // Indicate what version of the OpenCPN Plugin API we support
 int TwoCan::GetAPIVersionMajor() {
-      return OPENCPN_API_VERSION_MAJOR;
+	return OPENCPN_API_VERSION_MAJOR;
 }
 
 int TwoCan::GetAPIVersionMinor() {
-      return OPENCPN_API_VERSION_MINOR;
+	return OPENCPN_API_VERSION_MINOR;
 }
 
 // The TwoCan plugin version numbers. 
 // BUG BUG anyway to automagically generate version numbers like Visual Studio & .NET assemblies ?
 int TwoCan::GetPlugInVersionMajor() {
-    return PLUGIN_VERSION_MAJOR;
+	return PLUGIN_VERSION_MAJOR;
 }
 
 int TwoCan::GetPlugInVersionMinor() {
-    return PLUGIN_VERSION_MINOR;
+	return PLUGIN_VERSION_MINOR;
 }
 
 // Return descriptions for the TwoCan Plugin
@@ -134,12 +134,13 @@ wxString TwoCan::GetCommonName() {
 }
 
 wxString TwoCan::GetShortDescription() {
-    return _T("TwoCan Plugin integrates OpenCPN with NMEA2000® networks");
+	//Trademark character ® code is \xae
+	return _T("TwoCan Plugin integrates OpenCPN with NMEA2000\xae networks");
 }
 
 wxString TwoCan::GetLongDescription() {
 	// Localization ??
-    return _T("TwoCan PlugIn integrates OpenCPN with NMEA2000® networks\nEnables some NMEA2000® data to be directly integrated with OpenCPN.\n\nThe following NMEA2000® Parameter Group Numbers (with corresponding\nNMEA 0183 sentences indicated in braces) are supported:\n- 128259 Speed (VHW)\n- 128267 Depth (DPT)\n- 129026 COG & SOG (RMC)\n- 129029 Navigation (GLL & ZDA)\n- 130306 Wind (MWV)\n- 130310 Water Temperature (MWT)");
+    return _T("TwoCan PlugIn integrates OpenCPN with NMEA2000\xae networks\nEnables some NMEA2000\xae data to be directly integrated with OpenCPN.\n\nThe following NMEA2000\xae Parameter Group Numbers (with corresponding\nNMEA 0183 sentences indicated in braces) are supported:\n- 128259 Speed (VHW)\n- 128267 Depth (DPT)\n- 129026 COG & SOG (RMC)\n- 129029 Navigation (GLL & ZDA)\n- 130306 Wind (MWV)\n- 130310 Water Temperature (MWT)");
 }
 
 // 32x32 pixel PNG file is converted to XPM containing the variable declaration: char *[] twocan_32 ...
@@ -151,23 +152,23 @@ wxBitmap* TwoCan::GetPlugInBitmap() {
 // BUG BUG for future versions
 void TwoCan::SetNMEASentence(wxString &sentence) {
 	// Maintain a local copy of the NMEA Sentence for conversion to a NMEA 2000 PGN
-    //wxString nmea183Sentence = sentence;    
+	//wxString nmea183Sentence = sentence;    
 }
 
 // Frame received event handler. Events queued from TwoCanDevice.
 // NMEA 0183 sentences are passed via the SetString()/GetString() properties
-void TwoCan::OnFrameReceived(wxCommandEvent &event) {
+void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 	switch (event.GetId()) {
-		case FRAME_RECEIVED_EVENT:
-			PushNMEABuffer(event.GetString());
-			// If the preference dialog is open and the debug tab is toggled, display the NMEA 183 sentences
-			// Superfluous as they can be seen in the Connections tab.
-			if (debugWindowActive) {
-				settingsDialog->txtDebug->AppendText(event.GetString());
-			}
-		     break;
-		default:
-			event.Skip();
+	case SENTENCE_RECEIVED_EVENT:
+		PushNMEABuffer(event.GetString());
+		// If the preference dialog is open and the debug tab is toggled, display the NMEA 183 sentences
+		// Superfluous as they can be seen in the Connections tab.
+		if (debugWindowActive) {
+			settingsDialog->txtDebug->AppendText(event.GetString());
+		}
+		break;
+	default:
+		event.Skip();
 	}
 }
 
@@ -182,40 +183,40 @@ void TwoCan::ShowPreferencesDialog(wxWindow* parent) {
 
 	if (settingsDialog->ShowModal() == wxID_OK) {
 
-			// Save the settings
-			canAdapter = settingsDialog->GetCanAdapter();
-			supportedPGN = settingsDialog->GetParameterGroupNumbers();
-			logLevel = settingsDialog->GetRawLogging();
+		// Save the settings
+		canAdapter = settingsDialog->GetCanAdapter();
+		supportedPGN = settingsDialog->GetParameterGroupNumbers();
+		logLevel = settingsDialog->GetRawLogging();
 
-			if (SaveConfiguration()) {
-				wxLogMessage(_T("TwoCan Plugin, Settings Saved"));
+		if (SaveConfiguration()) {
+			wxLogMessage(_T("TwoCan Plugin, Settings Saved"));
+		}
+		else {
+			wxLogMessage(_T("TwoCan Plugin, Error Saving Settings"));
+		}
+
+		// BUG BUG Refactor duplicated code
+		// Assume settings have been changed so reload them
+		// But protect ourselves in case user still has not selected a driver !
+		if (canAdapter.CmpNoCase(_T("None")) != 0) {
+			// Terminate the TwoCan Device Thread if it is already running
+			if (twoCanDevice->IsRunning()) {
+				StopDevice();
+			}
+		}
+
+		if (LoadConfiguration()) {
+			// Start the TwoCan Device in it's own thread
+			if (canAdapter.CmpNoCase(_T("None")) != 0)  {
+				StartDevice();
 			}
 			else {
-				wxLogMessage(_T("TwoCan Plugin, Error Saving Settings"));
+				wxLogError(_T("TwoCan Plugin, No driver selected. Device not started"));
 			}
-
-			// BUG BUG Refactor duplicated code
-			// Assume settings have been changed so reload them
-			// But protect ourselves in case user still has not selected a driver !
-			if (canAdapter.CmpNoCase(_T("None")) != 0) {
-				// Terminate the TwoCan Device Thread if it is already running
-				if (twoCanDevice->IsRunning()) {
-					StopDevice();
-				}
-			}
-			
-			if (LoadConfiguration()) {
-				// Start the TwoCan Device in it's own thread
-				if (canAdapter.CmpNoCase(_T("None")) != 0)  {
-					StartDevice();
-				}
-				else {
-					wxLogError(_T("TwoCan Plugin, No driver selected. Device not started"));
-				}
-			}
-			else {
-				wxLogError(_T("TwoCan Plugin, Load Configuration Error. Device not started"));
-			}
+		}
+		else {
+			wxLogError(_T("TwoCan Plugin, Load Configuration Error. Device not started"));
+		}
 	}
 
 	delete settingsDialog;
@@ -230,7 +231,7 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("PGN"), &supportedPGN, 0);
 		configSettings->Read(_T("Mode"), &deviceMode, FALSE);
 		configSettings->Read(_T("Log"), &logLevel, 0);
-        return TRUE;
+		return TRUE;
 	}
 	else {
 		// Default Settings
@@ -279,5 +280,5 @@ void TwoCan::StartDevice(void) {
 	}
 	else {
 		wxLogError(_T("TwoCan Plugin,  TwoCanDevice Initialize Error: %lu"), returnCode);
-	}	 
+	}
 }

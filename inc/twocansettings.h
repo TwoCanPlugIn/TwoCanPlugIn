@@ -25,9 +25,12 @@
 #include "twocansettingsbase.h"
 
 #include "twocanutils.h"
+#ifdef __LINUX__
+#include "twocansocket.h"
+#endif
 
-#include "..\img\twocan_64.xpm"
-#include "..\img\twocan_16_icon.xpm"
+#include "../img/twocan_64.xpm"
+#include "../img/twocan_16_icon.xpm"
 
 // wxWidgets includes 
 // For copy-n-paste from debug text control
@@ -46,6 +49,15 @@
 
 // BUG BUG testing of paths
 #include <wx/stdpaths.h>
+
+#ifdef __LINUX__
+// For enumerating CAN Adapters
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <linux/can.h>
+#include <linux/can/raw.h>
+#endif
+
 
 // Globally defined settings
 // Reference to OpenCPN Settings
