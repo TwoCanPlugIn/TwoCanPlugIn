@@ -24,6 +24,7 @@
 // Owner: twocanplugin@hotmail.com
 // Date: 6/8/2018
 // Version: 1.0
+// 1.3 - Added Support for Linux (socketCAN interfaces)
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -112,7 +113,8 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	
 	// Populate the ComboBox and set the default driver selection
 	for (adapterIterator = adapters.begin(); adapterIterator != adapters.end(); adapterIterator++){
-		// The first item of the hashmap is the "friendly name", the second is the full path of the driver
+		// For Windows, the first item of the hashmap is the "friendly name", the second is the full path of the driver
+		// For Linux, both the first & second item of the hashmap is either "Log File Reader" or can adapter name, eg. "can0"
 		cmbInterfaces->Append(adapterIterator->first);
 		// Ensure that the driver being used is selected in the Combobox 
 		if (canAdapterName == adapterIterator->second) {
@@ -153,6 +155,8 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	notebookTabs->DeletePage(1);
 
 	// BUG BUG Couldn't work out how to hide the page, rather than delete it.
+	
+	Fit();
 }
 
 // BUG BUG Should prevent the user from shooting themselves in the foot if they select a driver that is not present
@@ -253,6 +257,9 @@ void TwoCanSettings::SaveSettings(void) {
 }
 
 bool TwoCanSettings::EnumerateDrivers(void) {
+	
+#ifdef  __WXMSW__ 
+
 	// Trying to be a good wxWidgets citizen but how unintuitive !!
 	wxFileName adapterDirectoryName(::wxStandardPaths::Get().GetDataDir(),wxEmptyString);
 
@@ -285,11 +292,46 @@ bool TwoCanSettings::EnumerateDrivers(void) {
 		// BUG BUG Should we log this ??
 		wxLogMessage(_T("TwoCan Settings, driver folder not found"));
 	}
+	
+#endif
+	
+#ifdef __LINUX__
+	// Add the built-in Log File Reader to the Adapter hashmap
+	// BUG BUG add a #define for this string constant
+	adapters["Log File Reader"] = "Log File Reader";
+	// Add any physical CAN Adapters
+	std::vector<wxString> canAdapters;
+	// Enumerate installed CAN adapters
+	canAdapters = TwoCanSocket::ListCanInterfaces();
+	if (canAdapters.size() == 0) {
+		// Log that no CAN interfaces exist
+		wxLogMessage(_T("TwoCan Settings, No CAN interface present"));
+	}
+	else {
+		//wxLogMessage(_T("TwoCan CAN Interface Socket: %i"),socketDescriptor);
+		// Retrieve the name of the interface, by using the index.
+		// BUG BUG Why doesn't the socketDescriptor remain constant
+		// interfaceRequest.ifr_ifindex = 3; //socketDescriptor;
+		// returnCode = ioctl(socketDescriptor, SIOCGIFNAME, &interfaceRequest);
+		// wxLogMessage(_T("TwoCan, Get CAN Interface result: %d"),returnCode);
+		// if (returnCode != -1)  {
+		//	wxLogMessage(_T("TwoCan, CAN Adapter Name: %s"),interfaceRequest.ifr_name);
+		//	adapters[interfaceRequest.ifr_name] = interfaceRequest.ifr_name;
+		for (auto it = canAdapters.begin(); it != canAdapters.end(); ++it) {
+			wxLogMessage(_T("TwoCan Settings, Found CAN adapter: %s"),*it);
+			adapters[*it] = *it;
+		}
+		
+	}
+	
+#endif
+
 	return TRUE;
 }
 
-void TwoCanSettings::GetDriverInfo(wxString fileName) {
+#ifdef  __WXMSW__ 
 
+void TwoCanSettings::GetDriverInfo(wxString fileName) {
 	HMODULE dllHandle;
 	LPFNDLLDriverName driverName = NULL;
 	
@@ -326,3 +368,7 @@ void TwoCanSettings::GetDriverInfo(wxString fileName) {
 		wxLogError(_T("TwoCan Settings, Invalid DLL Handle Error: %d for %s"), GetLastError(), fileName);
 	}
 }
+
+#endif
+
+

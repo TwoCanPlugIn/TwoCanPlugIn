@@ -29,8 +29,8 @@
 
 // Defines version numbers for this plugin
 #define PLUGIN_VERSION_MAJOR 1
-#define PLUGIN_VERSION_MINOR 0
-#define PLUGIN_VERSION_DATE "06/08/2018"
+#define PLUGIN_VERSION_MINOR 3
+#define PLUGIN_VERSION_DATE "28/02/2019"
 
 // What version of the OpenCPN plugin API does this plugin support
 #define     OPENCPN_API_VERSION_MAJOR    1
@@ -48,7 +48,7 @@
 // BUG BUG should put all icons & bitmaps into a single header file  
 // Require xpm includes for 128, 64 & 32 pixel sized bitmaps and also a 16x16 icon
 // Note to self, use a tool such as https://www.freefileconvert.com/png-xpm to convert images to .xpm
-#include "..\img\twocan_32.xpm"
+#include "../img/twocan_32.xpm"
 
 // BUG BUG check which wxWidget includes we really need
 #include <wx/arrstr.h> 
@@ -78,7 +78,7 @@ extern DeviceInformation networkMap[CONST_MAX_DEVICES];
 
 
 // Plugin receives FrameReceived events from the TwoCan device
-const wxEventType wxEVT_FRAME_RECEIVED_EVENT = wxNewEventType();
+const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT = wxNewEventType();
 
 // The TwoCan plugin
 class TwoCan : public opencpn_plugin_18, public wxEvtHandler {
@@ -91,18 +91,18 @@ public:
 	~TwoCan(void);
 
 	// Overridden OpenCPN plugin methods
-    int Init(void);
-    bool DeInit(void);
-    int GetAPIVersionMajor();
-    int GetAPIVersionMinor();
-    int GetPlugInVersionMajor();
-    int GetPlugInVersionMinor();
+	int Init(void);
+	bool DeInit(void);
+	int GetAPIVersionMajor();
+	int GetAPIVersionMinor();
+	int GetPlugInVersionMajor();
+	int GetPlugInVersionMinor();
 	void ShowPreferencesDialog(wxWindow* parent);
-    wxString GetCommonName();
-    wxString GetShortDescription();
-    wxString GetLongDescription();
+	wxString GetCommonName();
+	wxString GetShortDescription();
+	wxString GetLongDescription();
 	void SetNMEASentence(wxString &sentence); // Not used yet...
-    wxBitmap *GetPlugInBitmap();
+	wxBitmap *GetPlugInBitmap();
 	
 private: 
 	// NMEA 2000 device
@@ -121,8 +121,8 @@ private:
 	// Reference to the OpenCPN window handle
 	wxWindow *parentWindow;
 
-	// NMEA 2000 frame received events
-	void OnFrameReceived(wxCommandEvent &event);
+	// NMEA 0183 sentence received events
+	void OnSentenceReceived(wxCommandEvent &event);
 
 	// TwoCanDevice
 	void StartDevice(void);

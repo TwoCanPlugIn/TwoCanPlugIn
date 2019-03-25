@@ -21,24 +21,16 @@
 #define TWOCAN_UTILS_H
 
 // For specific Windows functions & typedefs such as LPDWORD etc.
-#define WINDOWS_LEAN_AND_MEAN
-#include <windows.h>
+#ifdef  __WXMSW__ 
+	#define WINDOWS_LEAN_AND_MEAN
+	#include <windows.h>
+#endif
 
 // For wxWidgets Pi
 #include <wx/math.h>
 
-// NMEA 2000 Device Information, transmitted in PGN 60928 ISO Address Claim
-typedef struct DeviceInformation {
-	// Network Address is not part of the address claim, but it is the source address of the frame. 
-	// Maintain a reference to it to use as an index into entries for a network map
-	byte networkAddress;
-	unsigned int uniqueId;
-	unsigned int deviceClass;
-	unsigned int deviceFunction;
-	byte deviceInstance;
-	byte industryGroup;
-	unsigned int manufacturerId;
-} DeviceInformation;
+// For strtoul
+#include <stdlib.h>
 
 // Some NMEA 2000 constants
 #define CONST_GLOBAL_ADDRESS 255
@@ -145,14 +137,13 @@ typedef struct DeviceInformation {
 #define FLAGS_AIS 1024
 
 
-// Bit values to determine what Logging to support
+// Bit values to determine in which format the log file is written
 // RAW is the only mode currently implemented
 #define FLAGS_LOG_RAW 1 // My format 12 pairs of hex digits, 4 the CAN 2.0 Id, 8 the payload 
 #define FLAGS_LOG_KEES 2 // I recall seeing this format used in Open Skipper
 #define FLAGS_LOG_ACTISENSE 4 // And this one as well.
 #define FLAGS_LOG_YACHTDEVICES 8 
 #define FLAGS_LOG_CANDUMP 16
-
 
 // All the NMEA 2000 data is transmitted as an unsigned char which for convenience sake, I call a byte
 typedef unsigned char byte;
@@ -165,6 +156,20 @@ typedef struct CanHeader {
 	unsigned int pgn;
 } CanHeader;
 
+// NMEA 2000 Device Information, transmitted in PGN 60928 ISO Address Claim
+typedef struct DeviceInformation {
+	// Network Address is not part of the address claim, but it is the source address of the frame. 
+	// Maintain a reference to it to use as an index into entries for a network map
+	byte networkAddress;
+	unsigned int uniqueId;
+	unsigned int deviceClass;
+	unsigned int deviceFunction;
+	byte deviceInstance;
+	byte industryGroup;
+	unsigned int manufacturerId;
+} DeviceInformation;
+
+
 // Utility functions used by both the TwoCanDevice and the CAN adapters
 
 class TwoCanUtils {
@@ -173,9 +178,15 @@ public:
 	
 	// Convert four bytes to an integer so that some NMEA 2000 values can be 
 	// derived from odd length, non byte aliged bitmasks
-	// Can't use memcpy or casting due to Endianess
 	static int ConvertByteArrayToInteger(const byte *buf, unsigned int *value);
-
+	// Convert an integer to a byte array
+	static int ConvertIntegerToByteArray(const int value, byte *buf);
+	// Decodes a 29 bit CAN header from a byte array
+	static int DecodeCanHeader(const byte *buf, CanHeader *header);
+	// And its companion, encode a 29 bit CAN Header to a byte array
+	static int EncodeCanHeader(byte *buf, const CanHeader *header);
+	// Convert a string of hex characters to the corresponding byte array
+	static int ConvertHexStringToByteArray(const byte *hexstr, const unsigned int len, byte *buf);
 	// BUG BUG Any other conversion functions required ??
 	
 };

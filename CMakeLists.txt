@@ -15,7 +15,7 @@ SET(TITLE_NAME TWOCAN)
 SET(CPACK_PACKAGE_CONTACT "TwoCanPlugin@hotmail.com")
 
 SET(VERSION_MAJOR "1")
-SET(VERSION_MINOR "0")
+SET(VERSION_MINOR "3")
 
 SET(CMAKE_BUILD_TYPE Release)
 
@@ -42,6 +42,15 @@ SET(SRC_TWOCAN
             img/twocan_64.xpm
             img/twocan_128.xpm
  	)
+
+IF(UNIX)
+    LIST(APPEND SRC_TWOCAN 
+	    src/twocansocket.cpp
+            inc/twocansocket.h
+            src/twocanlogreader.cpp
+            inc/twocanlogreader.h
+    )
+ENDIF(UNIX)
 
 ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SRC_TWOCAN} )
 
