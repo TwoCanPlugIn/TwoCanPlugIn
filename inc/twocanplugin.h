@@ -26,11 +26,8 @@
 #ifndef WX_PRECOMP
       #include <wx/wx.h>
 #endif
-
 // Defines version numbers for this plugin
-#define PLUGIN_VERSION_MAJOR 1
-#define PLUGIN_VERSION_MINOR 3
-#define PLUGIN_VERSION_DATE "28/02/2019"
+#include "version.h"
 
 // What version of the OpenCPN plugin API does this plugin support
 #define     OPENCPN_API_VERSION_MAJOR    1
