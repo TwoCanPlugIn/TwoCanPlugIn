@@ -134,7 +134,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 
 	// BUG BUG Localization
 	// BUG BUG Version numbering
-	txtAbout->SetLabel(_("TwoCan PlugIn for OpenCPN\nVersion 1.0\nEnables some NMEA2000® data to be directly integrated with OpenCPN.\nSend bug reports to twocanplugin@hotmail.com"));
+	txtAbout->SetLabel(_("TwoCan PlugIn for OpenCPN\nVersion 1.0\nEnables some NMEA2000\u00AE data to be directly integrated with OpenCPN.\nSend bug reports to twocanplugin@hotmail.com"));
 
 	// Debug Window
 	// BUG BUG Localization
