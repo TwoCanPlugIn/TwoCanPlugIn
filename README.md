@@ -30,11 +30,15 @@ A good reference to using & configuring the CAN interfaces on Linux can be found
 
 To summarise,
 To bring up Native CAN Interface (eg. Waveshare)
+
 sudo ip link set can0 type can bitrate 250000
+
 sudo ip link set up can0
 
 To bring up Serial CAN interface (eg. Canable)
+
 sudo slcand -o -s5 -t hw -S 1000000 /dev/ttyACM0
+
 sudo ip link set up slcan0
 
 if using Active Mode (new in version 1.4)
