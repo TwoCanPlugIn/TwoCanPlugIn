@@ -43,14 +43,14 @@ SET(SRC_TWOCAN
             img/twocan_128.xpm
  	)
 
-IF(UNIX)
+IF(UNIX AND NOT APPLE)
     LIST(APPEND SRC_TWOCAN 
 	    src/twocansocket.cpp
             inc/twocansocket.h
             src/twocanlogreader.cpp
             inc/twocanlogreader.h
     )
-ENDIF(UNIX)
+ENDIF(UNIX AND NOT APPLE)
 
 ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SRC_TWOCAN} )
 
