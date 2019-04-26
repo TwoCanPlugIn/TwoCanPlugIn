@@ -26,7 +26,19 @@ Two hardware adapters have been successfully tested under Linux:
 Canable Cantact - (see above) 
 Waveshare CAN Hat for Raspberry PI - https://www.waveshare.com/product/modules/communication/rs232-rs485-can/rs485-can-hat.htm
 
-A good reference to using & configuring the CAN interfaces on Linux can be found at: https://elinux.org/Bringing_CAN_interface_up
+A good reference to using & configuring the CAN interfaces on Linux can be found at: https://elinux.org/Bringing_CAN_interface_up.
+
+To summarise,
+To bring up Native CAN Interface (eg. Waveshare)
+sudo ip link set can0 type can bitrate 250000
+sudo ip link set up can0
+
+To bring up Serial CAN interface (eg. Canable)
+sudo slcand -o -s5 -t hw -S 1000000 /dev/ttyACM0
+sudo ip link set up slcan0
+
+if using Active Mode (new in version 1.4)
+sudo ifconfig * txqueuelen 1000 (replace * with either can0 or slcan0 as appropriate)
 
 The Linux Log File Reader automagically™ detects the four supported log file formats.
 
