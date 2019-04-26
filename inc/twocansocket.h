@@ -67,9 +67,10 @@ public:
 	// As we don't throw errors in the ctor, invoke functions that may fail from these
 	int Open(const char *port);
 	int Close(void);
-	int Send(unsigned long id, unsigned char len, const unsigned char *buf, bool wait_sent);
+	int Write(const unsigned int canId, const unsigned char payloadLength, const unsigned char *payload);
 	void Read();
 	static std::vector<wxString> ListCanInterfaces();
+	static int GetUniqueNumber(unsigned long *uniqueNumber);
 
 
 protected:

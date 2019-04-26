@@ -62,8 +62,8 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	chkListPGN = new wxCheckListBox( panelSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, chkListPGNChoices, 0 );
 	sizerchkListPGN->Add( chkListPGN, 1, wxALL|wxEXPAND, 5 );
 	
-	checkLogRaw = new wxCheckBox( panelSettings, wxID_ANY, wxT("Log Raw NMEA 2000 frames"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerchkListPGN->Add( checkLogRaw, 0, wxALL, 5 );
+	chkLogRaw = new wxCheckBox( panelSettings, wxID_ANY, wxT("Log Raw NMEA 2000 frames"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerchkListPGN->Add( chkLogRaw, 0, wxALL, 5 );
 	
 	
 	sizerPanelSettings->Add( sizerchkListPGN, 1, wxEXPAND, 5 );
@@ -90,37 +90,37 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	wxBoxSizer* sizerGridViewNetwork;
 	sizerGridViewNetwork = new wxBoxSizer( wxHORIZONTAL );
 	
-	dataGridNetwork = new wxGrid( panelNetwork, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
+	dataGridNetwork = new wxGrid(panelNetwork, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0);
 	
 	// Grid
-	dataGridNetwork->CreateGrid( 255, 3 );
+	dataGridNetwork->CreateGrid( 253, 3 );
 	dataGridNetwork->EnableEditing( false );
 	dataGridNetwork->EnableGridLines( true );
 	dataGridNetwork->EnableDragGridSize( false );
 	dataGridNetwork->SetMargins( 0, 0 );
 	
 	// Columns
-	dataGridNetwork->SetColSize( 0, 59 );
-	dataGridNetwork->SetColSize( 1, 63 );
-	dataGridNetwork->SetColSize( 2, 81 );
+	dataGridNetwork->SetColSize( 0, 85 );
+	dataGridNetwork->SetColSize( 1, 112 );
+	dataGridNetwork->SetColSize( 2, 112 );
 	dataGridNetwork->EnableDragColMove( false );
 	dataGridNetwork->EnableDragColSize( true );
-	dataGridNetwork->SetColLabelSize( 30 );
-	dataGridNetwork->SetColLabelValue( 0, wxT("Address") );
-	dataGridNetwork->SetColLabelValue( 1, wxT("Id") );
-	dataGridNetwork->SetColLabelValue( 2, wxT("Description") );
-	dataGridNetwork->SetColLabelAlignment( wxALIGN_CENTRE, wxALIGN_CENTRE );
+	dataGridNetwork->SetColLabelSize( 32 );
+	dataGridNetwork->SetColLabelValue( 0, wxT("Unique Id") );
+	dataGridNetwork->SetColLabelValue( 1, wxT("Manufacturer") );
+	dataGridNetwork->SetColLabelValue( 2, wxT("Model Id") );
+	dataGridNetwork->SetColLabelAlignment( wxALIGN_LEFT, wxALIGN_CENTRE );
 	
 	// Rows
 	dataGridNetwork->EnableDragRowSize( true );
-	dataGridNetwork->SetRowLabelSize( 80 );
-	dataGridNetwork->SetRowLabelAlignment( wxALIGN_CENTRE, wxALIGN_CENTRE );
-	
+	dataGridNetwork->SetRowLabelSize( 50 );
+	dataGridNetwork->SetRowLabelAlignment( wxALIGN_LEFT, wxALIGN_CENTRE );
+
 	// Label Appearance
 	
 	// Cell Defaults
 	dataGridNetwork->SetDefaultCellAlignment( wxALIGN_LEFT, wxALIGN_TOP );
-	sizerGridViewNetwork->Add( dataGridNetwork, 0, wxALL|wxEXPAND, 5 );
+	sizerGridViewNetwork->Add(dataGridNetwork, 0, wxALL, 5);
 	
 	
 	sizerPanelNetwork->Add( sizerGridViewNetwork, 0, wxEXPAND, 5 );
@@ -136,24 +136,34 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	
 	chkDeviceMode = new wxCheckBox( panelDevice, wxID_ANY, wxT("Enable Active Mode"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerpanelDevice->Add( chkDeviceMode, 0, wxALL, 5 );
+
+	chkEnableHeartbeat = new wxCheckBox(panelDevice, wxID_ANY, wxT("Send heartbeats"), wxDefaultPosition, wxDefaultSize, 0);
+	sizerpanelDevice->Add(chkEnableHeartbeat, 0, wxALL, 5);
 	
 	m_staticline1 = new wxStaticLine( panelDevice, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
 	sizerpanelDevice->Add( m_staticline1, 0, wxEXPAND | wxALL, 5 );
 	
-	labelUniqueId = new wxStaticText( panelDevice, wxID_ANY, wxT("Unique ID: 12345"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelNetworkAddress = new wxStaticText(panelDevice, wxID_ANY, wxT("Network Address:"), wxDefaultPosition, wxDefaultSize, 0);
+	labelNetworkAddress->Wrap(-1);
+	sizerpanelDevice->Add(labelNetworkAddress, 0, wxALL, 5);
+
+
+	labelUniqueId = new wxStaticText( panelDevice, wxID_ANY, wxT("Unique ID:"), wxDefaultPosition, wxDefaultSize, 0 );
 	labelUniqueId->Wrap( -1 );
 	sizerpanelDevice->Add( labelUniqueId, 0, wxALL, 5 );
+
+	labelManufacturer = new wxStaticText(panelDevice, wxID_ANY, wxT("Manufacturer:"), wxDefaultPosition, wxDefaultSize, 0);
+	labelManufacturer->Wrap(-1);
+	sizerpanelDevice->Add(labelManufacturer, 0, wxALL, 5);
 	
-	buttonGenerateId = new wxButton( panelDevice, wxID_ANY, wxT("Generate Id"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerpanelDevice->Add( buttonGenerateId, 0, wxALL, 5 );
-	
-	m_staticline2 = new wxStaticLine( panelDevice, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-	sizerpanelDevice->Add( m_staticline2, 0, wxEXPAND | wxALL, 5 );
-	
-	labelManufacturer = new wxStaticText( panelDevice, wxID_ANY, wxT("Device Manufacturer: TwoCan"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelManufacturer->Wrap( -1 );
-	sizerpanelDevice->Add( labelManufacturer, 0, wxALL, 5 );
-	
+	labelModelId = new wxStaticText(panelDevice, wxID_ANY, wxT("Model Id:"), wxDefaultPosition, wxDefaultSize, 0);
+	labelModelId->Wrap(-1);
+	sizerpanelDevice->Add(labelModelId, 0, wxALL, 5);
+
+	labelSoftwareVersion = new wxStaticText(panelDevice, wxID_ANY, wxT("Software Version:"), wxDefaultPosition, wxDefaultSize, 0);
+	labelSoftwareVersion->Wrap(-1);
+	sizerpanelDevice->Add(labelSoftwareVersion, 0, wxALL, 5);
+
 	labelDevice = new wxStaticText( panelDevice, wxID_ANY, wxT("Device Class: Inter/Intranetwork Device (25)"), wxDefaultPosition, wxDefaultSize, 0 );
 	labelDevice->Wrap( -1 );
 	sizerpanelDevice->Add( labelDevice, 0, wxALL, 5 );
@@ -161,7 +171,6 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	labelFunction = new wxStaticText( panelDevice, wxID_ANY, wxT("Device Function: PG Gateway (130)"), wxDefaultPosition, wxDefaultSize, 0 );
 	labelFunction->Wrap( -1 );
 	sizerpanelDevice->Add( labelFunction, 0, wxALL, 5 );
-	
 	
 	panelDevice->SetSizer( sizerpanelDevice );
 	panelDevice->Layout();
@@ -269,8 +278,9 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	this->Connect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
 	cmbInterfaces->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoice ), NULL, this );
 	chkListPGN->Connect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
-	checkLogRaw->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckLog ), NULL, this );
-	buttonGenerateId->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnGenerateId ), NULL, this );
+	chkLogRaw->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckLog ), NULL, this );
+	chkEnableHeartbeat->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(TwoCanSettingsBase::OnCheckHeartbeat), NULL, this);
+	chkDeviceMode->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );
 	btnPause->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
 	btnOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnOK ), NULL, this );
@@ -284,8 +294,9 @@ TwoCanSettingsBase::~TwoCanSettingsBase()
 	this->Disconnect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
 	cmbInterfaces->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoice ), NULL, this );
 	chkListPGN->Disconnect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
-	checkLogRaw->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckLog ), NULL, this );
-	buttonGenerateId->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnGenerateId ), NULL, this );
+	chkLogRaw->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckLog ), NULL, this );
+	chkDeviceMode->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );
+	chkEnableHeartbeat->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(TwoCanSettingsBase::OnCheckHeartbeat), NULL, this);
 	btnPause->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
 	btnOK->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnOK ), NULL, this );

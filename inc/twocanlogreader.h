@@ -98,11 +98,6 @@ private:
 	wxString logFileName;
 	std::ifstream logFileStream;
 	wxRegEx twoCanRegEx;
-	//std::regex TwoCanRegex;
-	//std::regex CanDumpRegex;
-	//std::regex KeesRegex;
-	//std::regex YachtDevicesRegex;
-	
 };
 
 #endif

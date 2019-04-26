@@ -1,4 +1,4 @@
-// Copyright(C) 2018 by Steven Adler
+// Copyright(C) 2018-2019 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
 //
-// NMEA2000® is a registered Trademark of the National Marine Electronics Association
+// NMEA2000Â® is a registered Trademark of the National Marine Electronics Association
 
 #ifndef TWOCAN_DEVICE_H
 #define TWOCAN_DEVICE_H
@@ -29,7 +29,8 @@
 
 // Error constants and macros
 #include "twocanerror.h"
-// Constants, typedefs and utility functions for bit twiddling and array manipulation for NMEA 2000 Messages
+
+// Constants, typedefs and utility functions for bit twiddling and array manipulation for NMEA 2000 messages
 #include "twocanutils.h"
 
 #ifdef __LINUX__
@@ -58,7 +59,7 @@
 #include <wx/thread.h>
 // Logging (Info & Errors)
 #include <wx/log.h>
-// Logging (raw NMEA 2000 frames)
+// Logging (raw NMEA 2000 messages)
 #include <wx/file.h>
 // User's paths/documents folder
 #include <wx/stdpaths.h>
@@ -71,7 +72,8 @@
 #ifdef  __WXMSW__ 
 // Based on an old 'c' code base
 // Events and Mutexes that Windows DLL's use
-#define CONST_EVENT_NAME L"Global\\DataReceived"
+#define CONST_DATARX_EVENT L"Global\\DataReceived"
+#define CONST_DATATX_EVENT L"Global\\DataTransmit"
 #define CONST_MUTEX_NAME L"Global\\DataMutex"
 #endif
 
@@ -83,6 +85,7 @@ extern const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT;
 // BUG BUG Should enable user to select file location and name. File name is generated automatically.
 // Location is set to user's document folder (which is also used by Log File Readers)
 #ifdef  __WXMSW__ 
+// BUG BUG not used as input log file name as each is hardcoded in each of the Windows log file readers
 #define CONST_LOGFILE_NAME L"twocan.log"
 #endif
 
@@ -90,42 +93,49 @@ extern const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT;
 #define CONST_LOGFILE_NAME _T("twocan.log")
 #endif
 
+// Globally defined variabes
+
+// Name of currently selected CAN Interface
+extern wxString canAdapter;
+
 // Flag of bit values indicating what PGN's the plug-in converts
 extern int supportedPGN;
 
-// Flag of bit values to indicate whether to log raw NMEA frames, or perhaps any other format in the future
+// Whether to enable the realtime display of NMEA 2000 messages 
+extern bool debugWindowActive;
+
+// Whether the plug-in passively listens to the NMEA 2000 network or is an active device
+extern bool deviceMode;
+
+// If we are in active mode, whether to periodically send PGN 126993 heartbeats
+extern bool enableHeartbeat;
+
+// Whether to Log raw NMEA 2000 messages
 extern int logLevel;
 
-// Network Map
-extern DeviceInformation networkMap[CONST_MAX_DEVICES];
+// List of devices dicovered on the NMEA 2000 network
+extern NetworkInformation networkMap[CONST_MAX_DEVICES];
+
+// The uniqueID of this device (also used as the serial number)
+extern unsigned long uniqueId;
+
+// The current NMEA 2000 network address of this device
+extern unsigned int networkAddress;
 
 #ifdef  __WXMSW__ 
 // NMEA 2000 imported driver function prototypes
 // Note to self, cast to wxChar for OpenCPN/wxWidgets wxString stuff
-//BUG BUG Add an IsInstalled function to the drivers so that they can be automagically detected
-//BUG BUG Add a write function to enable the device to become active on the NMEA 2000 network (eg. ISO Address Claim, ISO Request)
+// BUG BUG Add an IsInstalled function to the drivers so that they can be automagically detected
 typedef wxChar *(*LPFNDLLManufacturerName)(void);
 typedef wxChar *(*LPFNDLLDriverName)(void);
 typedef wxChar *(*LPFNDLLDriverVersion)(void);
 typedef int(*LPFNDLLOpen)(void);
 typedef int(*LPFNDLLClose)(void);
 typedef int(*LPFNDLLRead)(byte *frame);
+typedef int(*LPFNDLLWrite)(const unsigned int id, const int length, const byte *payload);
 #endif
 
-// NMEA 2000 Product Information, transmitted in PGN 126996 NMEA Product Information
-typedef struct ProductInformation {
-	unsigned int dataBaseVersion;
-	unsigned int productCode;
-	// Note these are transmitted as unterminated 32 bit strings, allow for a terminating NULL
-	char modelId[33];
-	char softwareVersion[33];
-	char modelVersion[33];
-	char serialNumber[33];
-	byte certificationLevel;
-	byte loadEquivalency;
-} ProductInformation;
-
-// Buffer Used to re-assemble sequences of multi frame Fast Packet messages
+// Buffer used to re-assemble sequences of multi frame Fast Packet messages
 typedef struct FastMessageEntry {
 	byte IsFree; // indicate whether this entry is free
 	time_t timeArrived; // time of last message. garbage collector will remove stale entries
@@ -154,7 +164,7 @@ public:
 	void RaiseEvent(wxString sentence);
 	
 	// Initialize & DeInitialize the device.
-	// As we don't throw errors in the ctor, invoke functions that may fail from these
+	// As we don't throw errors in the constructor, invoke functions that may fail from these functions
 	int Init(wxString driverPath);
 	int DeInit(void);
 
@@ -164,9 +174,9 @@ protected:
 	virtual void OnExit();
 
 private:
-	// To reuse existing 'C' CAN Adapter exported functions
 	byte canFrame[CONST_FRAME_LENGTH];
 #ifdef  __WXMSW__ 
+	// To reuse existing 'C' CAN Adapter exported functions
 	BOOL freeResult = FALSE;
 	HINSTANCE dllHandle = NULL;
 	WIN32_FIND_DATA findFileData;
@@ -174,13 +184,14 @@ private:
 	HANDLE eventHandle = NULL;
 	HANDLE mutexHandle = NULL;
 	LPDWORD threadId = NULL;
+	LPFNDLLWrite writeFrame = NULL;
 #endif
 
 #ifdef __LINUX__
 	// BUG BUG implement these as derived classes from an abstract class ??
 	TwoCanLogReader *linuxLogReader; 
 	TwoCanSocket *linuxSocket;
-	// Need to save the name of the Linux Driver, either "Log File Reader" or can0
+	// Need to persist the name of the Linux Driver, either "Log File Reader" or can0/slcan0/vcan0
 	wxString linuxDriverName;
 #endif
 
@@ -196,18 +207,24 @@ private:
 	int ReadLinuxDriver(void);
 #endif
 
+	// Heartbeat timer
+	wxTimer *heartbeatTimer;
+	void OnHeartbeat(wxEvent &event);
+
 	// Statistics
-#define TWOCAN_CONST_DROPPEDFRAME_THRESHOLD 200
-#define TWOCAN_CONST_DROPPEDFRAME_PERIOD 5
 	int receivedFrames;
 	int transmittedFrames;
 	int droppedFrames;
 	wxDateTime droppedFrameTime;
 
-	// Log raw frame data
+	// File handle for logging raw frame data
 	wxFile rawLogFile;
 
 	// All the NMEA 2000 goodness
+
+	// the 8 byte NAME of this device derived from the 8 bytes used in PGN 60928
+	// this value is used to uniquely identify a device and to resolve address claim conflicts
+	unsigned long long deviceName;
 
 	// ISO Address Claim
 	DeviceInformation deviceInformation;
@@ -220,11 +237,14 @@ private:
 
 	// The Fast Packet buffer - used to reassemble Fast packet messages
 	FastMessageEntry fastMessages[CONST_MAX_MESSAGES];
-
-	// Assemble sequence of Fast Messages
+	
+	// Assemble sequence of Fast Messages int a payload
 	void AssembleFastMessage(const CanHeader header, const byte *message);
+	
+	// And its companion
+	int FragmentFastMessage(CanHeader *header, unsigned int payloadLength, byte *payload);
 
-	// Add,Append,Find entries in the FastMessage buffer
+	// Add, Append and Find entries in the FastMessage buffer
 	void MapInitialize(void);
 	void MapLockRange(const int start, const int end);
 	int MapFindFreeEntry(void);
@@ -235,16 +255,28 @@ private:
 
 	// Big switch statement to determine which function is called to decode each received NMEA 2000 message
 	void ParseMessage(const CanHeader header, const byte *payload);
+	
+	// Decode PGN59392 ISO Acknowledgement
+	int DecodePGN59392(const byte *payload);
+	
+	// Decode PGN 59904 ISO Request
+	int DecodePGN59904(const byte *payload, unsigned int *requestedPGN);
 
 	// Decode PGN 60928 ISO Address Claim
 	int DecodePGN60928(const byte *payload, DeviceInformation *device_Information);
-
-	// Decode PGN 126996 NMEA Product Information
-	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
+	
+	// Decode PGN 65240 ISO Commanded Address
+	int DecodePGN65240(const byte *payload, DeviceInformation *device_Information);
 
 	// Decode PGN 126992 NMEA System Time
 	bool DecodePGN126992(const byte *payload, std::vector<wxString> *nmeaSentences);
+	
+	// Decode PGN 126993 NMEA heartbeat
+	bool DecodePGN126993(const byte *payload);
 
+	// Decode PGN 126996 NMEA Product Information
+	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
+	
 	// Decode PGN 127250 NMEA Vessel Heading
 	bool DecodePGN127250(const byte *payload, std::vector<wxString> *nmeaSentences);
 
@@ -290,6 +322,12 @@ private:
 	// Decode PGN 129283 NMEA Cross Track Error (XTE)
 	bool DecodePGN129283(const byte *payload, std::vector<wxString> *nmeaSentences);
 
+	// Decode PGN 129284 Navigation Data
+	bool DecodePGN129284(const byte * payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 129285 Navigation Route/WP Information
+	bool DecodePGN129285(const byte * payload, std::vector<wxString> *nmeaSentences);
+
 	// Decode PGN 129793 AIS Date and Time report
 	bool DecodePGN129793(const byte * payload, std::vector<wxString> *nmeaSentences);
 
@@ -334,15 +372,24 @@ private:
 
 	// Decode PGN 130577 NMEA Direction Data
 	bool DecodePGN130577(const byte *payload, std::vector<wxString> *nmeaSentences);
+	
+	// Transmit an ISO Request
+	int SendISORequest(const byte destination, const unsigned int pgn);
 
 	// Transmit an ISO Address Claim
-	int ClaimAddress();
+	int SendAddressClaim(const unsigned int sourceAddress);
 
 	// Transmit NMEA 2000 Product Information
-	int TransmitProductInformation();
+	int SendProductInformation();
+	
+	// Transmit NMEA 2000 Supported Parameter Groups
+	int SendSupportedPGN(void);
 
 	// Respond to ISO Rqsts
-	int ISORqstResponse();
+	int SendISOResponse(unsigned int sender, unsigned int pgn);
+	
+	// Send NMEA 2000 Heartbeat
+	int SendHeartbeat(void);
 
 	// Appends '*' and Checksum to NMEA 183 Sentence prior to sending to OpenCPN
 	void SendNMEASentence(wxString sentence);
@@ -379,7 +426,7 @@ private:
 	// Decode the NMEA 0183 AIS VDM/VDO payload to a bit array of 6 bit characters
 	std::vector<bool> AISDecodePayload(wxString SixBitData);
 
-	// AIS VDM Sequential message ID, 0 - 9 used to distinguish multi-sentence  NMEA 183 VDM messages
+	// AIS VDM Sequential message ID, 0 - 9 used to distinguish multi-sentence NMEA 183 VDM messages
 	int AISsequentialMessageId;
 
 };

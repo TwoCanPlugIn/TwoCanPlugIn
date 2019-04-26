@@ -1,4 +1,4 @@
-// Copyright(C) 2018 by Steven Adler
+// Copyright(C) 2018-2019 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
 //
-// NMEA2000® is a registered Trademark of the National Marine Electronics Association
+// NMEA2000Â® is a registered Trademark of the National Marine Electronics Association
 
 // Project: TwoCan Plugin
 // Description: NMEA 2000 plugin for OpenCPN
@@ -27,7 +27,7 @@
 #include "twocanerror.h"
 
 
-char *GetErrorMessage(int win32ErrorCode) {
+char *GetErrorMessage(int errorCode) {
 	
 #ifdef  __WXMSW__ 
 
@@ -40,7 +40,7 @@ char *GetErrorMessage(int win32ErrorCode) {
 		FORMAT_MESSAGE_FROM_SYSTEM |
 		FORMAT_MESSAGE_IGNORE_INSERTS,
 		NULL,
-		win32ErrorCode,
+		errorCode,
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		(LPTSTR)&lpMsgBuf,
 		0, NULL);
@@ -52,7 +52,7 @@ char *GetErrorMessage(int win32ErrorCode) {
 
 	// Retrieve the Linux system error message for the last-error code
 	
-	return (char *)strerror(errno);
+	return (char *)strerror(errorCode);
 	
 #endif
 

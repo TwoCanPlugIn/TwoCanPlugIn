@@ -1,4 +1,4 @@
-// Copyright(C) 2018 by Steven Adler
+// Copyright(C) 2018-2019 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
 //
-// NMEA2000® is a registered Trademark of the National Marine Electronics Association
+// NMEA2000Â® is a registered Trademark of the National Marine Electronics Association
 
 #ifndef TWOCAN_ERROR_H
 #define TWOCAN_ERROR_H
@@ -122,4 +122,6 @@ void DebugPrintf(wchar_t *fmt, ...);
 #define TWOCAN_ERROR_SOCKET_FLAGS 43
 #define TWOCAN_ERROR_SOCKET_READ 44
 #define TWOCAN_ERROR_SOCKET_DOWN 45
+#define TWOCAN_ERROR_SOCKET_WRITE 46
+#define TWOCAN_ERROR_INVALID_WRITE_FUNCTION 47
 #endif
