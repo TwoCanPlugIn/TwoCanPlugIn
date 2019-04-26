@@ -1,4 +1,4 @@
-// Copyright(C) 2018 by Steven Adler
+// Copyright(C) 2018-2019 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
 //
-// NMEA2000® is a registered Trademark of the National Marine Electronics Association
+// NMEA2000Â® is a registered Trademark of the National Marine Electronics Association
 
 //
 // Project: TwoCan Plugin
@@ -23,7 +23,9 @@
 // Unit: OpenCPN Plugin
 // Owner: twocanplugin@hotmail.com
 // Date: 6/8/2018
-// Version: 1.0
+// Version History: 
+// 1.0 Initial Release
+// 1.4 - 25/4/2019. Active Mode implemented. 
 // Outstanding Features: 
 // 1. Collect all images into single xpm file
 // 2. Localization ??
@@ -32,13 +34,17 @@
 
 #include "twocanplugin.h"
 
-// Globally accessible varaibles used by both the plugin and the settings dialog.
+// Globally accessible variables used by the plugin, device and the settings dialog.
 wxFileConfig *configSettings;
 wxString canAdapter;
 int supportedPGN;
 bool deviceMode;
 bool debugWindowActive;
+bool enableHeartbeat;
 int logLevel;
+unsigned long uniqueId;
+unsigned int networkAddress;
+NetworkInformation networkMap[CONST_MAX_DEVICES];
 
 // The class factories, used to create and destroy instances of the PlugIn
 extern "C" DECL_EXP opencpn_plugin* create_pi(void *ppimgr) {
@@ -51,7 +57,7 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 
 // TwoCan plugin constructor. Note it inherits from wxEvtHandler so that we can receive events
 // from the NMEA 2000 device when a NMEA 2000 frame is received
-TwoCan::TwoCan(void *ppimgr) : wxEvtHandler(), opencpn_plugin_18(ppimgr) {
+TwoCan::TwoCan(void *ppimgr) : opencpn_plugin_18(ppimgr), wxEvtHandler() {
 	// Wire up the event handler
 	Connect(wxEVT_SENTENCE_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnSentenceReceived));
 }
@@ -80,7 +86,7 @@ int TwoCan::Init(void) {
 	// Load the configuration items
 	if (LoadConfiguration()) {
 		// Initialize and run the TwoCanDevice in it's own thread
-		// If the plugin has yet to be configured, the canAdapterName = "None", so do not start
+		// If the plugin has yet to be configured, the canAdapterName == "None", so do not start
 		if (canAdapter.CmpNoCase(_T("None")) != 0)  {
 			StartDevice();
 		}
@@ -134,7 +140,7 @@ wxString TwoCan::GetCommonName() {
 }
 
 wxString TwoCan::GetShortDescription() {
-	//Trademark character ® code is \xae
+	//Trademark character Â® code is \xae
 	return _T("TwoCan Plugin integrates OpenCPN with NMEA2000\xae networks");
 }
 
@@ -152,18 +158,24 @@ wxBitmap* TwoCan::GetPlugInBitmap() {
 // BUG BUG for future versions
 void TwoCan::SetNMEASentence(wxString &sentence) {
 	// Maintain a local copy of the NMEA Sentence for conversion to a NMEA 2000 PGN
-	//wxString nmea183Sentence = sentence;    
+	wxString nmea183Sentence = sentence;    
+	// BUG BUG To Do
+	// if (deviceMode==TRUE)
+	// if (biDirectionalGateway)
+	// Decode NMEA 183 sentence
+	// encoode NMEA 2000 frame
+	// transmit
 }
 
 // Frame received event handler. Events queued from TwoCanDevice.
-// NMEA 0183 sentences are passed via the SetString()/GetString() properties
+// NMEA 0183 sentences are passed via the SetString()/GetString() functions
 void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 	switch (event.GetId()) {
 	case SENTENCE_RECEIVED_EVENT:
 		PushNMEABuffer(event.GetString());
 		// If the preference dialog is open and the debug tab is toggled, display the NMEA 183 sentences
 		// Superfluous as they can be seen in the Connections tab.
-		if (debugWindowActive) {
+		if ((debugWindowActive) && (settingsDialog != NULL)) {
 			settingsDialog->txtDebug->AppendText(event.GetString());
 		}
 		break;
@@ -176,18 +188,9 @@ void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 void TwoCan::ShowPreferencesDialog(wxWindow* parent) {
 	settingsDialog = new TwoCanSettings(parent);
 
-	// initialize the dialog settings
-	settingsDialog->SetCanAdapter(canAdapter);
-	settingsDialog->SetParameterGroupNumbers(supportedPGN);
-	settingsDialog->SetRawLogging(logLevel);
-
 	if (settingsDialog->ShowModal() == wxID_OK) {
 
 		// Save the settings
-		canAdapter = settingsDialog->GetCanAdapter();
-		supportedPGN = settingsDialog->GetParameterGroupNumbers();
-		logLevel = settingsDialog->GetRawLogging();
-
 		if (SaveConfiguration()) {
 			wxLogMessage(_T("TwoCan Plugin, Settings Saved"));
 		}
@@ -199,11 +202,11 @@ void TwoCan::ShowPreferencesDialog(wxWindow* parent) {
 		// Assume settings have been changed so reload them
 		// But protect ourselves in case user still has not selected a driver !
 		if (canAdapter.CmpNoCase(_T("None")) != 0) {
-			// Terminate the TwoCan Device Thread if it is already running
-			if (twoCanDevice->IsRunning()) {
-				StopDevice();
-			}
+			StopDevice();
 		}
+		
+		// Wait a little for the threads to complete and in the case of Windows. the driver dll to be unloaded
+		wxThread::Sleep(CONST_ONE_SECOND);
 
 		if (LoadConfiguration()) {
 			// Start the TwoCan Device in it's own thread
@@ -231,6 +234,7 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("PGN"), &supportedPGN, 0);
 		configSettings->Read(_T("Mode"), &deviceMode, FALSE);
 		configSettings->Read(_T("Log"), &logLevel, 0);
+		configSettings->Read(_T("Heartbeat"), &enableHeartbeat, FALSE);
 		return TRUE;
 	}
 	else {
@@ -238,6 +242,7 @@ bool TwoCan::LoadConfiguration(void) {
 		supportedPGN = 0;
 		deviceMode = FALSE;
 		logLevel = 0;
+		enableHeartbeat = FALSE;
 		// BUG BUG Automagically find an installed adapter
 		canAdapter = _T("None");
 		return TRUE;
@@ -250,8 +255,8 @@ bool TwoCan::SaveConfiguration(void) {
 		configSettings->Write(_T("Adapter"), canAdapter);
 		configSettings->Write(_T("PGN"), supportedPGN);
 		configSettings->Write(_T("Log"), logLevel);
-		// BUG BUG Mode not yet implemented
-		configSettings->Write(_T("Mode"), 0);
+		configSettings->Write(_T("Mode"), deviceMode);
+		configSettings->Write(_T("Heartbeat"), enableHeartbeat);
 		return TRUE;
 	}
 	else {
@@ -261,24 +266,32 @@ bool TwoCan::SaveConfiguration(void) {
 
 void TwoCan::StopDevice(void) {
 	wxThread::ExitCode threadExitCode;
-	wxThreadError threadError = twoCanDevice->Delete(&threadExitCode, wxTHREAD_WAIT_BLOCK); // Changed from wxTHREAD_WAIT_DEFAULT
-	wxLogMessage(_T("TwoCan Plugin, Device Thread Delete, Error Code: %d Exit Code: %d"), threadError, threadExitCode);
+	wxThreadError threadError;
+	if (twoCanDevice->IsRunning()) {
+		threadError = twoCanDevice->Delete(&threadExitCode, wxTHREAD_WAIT_DEFAULT);
+		if (threadError == wxTHREAD_NO_ERROR) {
+			wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Result: %d"), threadExitCode);
+		}
+		else {
+			wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Error: %d"), threadError);
+		}
+	}
 }
 
 void TwoCan::StartDevice(void) {
 	twoCanDevice = new TwoCanDevice(this);
 	int returnCode = twoCanDevice->Init(canAdapter);
-	if (returnCode == TWOCAN_RESULT_SUCCESS)    {
-		wxLogMessage(_T("TwoCan Plugin, TwoCan Device Initialized"));
-		int threadResult = twoCanDevice->Run();
-		if (threadResult == TWOCAN_RESULT_SUCCESS)    {
-			wxLogMessage(_T("TwoCan Plugin, Create Device Thread Result: %d"), threadResult);
-		}
-		else {
-			wxLogError(_T("TwoCan Plugin, Create Device Thread Error: %d"), threadResult);
-		}
+	if (returnCode != TWOCAN_RESULT_SUCCESS) {
+		wxLogError(_T("TwoCan Plugin,  TwoCan Device Initialize Error: %lu"), returnCode);
 	}
 	else {
-		wxLogError(_T("TwoCan Plugin,  TwoCanDevice Initialize Error: %lu"), returnCode);
+		wxLogMessage(_T("TwoCan Plugin, TwoCan Device Initialized"));
+		int threadResult = twoCanDevice->Run();
+		if (threadResult == wxTHREAD_NO_ERROR)    {
+			wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Created"));
+		}
+		else {
+			wxLogError(_T("TwoCan Plugin, TwoCan Device Thread Creation Error: %d"), threadResult);
+		}
 	}
 }

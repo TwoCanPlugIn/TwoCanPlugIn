@@ -1,4 +1,4 @@
-// Copyright(C) 2018 by Steven Adler
+// Copyright(C) 2018-2019 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -15,10 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
 //
-// NMEA2000® is a registered Trademark of the National Marine Electronics Association
+// NMEA2000Â® is a registered Trademark of the National Marine Electronics Association
 
-#ifndef TWOCAN_H
-#define TWOCAN_H
+#ifndef TWOCAN_PLUGIN_H
+#define TWOCAN_PLUGIN_H
 
 // Pre compiled headers 
 #include "wx/wxprec.h"
@@ -56,30 +56,12 @@
 // Frame received events
 #include <wx/event.h>
 
-// Configuration settings
-// These are defined as extern as they are global, used by both the plugin itself, the preferences dialog and the TwoCan device
-extern wxFileConfig *configSettings;
-// Name of the currently used adapter
-extern wxString canAdapter; 
-// Bit flags indicating what PGN's are converted
-extern int supportedPGN;
-// Whether the TwoCan device listens passively to the NMEA network or whether it is an active node (not yet implemented)
-extern bool deviceMode; 
-// Whether to display real time received NMEA 2000 frames
-extern bool debugWindowActive; 
-// Whether to log raw NMEA 2000 frames, or perhaps any other format in the future
-extern int logLevel;
-
-// List of Network Devices
-extern DeviceInformation networkMap[CONST_MAX_DEVICES];
-
-
 // Plugin receives FrameReceived events from the TwoCan device
 const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT = wxNewEventType();
 
 // The TwoCan plugin
 class TwoCan : public opencpn_plugin_18, public wxEvtHandler {
-    
+
 public:
 	// The constructor
 	TwoCan(void *ppimgr);
@@ -127,5 +109,5 @@ private:
 
 };
 
-#endif //TWOCAN_H
+#endif 
 

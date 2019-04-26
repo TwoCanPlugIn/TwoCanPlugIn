@@ -1,4 +1,4 @@
-// Copyright(C) 2018 by Steven Adler
+// Copyright(C) 2018-2019 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
 //
-// NMEA2000� is a registered Trademark of the National Marine Electronics Association
+// NMEA2000® is a registered Trademark of the National Marine Electronics Association
 
 // Project: TwoCan Plugin
 // Description: NMEA 2000 plugin for OpenCPN
@@ -32,28 +32,24 @@
 //     - Simplify totalDataLength calculation in MapInsertEntry
 //     - Change to DecodeHeader, misunderstood role of DataPage and PDU-F > 240
 // 1.3 - 16/3/2019, Linux support via SocketCAN
+// 1.4 - 25/4/2019. Active Mode implemented.
 // Outstanding Features: 
-// 1. Implement NetworkMap (requires NMEA2000 devices to send 60928 Address Claim & 12996 Product Information PGN's)
-// 2. Implement Active Device (Handle Address Claim, Product Information, ISO Commands etc.)
-// 3. Rewrite/Port Adapter drivers to C++
+// 1. Bi-directional gateway ??
+// 2. Rewrite/Port Adapter drivers to C++
 //
 
 #include "twocandevice.h"
-
-// Globally accessible list of Network devices
-DeviceInformation networkMap[CONST_MAX_DEVICES];
-
 
 TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_DETACHED) {
 	// Save a reference to our "parent", the plugin event handler so we can pass events to it
 	eventHandlerAddress = handler;
 	
 #ifdef __LINUX__
-	// initialise Message Queue
+	// initialise Message Queue to receive frames from either the Log reader or SockeTCAN interface
 	canQueue = new wxMessageQueue<std::vector<byte>>();
 #endif
 	
-	// Initialize the FastMessages buffer
+	// FastMessage buffer is used to assemble the multiple frames of a fast message
 	MapInitialize();
 	
 	// Initialize the statistics
@@ -61,7 +57,7 @@ TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_DETACHED) 
 	transmittedFrames = 0;
 	droppedFrames = 0;
 
-	// AIS Sequential Message ID
+	// Each AIS multi sentence message has a sequential Message ID
 	AISsequentialMessageId = 0;
 	
 	// Any raw logging ?
@@ -70,7 +66,7 @@ TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_DETACHED) 
 		wxString fileName = tm.Format("twocan-%Y-%m-%d_%H%M%S.log");
 		// construct a filename with the following format twocan-2018-12-31_210735.log
 		if (!rawLogFile.Open(wxString::Format("%s//%s", wxStandardPaths::Get().GetDocumentsDir(), fileName), wxFile::write)) {
-			wxLogError(_T("Unable to open raw log file %s"), fileName);
+			wxLogError(_T("TwoCan Device, Unable to open raw log file %s"), fileName);
 		}
 	}
 }
@@ -79,6 +75,98 @@ TwoCanDevice::~TwoCanDevice(void) {
 	// Anything to do here ??
 	// Not sure about the order of exiting the Entry, executing the OnExit or Destructor functions ??
 }
+
+// wxTimer notifications used to send my heartbeatand and to maintain our network map
+void TwoCanDevice::OnHeartbeat(wxEvent &event) {
+	int returnCode;
+	returnCode = SendHeartbeat();
+	if (returnCode == TWOCAN_RESULT_SUCCESS) {
+		wxLogMessage(_T("TwoCan Device, Sent heartbeat"));
+	}
+	else {
+		wxLogMessage(_T("TwoCan Device, Error sending heartbeat: %lu"), returnCode);
+	}
+	wxThread::Sleep(CONST_TEN_MILLIS);
+	// Iterate through the network map
+	int numberOfDevices = 0;
+	for (int i = 0; i < CONST_MAX_DEVICES; i++) {
+		// We have logged an address claim from a device and this device is not us
+		if ((networkMap[i].uniqueId > 0) && (i != networkAddress)) {
+			if (strlen(networkMap[i].productInformation.modelId) == 0) {
+				// No product info has been received yet for this device, so request it
+				returnCode = SendISORequest(i, 126996);
+				if (returnCode == TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 126996 to %lu"), i);
+				}
+				else {
+					wxLogMessage(_T("TwoCan Device, Error sending ISO Request for 126996 to %lu: %lu"), i, returnCode);
+				}
+				wxThread::Sleep(CONST_TEN_MILLIS);
+			}
+			if (wxDateTime::Now() > (networkMap[i].timestamp + wxTimeSpan::Seconds(60))) {
+			// If an entry is stale, send an address claim request.
+			// BUG BUG Perhaps add an extra field in which to store the devices' hearbeat interval, rather than comparing against 60'
+				returnCode = SendISORequest(i, 60928);
+				if (returnCode == TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to: %lu"), i);
+				}
+				else {
+					wxLogMessage(_T("TwoCan Device, Error sending ISO Request  for 60928 to %lu: %lu"), i, returnCode);
+				}
+				wxThread::Sleep(CONST_TEN_MILLIS);
+			}
+			numberOfDevices += 1;
+		}
+		else { // in case we've received a product info frame but have yet to observe an address claim
+			if ((strlen(networkMap[i].productInformation.modelId) > 0) && (i != networkAddress)) {
+				// No address claim has been received for this device
+				returnCode = SendISORequest(i, 60928);
+				if (returnCode == TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to: %lu"), i);
+				}
+				else {
+					wxLogMessage(_T("TwoCan Device, Error sending ISO Request  for 60928 to %lu: %lu"), i, returnCode);
+				}
+				wxThread::Sleep(CONST_TEN_MILLIS);
+			}
+			numberOfDevices += 1;
+		}
+	}
+	
+	if (numberOfDevices == 0) {
+		// No devices present on the network (yet)
+		returnCode = SendISORequest(CONST_GLOBAL_ADDRESS, 60928);
+		if (returnCode == TWOCAN_RESULT_SUCCESS) {
+			wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to: %lu"), CONST_GLOBAL_ADDRESS);
+		}
+		else {
+			wxLogMessage(_T("TwoCan Device, Error sending ISO Request for 60928  to %lu: %lu"), CONST_GLOBAL_ADDRESS, returnCode);
+		}
+		wxThread::Sleep(CONST_TEN_MILLIS);
+	}	
+
+	
+	// BUG BUG Should I delete stale entries ??
+	// BUG BUG should I use a map instead of an array with the uniqueID as the key ??
+	for (int i = 0; i < CONST_MAX_DEVICES - 1; i++) {
+		for (int j = i + 1; j < CONST_MAX_DEVICES; j++) {
+			if (networkMap[i].uniqueId == networkMap[j].uniqueId) {
+				// Remove whichever one has the stale entry
+				if (wxDateTime::Now() >(networkMap[i].timestamp + wxTimeSpan::Seconds(60))) {
+					networkMap[i].manufacturerId = 0;
+					networkMap[i].uniqueId = 0;
+				}
+				if (wxDateTime::Now() >(networkMap[j].timestamp + wxTimeSpan::Seconds(60))) {
+					// remove the duplicated but stale entry
+					networkMap[j].manufacturerId = 0;
+					networkMap[j].uniqueId = 0;
+				}
+			}
+		
+		}
+	}
+}
+
 
 // Init, Load the CAN Adapter (either a Windows DLL or for Linux the baked-in drivers; Log File Reader or SocketCAN
 // and get ready to start reading from the CAN bus.
@@ -93,6 +181,35 @@ int TwoCanDevice::Init(wxString driverPath) {
 	}
 	else {
 		wxLogMessage(_T("TwoCan Device, Loaded driver %s"), driverPath);
+		// If we are an active device, claim an address on the network (PGN 60928)  and send our product info (PGN 126996)
+		if (deviceMode == TRUE) {
+			networkAddress = 0;
+			TwoCanUtils::GetUniqueNumber(&uniqueId);
+			wxLogMessage(_T("TwoCan Device, Unique Number: %lu"), uniqueId);
+			returnCode = SendAddressClaim(networkAddress);
+			if (returnCode != TWOCAN_RESULT_SUCCESS) {
+				wxLogError(_T("TwoCan Device, Error sending address claim: %lu"), returnCode);
+			}
+			else {
+				wxLogMessage(_T("TwoCan Device, Claimed network address: %lu"), networkAddress);
+				// Broadcast our product information on the network
+				returnCode = SendProductInformation();
+				if (returnCode != TWOCAN_RESULT_SUCCESS) {
+					wxLogError(_T("TwoCan Device, Error sending Product Information %lu"), returnCode);
+				}
+				else {
+					wxLogMessage(_T("TwoCan Device, Sent Product Information"));
+
+				}
+				// If we have at least successfully claimed an address and sent our product info, and the heartbeat is enabled, 
+				// start a timer that will send PGN 126993 NMEA Heartbeat every 30 seconds
+				if (enableHeartbeat == TRUE) {
+					heartbeatTimer = new wxTimer();
+					heartbeatTimer->Bind(wxEVT_TIMER, &TwoCanDevice::OnHeartbeat, this);
+					heartbeatTimer->Start(CONST_ONE_SECOND * 30, wxTIMER_CONTINUOUS);
+				}
+			}
+		}
 	}
 #endif
 
@@ -116,7 +233,42 @@ int TwoCanDevice::Init(wxString driverPath) {
 	}
 	else {
 		wxLogMessage(_T("TwoCan Device, Loaded CAN Interface %s"),driverPath);
+		// if we are an active device, claim an address
+		if (deviceMode == TRUE) {
+			networkAddress = 0;
+			if (TwoCanSocket::GetUniqueNumber(&uniqueId) == TWOCAN_RESULT_SUCCESS) {
+				wxLogMessage(_T("TwoCan Device, Unique Number: %lu"),uniqueId);
+				returnCode = SendAddressClaim(networkAddress);
+				if (returnCode != TWOCAN_RESULT_SUCCESS) {
+					wxLogError(_T("TwoCan Device, Error sending address claim: %lu"), returnCode);
+				}
+				else {
+					wxLogMessage(_T("TwoCan Device, Claimed network address: %lu"), networkAddress);
+					// If we have at least successfully claimed an address and the heartbeat is enabled, 
+					// start a timer that will send PGN 126993 NMEA Heartbeat every 30 seconds
+					if (enableHeartbeat == TRUE) {
+						heartbeatTimer = new wxTimer();
+						heartbeatTimer->Bind(wxEVT_TIMER, &TwoCanDevice::OnHeartbeat, this);
+						heartbeatTimer->Start(CONST_ONE_SECOND * 30, wxTIMER_CONTINUOUS);;
+					}
+					returnCode = SendProductInformation();
+					if (returnCode != TWOCAN_RESULT_SUCCESS) {
+						wxLogError(_T("TwoCan Device, Error sending Product Information %lu"), returnCode);
+					}
+					else {
+						wxLogMessage(_T("TwoCan Device, Sent Product Information"));
+					}
+				}
+			}
+			else {
+				// unable to generate unique number
+				// perhaps should just generate a random number
+				wxLogError(_T("TwoCan Device, Unable to generate unique address: %lu"), returnCode);
+			}
+		}
+		
 	}
+	
 #endif
 
 	return returnCode;
@@ -133,8 +285,6 @@ int TwoCanDevice::DeInit() {
 // Merely loops continuously waiting for frames to be received by the CAN Adapter
 wxThread::ExitCode TwoCanDevice::Entry() {
 	
-	wxLogMessage(_T("TwoCanDevice::Entry called"));
-	
 #ifdef  __WXMSW__ 
 	return (wxThread::ExitCode)ReadWindowsDriver();
 #endif
@@ -144,11 +294,20 @@ wxThread::ExitCode TwoCanDevice::Entry() {
 #endif
 }
 
-// OnExit, called when thread is being destroyed
+// OnExit, called when thread->delete is invoked, and entry returns
 void TwoCanDevice::OnExit() {
 	// BUG BUG Should this be moved to DeInit ??
 	int returnCode;
 
+	// Terminate the heartbeat timer
+	// BUG BUG Do we need to delete it ??
+	if ((enableHeartbeat == TRUE) && (heartbeatTimer != nullptr)) {
+			heartbeatTimer->Stop();
+			heartbeatTimer->Unbind(wxEVT_TIMER, &TwoCanDevice::OnHeartbeat, this);
+	}
+
+
+	
 #ifdef  __WXMSW__ 
 	// Unload the CAN Adapter DLL
 	returnCode = UnloadWindowsDriver();
@@ -166,7 +325,7 @@ void TwoCanDevice::OnExit() {
 	}
 #endif
 
-	wxLogMessage(_T("TwoCan Device, Driver Unload Result: %lu"), returnCode);
+	wxLogMessage(_T("TwoCan Device, Unloaded driver: %lu"), returnCode);
 
 	eventHandlerAddress = NULL;
 
@@ -183,7 +342,7 @@ int TwoCanDevice::ReadLinuxDriver(void) {
 	CanHeader header;
 	byte payload[CONST_PAYLOAD_LENGTH];
 	wxMessageQueueError queueError;
-	std::vector<byte> postedFrame(CONST_FRAME_LENGTH);
+	std::vector<byte> receivedFrame(CONST_FRAME_LENGTH);
 		
 	// Start the Linux Device's Read thread
 	if (linuxDriverName.CmpNoCase("Log File Reader") == 0) {
@@ -198,20 +357,20 @@ int TwoCanDevice::ReadLinuxDriver(void) {
 		// Wait for a CAN Frame
 		// BUG BUG, If on an empty network, will never check TestDestroy, so use ReceiveWait
 		
-		queueError = canQueue->Receive(postedFrame);
+		queueError = canQueue->Receive(receivedFrame);
 		
 		if (queueError == wxMSGQUEUE_NO_ERROR) {
 					
-			TwoCanUtils::DecodeCanHeader(&postedFrame[0], &header);
+			TwoCanUtils::DecodeCanHeader(&receivedFrame[0], &header);
 			
-			memcpy(payload, &postedFrame[CONST_HEADER_LENGTH], CONST_PAYLOAD_LENGTH);
+			memcpy(payload, &receivedFrame[CONST_HEADER_LENGTH], CONST_PAYLOAD_LENGTH);
 			AssembleFastMessage(header, payload);
 
 			// Log received frames
 			if (logLevel & FLAGS_LOG_RAW) {
 				if (rawLogFile.IsOpened()) {
 					for (int j = 0; j < CONST_FRAME_LENGTH; j++) {
-						rawLogFile.Write(wxString::Format("0x%02X", postedFrame[j]));
+						rawLogFile.Write(wxString::Format("0x%02X", receivedFrame[j]));
 						if (j < CONST_FRAME_LENGTH - 1) {
 							rawLogFile.Write(",");
 						}
@@ -221,11 +380,11 @@ int TwoCanDevice::ReadLinuxDriver(void) {
 			} // end if logging
 					 
 		
-		} // if Queue Error
+		} // end if Queue Error
 
 	} // end while
 
-	wxLogMessage(_T("TwoCan Device::ReadLinuxDriver, Read Thread Exiting"));
+	wxLogMessage(_T("TwoCan Device, Read Thread Exiting"));
 
 	return TWOCAN_RESULT_SUCCESS;	
 }
@@ -305,7 +464,7 @@ int TwoCanDevice::LoadWindowsDriver(wxString driverPath) {
 
 		if (mutexHandle == NULL) {
 			// BUG BUG Log fatal error
-			wxLogError(_T("TwoCan Device, Create Mutex failed %d"), GetLastError());
+			wxLogError(_T("TwoCan Device, Error creating mutex: %d"), GetLastError());
 			// Free the library:
 			freeResult = FreeLibrary(dllHandle);
 			return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_CREATE_FRAME_RECEIVED_MUTEX);
@@ -323,21 +482,35 @@ int TwoCanDevice::LoadWindowsDriver(wxString driverPath) {
 				// Fatal error so clean up and free the library
 				freeResult = FreeLibrary(dllHandle);
 				// BUG BUG Log Fatal Error
-				wxLogError(_T("TwoCan Device, Driver Open error: %lu"), openResult);
+				wxLogError(_T("TwoCan Device, Error opening driver: %lu"), openResult);
 				return openResult;
 			}
 
 			// The driver's open function creates the Data Received event, so wire it up
-			eventHandle = OpenEvent(EVENT_ALL_ACCESS, TRUE, CONST_EVENT_NAME);
+			eventHandle = OpenEvent(EVENT_ALL_ACCESS, TRUE, CONST_DATARX_EVENT);
 
 			if (eventHandle == NULL) {
 				// Fatal error so clean up and free the library
 				freeResult = FreeLibrary(dllHandle);
 				// BUG BUG Log error
-				wxLogError(_T("TwoCan Device, Create DataReceivedEvent failed %d"), GetLastError());
+				wxLogError(_T("TwoCan Device, Error creating data received event: %d"), GetLastError());
 				return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DEVICE,TWOCAN_ERROR_OPEN_DATA_RECEIVED_EVENT);
 			}
 
+			// Get and save the pointer to the write function
+			writeFrame = (LPFNDLLWrite)GetProcAddress(dllHandle, "WriteAdapter");
+
+			if (writeFrame != NULL)	{
+				return TWOCAN_RESULT_SUCCESS;
+			}
+			else {
+				// BUG BUG Log non fatal error, the plug-in can still receive data.
+				wxLogError(_T("TwoCan Device, Invalid Write function: %d\n"), GetLastError());
+				deviceMode = FALSE;
+				enableHeartbeat = FALSE;
+				//return SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_INVALID_WRITE_FUNCTION);
+			}
+						
 			return TWOCAN_RESULT_SUCCESS;
 
 		}
@@ -346,12 +519,13 @@ int TwoCanDevice::LoadWindowsDriver(wxString driverPath) {
 			wxLogError(_T("TwoCan Device, Invalid Open function: %d\n"), GetLastError());
 		    return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DEVICE ,TWOCAN_ERROR_INVALID_OPEN_FUNCTION);
 		}
+		
 
 	}
 
 	else {
 		// BUG BUG Log Fatal Error
-		wxLogError(_T("TwoCan Device, Invalid DLL handle %d"), GetLastError());
+		wxLogError(_T("TwoCan Device, Invalid DLL handle: %d"), GetLastError());
 		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_LOAD_LIBRARY);
 	}
 	
@@ -371,16 +545,16 @@ int TwoCanDevice::ReadWindowsDriver() {
 	// If the function address is valid, call the function. 
 	if (read != NULL)	{
 
-		// Starts the read thread in the adapter
+		// Which starts the read thread in the adapter
 		int readResult = read(canFrame);
 
 		if (readResult != TWOCAN_RESULT_SUCCESS) {
-			wxLogError(_T("TwoCan Device, Driver Read error: %lu"), readResult);
+			wxLogError(_T("TwoCan Device, Error starting driver read thread: %lu"), readResult);
 			return readResult;
 		}
 		
-		// Log the fact that the Adapter has started its Read Thread successfully
-		wxLogMessage(_T("TwoCan Device, Driver Read result: %lu"), readResult);
+		// Log the fact that the driver has started its read thread successfully
+		wxLogMessage(_T("TwoCan Device, Driver read thread started: %lu"), readResult);
 
 		DWORD eventResult;
 		DWORD mutexResult;
@@ -394,7 +568,7 @@ int TwoCanDevice::ReadWindowsDriver() {
 				// Signaled that a valid CAN Frame has been received
 
 				// Wait for a lock on the CAN Frame buffer, so we can process it
-				//BUG BUG What is a suitable time limit
+				// BUG BUG What is a suitable time limit
 				mutexResult = WaitForSingleObject(mutexHandle, 200);
 
 				if (mutexResult == WAIT_OBJECT_0) {
@@ -424,7 +598,7 @@ int TwoCanDevice::ReadWindowsDriver() {
 					// Release the CAN Frame buffer
 					if (!ReleaseMutex(mutexHandle)) {
 						// BUG BUG Log error
-						wxLogError(_T("TwoCan Device, Release mutex error: %d"), GetLastError());
+						wxLogError(_T("TwoCan Device, Error releasing mutex: %d"), GetLastError());
 					}
 				}
 
@@ -439,9 +613,9 @@ int TwoCanDevice::ReadWindowsDriver() {
 			// Reset the FrameReceived event
 			ResetEvent(eventHandle);
 
-		} // end while
+		} // end while TestDestory
 
-		wxLogMessage(_T("TwoCan Device, Read Thread terminating"));
+		wxLogMessage(_T("TwoCan Device, Read Thread exiting"));
 
 		// Thread is terminating, so close the mutex & the event handles
 		int closeResult;
@@ -449,13 +623,13 @@ int TwoCanDevice::ReadWindowsDriver() {
 		closeResult = CloseHandle(eventHandle);
 		if (closeResult == 0) {
 			// BUG BUG Log Error
-			wxLogMessage(_T("TwoCan Device, Close Event Handle: %d, Error Code: %d"), closeResult, GetLastError());
+			wxLogMessage(_T("TwoCan Device, Error closing event handle: %d, Error Code: %d"), closeResult, GetLastError());
 		}
 
 		closeResult = CloseHandle(mutexHandle);
 		if (closeResult == 0) {
 			// BUG BUG Log Error
-			wxLogMessage(_T("TwoCan Device, Close Mutex Handle: %d, Error Code: %d"), closeResult, GetLastError());
+			wxLogMessage(_T("TwoCan Device, Error closing mutex handle: %d, Error Code: %d"), closeResult, GetLastError());
 		}
 
 		return TWOCAN_RESULT_SUCCESS;
@@ -463,7 +637,7 @@ int TwoCanDevice::ReadWindowsDriver() {
 	}
 	else {
 		// BUG BUG Log Fatal error
-		wxLogError(_T("TwoCan Device, Invalid Read function %d"), GetLastError());
+		wxLogError(_T("TwoCan Device, Invalid Driver Read function %d"), GetLastError());
 		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_INVALID_READ_FUNCTION);
 	}
 }
@@ -489,7 +663,7 @@ int TwoCanDevice::UnloadWindowsDriver() {
 			
 			if (freeResult == 0) {
 				// BUG BUG Log Error
-				wxLogError(_T("TwoCan Device, Free Library: %d Error Code: %d"), freeResult, GetLastError());
+				wxLogError(_T("TwoCan Device, Error freeing lbrary: %d Error Code: %d"), freeResult, GetLastError());
 				return SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_UNLOAD_LIBRARY);
 			}
 			else {
@@ -499,7 +673,7 @@ int TwoCanDevice::UnloadWindowsDriver() {
 		}
 		else {
 			/// BUG BUG Log error
-			wxLogError(_T("TwoCan Device, Close Error: %lu"), closeResult);
+			wxLogError(_T("TwoCan Device, Error closing driver: %lu"), closeResult);
 			return closeResult;
 		}
 	}
@@ -613,7 +787,7 @@ int TwoCanDevice::MapFindFreeEntry(void) {
 	staleEntries = MapGarbageCollector();
 	if (staleEntries == 0) {
 		return NOT_FOUND;
-		//BUG BUG Log this so as to increase the number of FastMessages that may be received
+		// BUG BUG Log this so as to increase the number of FastMessages that may be received
 		wxLogError(_T("TwoCan Device, No free entries in Fast Message Map"));
 	}
 	else {
@@ -645,6 +819,9 @@ void TwoCanDevice::MapInsertEntry(const CanHeader header, const byte *data, cons
 }
 
 // Append subsequent messages of a sequence of fast messages
+// Subsequent messages of fast packet 
+// data[0] Sequence Identifier (sid)
+// data[1..7] 7 data bytes
 int TwoCanDevice::MapAppendEntry(const CanHeader header, const byte *data, const int position) {
 	// Check that this is the next message in the sequence
 	if ((fastMessages[position].sid + 1) == data[0]) { 
@@ -671,7 +848,7 @@ int TwoCanDevice::MapAppendEntry(const CanHeader header, const byte *data, const
 			droppedFrameTime = wxDateTime::Now();
 			droppedFrames++;
 		}
-		if ((droppedFrames > TWOCAN_CONST_DROPPEDFRAME_THRESHOLD) && (wxDateTime::Now() < (droppedFrameTime + wxTimeSpan::Seconds(TWOCAN_CONST_DROPPEDFRAME_PERIOD) ) ) ) {
+		if ((droppedFrames > CONST_DROPPEDFRAME_THRESHOLD) && (wxDateTime::Now() < (droppedFrameTime + wxTimeSpan::Seconds(CONST_DROPPEDFRAME_PERIOD) ) ) ) {
 			wxLogError(_T("TwoCan Device, Dropped Frames rate exceeded"));
 			wxLogError(wxString::Format(_T("Frame: %d %d %d %d"),header.source,header.destination,header.priority,header.pgn));
 			droppedFrames = 0;
@@ -692,7 +869,7 @@ int TwoCanDevice::MapFindMatchingEntry(const CanHeader header) {
 	return NOT_FOUND;
 }
 
-//BUG BUG if this gets run in a separate thread, need to lock the fastMessages 
+// BUG BUG if this gets run in a separate thread, need to lock the fastMessages 
 int TwoCanDevice::MapGarbageCollector(void) {
 	time_t now = time(0);
 	int staleEntries;
@@ -711,34 +888,185 @@ int TwoCanDevice::MapGarbageCollector(void) {
 void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 	std::vector<wxString> nmeaSentences;
 	bool result = FALSE;
+
+	// If we receive a frame from a devce, then by definition it is still alive!
+	networkMap[header.source].timestamp = wxDateTime::Now();
+	
 	switch (header.pgn) {
-	case 60928: // ISO Address Claim
-		DecodePGN60928(payload, &deviceInformation);
-		// Add the source address so that we can  construct a "map" of the NMEA2000 network
-		// BUG BUG To do properly should also parse ISO Commanded Address messages
-		deviceInformation.networkAddress = header.source;
 		
-		wxLogMessage(_T("TwoCan Network, Address: %d"), deviceInformation.networkAddress);
-		wxLogMessage(_T("TwoCan Network, Manufacturer: %d"), deviceInformation.manufacturerId);
-		wxLogMessage(_T("TwoCan Network, Unique ID: %d"), deviceInformation.uniqueId);
-		wxLogMessage(_T("TwoCan Network, Class: %d"), deviceInformation.deviceClass);
-		wxLogMessage(_T("TwoCan Network, Function: %d"), deviceInformation.deviceFunction);
-		wxLogMessage(_T("TwoCan Network, Industry %d"), deviceInformation.industryGroup);
-		break;
-
-		// Maintain a map of the network.
-		networkMap[header.source] = deviceInformation;
-
+	case 59392: // ISO Ack
+		// No need for us to do anything as we don't send any requests (yet)!
 		// No NMEA 0183 sentences to pass onto OpenCPN
 		result = FALSE;
+		break;
+		
+	case 59904: // ISO Request
+		unsigned int requestedPGN;
+		
+		DecodePGN59904(payload, &requestedPGN);
+		// What has been requested from us ?
+		switch (requestedPGN) {
+		
+			case 60928: // Address Claim
+				// BUG BUG The bastard's are using an address claim as a heartbeat !!
+				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
+					int returnCode;
+					returnCode = SendAddressClaim(networkAddress);
+					if (returnCode != TWOCAN_RESULT_SUCCESS) {
+						wxLogMessage("TwoCan Device, Error Sending Address Claim: %lu", returnCode);
+					}
+				}
+				break;
+		
+			case 126464: // Supported PGN
+				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
+					int returnCode;
+					returnCode = SendSupportedPGN();
+					if (returnCode != TWOCAN_RESULT_SUCCESS) {
+						wxLogMessage("TwoCan Device, Error Sending Supported PGN: %lu", returnCode);
+					}
+				}
+				break;
+		
+			case 126993: // Heartbeat
+				// BUG BUG I don't think sn ISO Request is allowed to request a heartbeat ??
+				break;
+		
+			case 126996: // Product Information 
+				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
+					int returnCode;
+					returnCode = SendProductInformation();
+					if (returnCode != TWOCAN_RESULT_SUCCESS) {
+						wxLogMessage("TwoCan Device, Error Sending Product Information: %lu", returnCode);
+					}
+				}
+				break;
+		
+			default:
+				// BUG BUG For other requested PG's send a NACK/Not supported
+				break;
+		}
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
+		break;
+		
+	case 60928: // ISO Address Claim
+		DecodePGN60928(payload, &deviceInformation);
+		// if another device is not claiming our address, just log it
+		if (header.source != networkAddress) {
+			
+			// Add the source address so that we can  construct a "map" of the NMEA2000 network
+			deviceInformation.networkAddress = header.source;
+			
+			// BUG BUG Extraneous Noise Remove for production
 
+			wxLogMessage(_T("TwoCan Network, Address: %d"), deviceInformation.networkAddress);
+			wxLogMessage(_T("TwoCan Network, Manufacturer: %d"), deviceInformation.manufacturerId);
+			wxLogMessage(_T("TwoCan Network, Unique ID: %lu"), deviceInformation.uniqueId);
+			wxLogMessage(_T("TwoCan Network, Class: %d"), deviceInformation.deviceClass);
+			wxLogMessage(_T("TwoCan Network, Function: %d"), deviceInformation.deviceFunction);
+			wxLogMessage(_T("TwoCan Network, Industry %d"), deviceInformation.industryGroup);
+		
+			// Maintain the map of the NMEA 2000 network.
+			// either this is a newly discovered device, or it is resending its address claim
+			if ((networkMap[header.source].uniqueId == deviceInformation.uniqueId) || (networkMap[header.source].uniqueId == 0)) {
+				networkMap[header.source].manufacturerId = deviceInformation.manufacturerId;
+				networkMap[header.source].uniqueId = deviceInformation.uniqueId;
+				networkMap[header.source].timestamp = wxDateTime::Now();
+			}
+			else {
+				// or another device is claiming the address that an existing device had used, so clear out any product info entries
+				networkMap[header.source].manufacturerId = deviceInformation.manufacturerId;
+				networkMap[header.source].uniqueId = deviceInformation.uniqueId;
+				networkMap[header.source].timestamp = wxDateTime::Now();
+				networkMap[header.source].productInformation = {}; // I think this should initialize the product information struct;
+			}
+		}
+		else {
+			// Another device is claiming our address
+			// If our NAME is less than theirs, reclaim our current address 
+			if (deviceName < deviceInformation.deviceName) {
+				int returnCode;
+				returnCode = SendAddressClaim(networkAddress);
+				if (returnCode == TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage(_T("TwoCan Device, Reclaimed network address: %lu"), networkAddress);
+				}
+				else {
+					wxLogMessage("TwoCan Device, Error reclaming network address %lu: %lu", networkAddress, returnCode);
+				}
+			}
+			// Our uniqueId is larger (or equal), so increment our network address and see if we can claim the new address
+			else {
+				networkAddress += 1;
+				if (networkAddress <= CONST_MAX_DEVICES) {
+					int returnCode;
+					returnCode = SendAddressClaim(networkAddress);
+					if (returnCode == TWOCAN_RESULT_SUCCESS) {
+						wxLogMessage(_T("TwoCan Device, Claimed network address: %lu"), networkAddress);
+					}
+					else {
+						wxLogMessage("TwoCan Device, Error claiming network address %lu: %lu", networkAddress, returnCode);
+					}
+				}
+				else {
+					// BUG BUG More than 253 devices on the network, we send an unable to claim address frame (source address = 254)
+					// Chuckles to self. What a nice DOS attack vector! Kick everyone else off the network!
+					// I guess NMEA never thought anyone would hack a boat! What were they (not) thinking!
+					wxLogError(_T("TwoCan Device, Unable to claim address, more than %d devices"), CONST_MAX_DEVICES);
+					networkAddress = 0;
+					int returnCode;
+					returnCode = SendAddressClaim(CONST_NULL_ADDRESS);
+					if (returnCode == TWOCAN_RESULT_SUCCESS) {
+						wxLogMessage(_T("TwoCan Device, Claimed network address: %lu"), networkAddress);
+					}
+					else {
+						wxLogMessage("TwoCan Device, Error claiming network address %lu: %lu", networkAddress, returnCode);
+					}
+				}
+			}
+		}
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
+		break;
+		
+	case 65240: // ISO Commanded address
+		// A device is commanding another device to use a specific address
+		DecodePGN65240(payload, &deviceInformation);
+		// If we are being commanded to use a specific address
+		// BUG BUG Not sure if an ISO Commanded Address frame is broadcast or if header.destination == networkAddress
+		if (deviceInformation.uniqueId == uniqueId) {
+			// Update our network address to the commanded address and send an address claim
+			networkAddress = deviceInformation.networkAddress;
+			int returnCode;
+			returnCode = SendAddressClaim(networkAddress);
+			if (returnCode == TWOCAN_RESULT_SUCCESS) {
+				wxLogMessage(_T("TwoCan Device, Claimed commanded network address: %lu"), networkAddress);
+			}
+			else {
+				wxLogMessage("TwoCan Device, Error claiming commanded network address %lu: %lu", networkAddress, returnCode);
+			}
+		}
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
+		break;
+		
 	case 126992: // System Time
 		if (supportedPGN & FLAGS_ZDA) {
 			result = DecodePGN126992(payload, &nmeaSentences);
 		}
 		break;
+		
+	case 126993: // Heartbeat
+		DecodePGN126993(payload);
+		// Update the matching entry in the network map
+		// BUG BUG what happens if we are yet to have populated this entry with the device details ?? Probably nothing...
+		networkMap[header.source].timestamp = wxDateTime::Now();
+		result = FALSE;
+		break;
+		
 	case 126996: // Product Information
 		DecodePGN126996(payload, &productInformation);
+		// BUG BUG Extraneous Noise
 		wxLogMessage(_T("TwoCan Node, Network Address %d"), header.source);
 		wxLogMessage(_T("TwoCan Node, DB Ver: %d"), productInformation.dataBaseVersion);
 		wxLogMessage(_T("TwoCan Node, Product Code: %d"), productInformation.productCode);
@@ -748,73 +1076,92 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		wxLogMessage(_T("TwoCan Node, Model Version: %s"), productInformation.modelVersion);
 		wxLogMessage(_T("TwoCan Node, Software Version: %s"), productInformation.softwareVersion);
 		wxLogMessage(_T("TwoCan Node, Serial Number: %s"), productInformation.serialNumber);
+		
+		// Maintain the map of the NMEA 2000 network.
+		networkMap[header.source].productInformation = productInformation;
+		networkMap[header.source].timestamp = wxDateTime::Now();
 
 		// No NMEA 0183 sentences to pass onto OpenCPN
 		result = FALSE;
 		break;
+		
 	case 127250: // Heading
 		if (supportedPGN & FLAGS_HDG) {
 			result = DecodePGN127250(payload, &nmeaSentences);
 		}
 		break;
+		
 	case 127251: // Rate of Turn
 		// BUG BUG Needs a flag ??
 		result = DecodePGN127251(payload, &nmeaSentences);
 		break;
+		
 	case 127258: // Magnetic Variation
 		// BUG BUG needs flags 
 		// BUG BUG Not actually used anywhere
 		result = DecodePGN127258(payload, &nmeaSentences);
 		break;
+		
 	case 128259: // Boat Speed
 		if (supportedPGN & FLAGS_VHW) {
 			result = DecodePGN128259(payload, &nmeaSentences);
 		}
 		break;
+		
 	case 128267: // Water Depth
 		if (supportedPGN & FLAGS_DPT) {
 			result = DecodePGN128267(payload, &nmeaSentences);
 		}
 		break;
+		
 	case 129025: // Position - Rapid Update
 		if (supportedPGN & FLAGS_GLL) {
 			result = DecodePGN129025(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129026: // COG, SOG - Rapid Update
 		if (supportedPGN & FLAGS_VTG) {
 			result = DecodePGN129026(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129029: // GNSS Position
 		if (supportedPGN & FLAGS_GGA) {
 			result = DecodePGN129029(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129033: // Time & Date
 		if (supportedPGN & FLAGS_ZDA) {
 			result = DecodePGN129033(payload, &nmeaSentences);
 		}
+		break;
+		
 	case 129038: // AIS Class A Position Report
 		if (supportedPGN & FLAGS_AIS) {
 			result = DecodePGN129038(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129039: // AIS Class B Position Report
 		if (supportedPGN & FLAGS_AIS) {
 			result = DecodePGN129039(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129040: // AIS Class B Extended Position Report
 		if (supportedPGN & FLAGS_AIS) {
 			result = DecodePGN129040(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129041: // AIS Aids To Navigation (AToN) Position Report
 		if (supportedPGN & FLAGS_AIS) {
 			result = DecodePGN129041(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129283: // Cross Track Error
 		// BUG BUG Needs a flag ??
 		result = DecodePGN129283(payload, &nmeaSentences);
@@ -825,40 +1172,49 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			result = DecodePGN129793(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129794: // AIS Class A Static & Voyage Related Data
 		if (supportedPGN & FLAGS_AIS) {
 			result = DecodePGN129794(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129798: // AIS Search and Rescue (SAR) Position Report
 		if (supportedPGN & FLAGS_AIS) {
 			result = DecodePGN129798(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129808: // Digital Selective Calling (DSC)
 		if (supportedPGN & FLAGS_DSC) {
 			result = DecodePGN129808(payload, &nmeaSentences);
 		}
+		break;
+	
 	case 129809: // AIS Class B Static Data, Part A
 		if (supportedPGN & FLAGS_AIS) {
 			result = DecodePGN129809(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 129810: // Class B Static Data, Part B
 		if (supportedPGN & FLAGS_AIS) {
 			result = DecodePGN129810(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 130306: // Wind data
 		if (supportedPGN & FLAGS_MWV) {
 			result = DecodePGN130306(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 130310: // Environmental Parameters
 		if (supportedPGN & FLAGS_MWT) {
 			result = DecodePGN130310(payload, &nmeaSentences);
 		}
 		break;
+	
 	case 130312: // Temperature
 		if (supportedPGN & FLAGS_MWT) {
 			result = DecodePGN130312(payload, &nmeaSentences);
@@ -867,6 +1223,8 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			
 	default:
 		// BUG BUG Should we log an unsupported PGN error ??
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 	}
 	// Send each NMEA 0183 Sentence to OpenCPN
@@ -875,17 +1233,70 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			SendNMEASentence(*it);
 		}
 	}
-	
+}
+
+// Decode PGN 59904 ISO Request
+int TwoCanDevice::DecodePGN59904(const byte *payload, unsigned int *requestedPGN) {
+	if (payload != NULL) {
+		*requestedPGN = payload[0] | (payload[1] << 8) | (payload[2] << 16);
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	}
 }
 
 // Decode PGN 60928 ISO Address Claim
 int TwoCanDevice::DecodePGN60928(const byte *payload, DeviceInformation *deviceInformation) {
 	if ((payload != NULL) && (deviceInformation != NULL)) {
+		
+		// Unique Identity Number 21 bits
+		deviceInformation->uniqueId = (payload[0] | (payload[1] << 8) | (payload[2] << 16) | (payload[3] << 24)) & 0x1FFFFF;
+		
+		// Manufacturer Code 11 bits
+		deviceInformation->manufacturerId = ((payload[0] | (payload[1] << 8) | (payload[2] << 16) | (payload[3] << 24)) & 0xFFE00000) >> 21;
+
+		// Not really fussed about these
+		// ISO ECU Instance 3 bits()
+		//(payload[4] & 0xE0) >> 5;
+		// ISO Function Instance 5 bits
+		//payload[4] & 0x1F;
+
+		// ISO Function Class 8 bits
+		deviceInformation->deviceFunction = payload[5];
+
+		// Reserved 1 bit
+		//(payload[6] & 0x80) >> 7
+
+		// Device Class 7 bits
+		deviceInformation->deviceClass = payload[6] & 0x7F;
+
+		// System Instance 4 bits
+		deviceInformation->deviceInstance = payload[7] & 0x0F;
+
+		// Industry Group 3 bits - Marine == 4
+		deviceInformation->industryGroup = (payload[7] & 0x70) >> 4;
+
+		// ISO Self Configurable 1 bit
+		//payload[7] & 0x80) >> 7
+
+		// NAME
+		deviceInformation->deviceName = (unsigned long long)payload[0] | ((unsigned long long)payload[1] << 8) | ((unsigned long long)payload[2] << 16) | ((unsigned long long)payload[3] << 24) | ((unsigned long long)payload[4] << 32) | ((unsigned long long)payload[5] << 40) | ((unsigned long long)payload[6] << 48) | ((unsigned long long)payload[7] << 54);
+		
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	}
+}
+
+// Decode PGN 65240 ISO Commanded Address
+int TwoCanDevice::DecodePGN65240(const byte *payload, DeviceInformation *deviceInformation) {
+	if ((payload != NULL) && (deviceInformation != NULL)) {
 		byte *tmpBuf;
 		unsigned int tmp;
 
-		// Need to use the first 4 bytes together as an integer to mask off the different values
-		// BUG BUG Why can't I just memcpy directly to the int ? Endianess ??
+		// Similar to PGN 60928 - ISO Address Claim, but with a network address field appended
 
 		tmpBuf = (byte *)malloc(4 * sizeof(byte));
 		memcpy(tmpBuf, payload, 4);
@@ -894,6 +1305,7 @@ int TwoCanDevice::DecodePGN60928(const byte *payload, DeviceInformation *deviceI
 
 		// Unique Identity Number 21 bits
 		deviceInformation->uniqueId = tmp & 0x1FFFFF;
+		
 		// Manufacturer Code 11 bits
 		deviceInformation->manufacturerId = (tmp & 0xFFE00000) >> 21;
 
@@ -921,71 +1333,9 @@ int TwoCanDevice::DecodePGN60928(const byte *payload, DeviceInformation *deviceI
 		// ISO Self Configurable 1 bit
 		//payload[7] & 0x80) >> 7
 		
-		return TRUE;
-	}
-	else {
-		return FALSE;
-	}
-}
-
-// Decode PGN 126996 NMEA Product Information
-int TwoCanDevice::DecodePGN126996(const byte *payload, ProductInformation *productInformation) {
-	if ((payload != NULL) && (productInformation != NULL)) {
-
-		// Should divide by 100 to get the correct displayable version
-		productInformation->dataBaseVersion = payload[0] | (payload[1] << 8); 
-
-		productInformation->productCode = payload[2] | (payload[3] << 8);
-
-		size_t len;
-		char tmp[32];
-
-		// Each of the following strings are up to 32 bytes long, and NOT NULL terminated.
-		// Should really check that sizeof(productInformation->modelId) <= len
-
-		// Model ID Bytes [4] - [35]
-		memcpy(tmp, &payload[4], 32);
-		#ifdef __LINUX__
-		snprintf(productInformation->modelId,32,"%s",tmp);
-		#endif
-		#ifdef __WXMSW__
-		len = (size_t)_snprintf(NULL, 0, "%s", tmp);
-		_snprintf(productInformation->modelId, len + 1, "%s", tmp);
-		#endif
-
-		// Software Version Bytes [36] - [67]
-		memcpy(tmp, &payload[36], 32);
-		#ifdef __LINUX__
-		snprintf(productInformation->softwareVersion,32,"%s",tmp);
-		#endif
-		#ifdef __WXMSW__
-		len = (size_t)_snprintf(NULL, 0, "%s", tmp);
-		_snprintf(productInformation->softwareVersion, len + 1, "%s", tmp);
-		#endif
-
-		// Model Version Bytes [68] - [99]
-		memcpy(tmp, &payload[68], 32);
-		#ifdef __LINUX__
-		snprintf(productInformation->modelVersion,32,"%s",tmp);
-		#endif
-		#ifdef __WXMSW__
-		len = (size_t)_snprintf(NULL, 0, "%s", tmp);
-		_snprintf(productInformation->modelVersion, len + 1, "%s", tmp);
-		#endif
-
-		// Serial Number Bytes [100] - [131]
-		memcpy(tmp, &payload[100], 32);
-		#ifdef __LINUX__
-		snprintf(productInformation->serialNumber,32,"%s",tmp);
-		#endif
-		#ifdef __WXMSW__
-		len = (size_t)_snprintf(NULL, 0, "%s", tmp);
-		_snprintf(productInformation->serialNumber, len + 1, "%s", tmp);
-		#endif
-
-		productInformation->certificationLevel = payload[132];
-		productInformation->loadEquivalency = payload[133];
-
+		// Commanded Network Address
+		deviceInformation->networkAddress = payload[8];
+		
 		return TRUE;
 	}
 	else {
@@ -1022,6 +1372,89 @@ bool TwoCanDevice::DecodePGN126992(const byte *payload, std::vector<wxString> *n
 	}
 }
 
+// BUG BUG  Untested as have yet to see any of these for real
+// Decode PGN 126993 NMEA Heartbeat
+bool TwoCanDevice::DecodePGN126993(const byte *payload) {
+	if (payload != NULL) {
+
+		unsigned int timeOffset;
+		timeOffset = payload[0] | (payload[1] << 8);
+		
+		unsigned short counter;
+		counter = payload[2];
+
+		unsigned short class1CanState;
+		class1CanState = payload[3];
+
+		unsigned short class2CanState;
+		class2CanState = payload[4];
+		
+		unsigned short equipmentState;
+		equipmentState = payload[5] & 0xF0;
+
+		// BUG BUG Remove for production once this has been tested
+		wxLogMessage(wxString::Format("TwoCan Heartbeat, Time: %d, Count: %d, CAN 1: %d, CAN 2: %d", timeOffset, counter, class1CanState, class2CanState));
+		
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	}
+}
+
+// Decode PGN 126996 NMEA Product Information
+int TwoCanDevice::DecodePGN126996(const byte *payload, ProductInformation *productInformation) {
+	if ((payload != NULL) && (productInformation != NULL)) {
+
+		// Should divide by 100 to get the correct displayable version
+		productInformation->dataBaseVersion = payload[0] | (payload[1] << 8);
+
+		productInformation->productCode = payload[2] | (payload[3] << 8);
+
+		// Each of the following strings are up to 32 bytes long, and NOT NULL terminated.
+
+		// Model ID Bytes [4] - [35]
+		memset(&productInformation->modelId[0], '\0' ,32);
+		for (int j = 0; j < 31; j++) {
+			if (isprint(payload[4 + j])) {
+				productInformation->modelId[j] = payload[4 + j];
+			}
+		}
+
+		// Software Version Bytes [36] - [67]
+		memset(&productInformation->softwareVersion[0], '\0', 32);
+		for (int j = 0; j < 31; j++) {
+			if (isprint(payload[36 + j])) {
+				productInformation->softwareVersion[j] = payload[36 + j];
+			}
+		}
+
+		// Model Version Bytes [68] - [99]
+		memset(&productInformation->modelVersion[0], '\0', 32);
+		for (int j = 0; j < 31; j++) {
+			if (isprint(payload[68 + j])) {
+				productInformation->modelVersion[j] = payload[68 + j];
+			}
+		}
+
+		// Serial Number Bytes [100] - [131]
+		memset(&productInformation->serialNumber[0], '\0', 32);
+		for (int j = 0; j < 31; j++) {
+			if (isprint(payload[100 + j])) {
+				productInformation->serialNumber[j] = payload[100 + j];
+			}
+		}
+
+		productInformation->certificationLevel = payload[132];
+		productInformation->loadEquivalency = payload[133];
+
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	}
+}
+
 // Decode PGN 127250 NMEA Vessel Heading
 // $--HDG, x.x, x.x, a, x.x, a*hh<CR><LF>
 // $--HDT,x.x,T*hh<CR><LF>
@@ -1044,7 +1477,6 @@ bool TwoCanDevice::DecodePGN127250(const byte *payload, std::vector<wxString> *n
 		headingReference = (payload[7] & 0x03);
 
 		//BUG BUG sign of variation and deviation corresponds to East (E) or West (W)
-
 		nmeaSentences->push_back(wxString::Format("$IIHDG,%.2f,%.2f,%c,%.2f,%c", RADIANS_TO_DEGREES((float)heading / 10000), \
 			RADIANS_TO_DEGREES((float)deviation / 10000), deviation >= 0 ? 'E' : 'W', \
 			RADIANS_TO_DEGREES((float)variation / 10000), variation >= 0 ? 'E' : 'W'));
@@ -1961,6 +2393,203 @@ bool TwoCanDevice::DecodePGN129283(const byte *payload, std::vector<wxString> *n
 	}
 }
 
+// Decode PGN 129284 Navigation Data
+//$--BWC, hhmmss.ss, llll.ll, a, yyyyy.yy, a, x.x, T, x.x, M, x.x, N, c--c, a*hh<CR><LF>
+//$--BWR, hhmmss.ss, llll.ll, a, yyyyy.yy, a, x.x, T, x.x, M, x.x, N, c--c, a*hh<CR><LF>
+//$--BOD, x.x, T, x.x, M, c--c, c--c*hh<CR><LF>
+//$--WCV, x.x, N, c--c, a*hh<CR><LF>
+
+// Not sure of this use case, as it implies there is already a chartplotter on board
+bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte sid;
+		sid = payload[0];
+
+		unsigned short distance;
+		distance = payload[1] | (payload[2] << 8);
+
+		byte bearingRef; // Magnetic or True
+		bearingRef = payload[3] & 0xC0;
+
+		byte perpendicularCrossed; // Yes or No
+		perpendicularCrossed = payload[3] & 0x30;
+
+		byte circleEntered; // Yes or No
+		circleEntered = payload[3] & 0x0C;
+
+		byte calculationType; //Great Circle or Rhumb Line
+		calculationType = payload[3] & 0x3C;
+
+		int secondsSinceMidnight;
+		secondsSinceMidnight = payload[4] | (payload[5] << 8) | (payload[6] << 16) | (payload[7] << 24);
+
+		int daysSinceEpoch;
+		daysSinceEpoch = payload[8] | (payload[9] << 8);
+
+		wxDateTime tm;
+		tm.ParseDateTime("00:00:00 01-01-1970");
+		tm += wxDateSpan::Days(daysSinceEpoch);
+		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
+
+		unsigned short bearingOrigin;
+		bearingOrigin = (payload[10] | (payload[11] << 8)) * 0.001;
+
+		unsigned short bearingPosition;
+		bearingPosition = (payload[12] | (payload[13] << 8)) * 0.001;
+
+		int originWaypointId;
+		originWaypointId = payload[14] | (payload[15] << 8) | (payload[16] << 16) | (payload[17] << 24);
+
+		int destinationWaypointId;
+		destinationWaypointId = payload[18] | (payload[19] << 8) | (payload[20] << 16) | (payload[21] << 24);
+
+		double latitude;
+		latitude = ((payload[22] | (payload[23] << 8) | (payload[24] << 16) | (payload[25] << 24))) * 1e-7;
+
+		int latitudeDegrees = (int)latitude;
+		double latitudeMinutes = (latitude - latitudeDegrees) * 60;
+
+		double longitude;
+		longitude = ((payload[26] | (payload[27] << 8) | (payload[28] << 16) | (payload[29] << 24))) * 1e-7;
+
+		int longitudeDegrees = (int)longitude;
+		double longitudeMinutes = (longitude - longitudeDegrees) * 60;
+
+		int waypointClosingVelocity;
+		waypointClosingVelocity = (payload[30] | (payload[31] << 8)) * 0.01;
+
+		wxDateTime timeNow;
+		timeNow = wxDateTime::Now();
+
+		if (calculationType == GREAT_CIRCLE) { 
+			if (bearingRef == HEADING_TRUE) {
+				nmeaSentences->push_back(wxString::Format("$IIBWC,%s,%02d%05.2f,%c,%03d%05.2f,%c,%.2f,T,,M,%.2f,N,%d,A", 
+					timeNow.Format("%H%M%S.00"), 
+					abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', 
+					abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', 
+					RADIANS_TO_DEGREES((float)bearingPosition / 10000), 
+					CONVERT_METRES_NATICAL_MILES * distance, destinationWaypointId));
+			}
+			else {
+				nmeaSentences->push_back(wxString::Format("$IIBWC,%s,%02d%05.2f,%c,%03d%05.2f,%c,,T,%.2f,M,%.2f,N,%d,A", 
+					timeNow.Format("%H%M%S.00"), 
+					abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', 
+					abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', 
+					RADIANS_TO_DEGREES((float)bearingPosition / 10000), \
+					CONVERT_METRES_NATICAL_MILES * distance, destinationWaypointId));
+			}
+
+		}
+		else { 
+			if (bearingRef == HEADING_TRUE) {
+				nmeaSentences->push_back(wxString::Format("$IIBWR,%s,%02d%05.2f,%c,%03d%05.2f,%c,%.2f,T,,M,%.2f,N,%d,A", 
+					timeNow.Format("%H%M%S.00"),
+					abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S',
+					abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W',
+					RADIANS_TO_DEGREES((float)bearingPosition / 10000), \
+					CONVERT_METRES_NATICAL_MILES * distance, destinationWaypointId));
+			}
+			else {
+				nmeaSentences->push_back(wxString::Format("$IIBWR,%s,%02d%05.2f,%c,%03d%05.2f,%c,,T,%.2f,M,%.2f,N,%d,A", 
+					timeNow.Format("%H%M%S.00"),
+					abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S',
+					abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W',
+					RADIANS_TO_DEGREES((float)bearingPosition / 10000), \
+					CONVERT_METRES_NATICAL_MILES * distance, destinationWaypointId));
+			}
+		}
+
+	
+		if (bearingRef == HEADING_TRUE) {
+			nmeaSentences->push_back(wxString::Format("$IIBOD,%.2f,T,,M,%d,%d", 
+				RADIANS_TO_DEGREES((float)bearingOrigin),destinationWaypointId, originWaypointId));
+		}
+		else {
+			nmeaSentences->push_back(wxString::Format("$IIBOD,,T,%.2f,M,%d,%d", 
+				RADIANS_TO_DEGREES((float)bearingOrigin),  destinationWaypointId, originWaypointId));
+		}
+
+		nmeaSentences->push_back(wxString::Format("$IIWCV,%.2f,N,%d,A",CONVERT_MS_KNOTS * waypointClosingVelocity, destinationWaypointId));
+
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	}
+}
+
+// Decode PGN 129285 Route and Waypoint Information
+// $--RTE,x.x,x.x,a,c--c,c--c, ..……... c--c*hh<CR><LF>
+// and 
+// //$--WPL,llll.ll,a,yyyyy.yy,a,c--c
+bool TwoCanDevice::DecodePGN129285(const byte * payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		unsigned int rps;
+		rps = payload[0] | (payload[1] << 8);
+
+		unsigned int nItems;
+		nItems = payload[2] | (payload[3] << 8);
+
+		unsigned int databaseVersion;
+		databaseVersion = payload[4] | (payload[5] << 8);
+
+		unsigned int routeID;
+		routeID = payload[6] | (payload[7] << 8);
+
+		unsigned short direction; // I presume forward/reverse
+		direction = payload[8] & 0xC0; 
+
+		unsigned short supplementaryInfo;
+		supplementaryInfo = payload[8] & 0x30;
+
+		// NMEA reserved
+		// unsigned short reserveA = payload[8} & 0x0F;
+
+		std::string routeName;
+		// BUG BUG If this is null terminated, just use strcpy
+		for (int i = 0; i < 255; i++) {
+			if (isprint(payload[9 + i])) {
+				routeName.append(1, payload[9 + i]);
+			}
+		}
+
+		// NMEA reserved payload[264]
+		//unsigned int reservedB = payload[264];
+
+		// repeated fields
+		for (unsigned int i = 0; i < nItems; i++) {
+			int waypointID;
+			waypointID = payload[265 + (i * 265)] | (payload[265 + (i * 265) + 1] << 8);
+
+			std::string waypointName;
+			for (int j = 0; j < 255; j++) {
+				if (isprint(payload[265 + (i * 265) + 266 + j])) {
+					waypointName.append(1, payload[265 + (i * 265) + 266 + j]);
+				}
+			}
+		
+			double latitude = payload[265 + (i * 265) + 257] | (payload[265 + (i * 265) + 258] << 8) | (payload[265 + (i * 265) + 259] << 16) | (payload[265 + (i * 265) + 260] << 24);
+			int latitudeDegrees = (int)latitude;
+			double latitudeMinutes = (latitude - latitudeDegrees) * 60;
+
+			double longitude = payload[265 + (i * 265) + 261] | (payload[265 + (i * 265) + 262] << 8) | (payload[265 + (i * 265) + 263] << 16) | (payload[265 + (i * 265) + 264] << 24);
+			int longitudeDegrees = (int)longitude;
+			double longitudeMinutes = (longitude - longitudeDegrees) * 60;
+
+			nmeaSentences->push_back(wxString::Format("$IIWPL,%02d%05.2f,%c,%03d%05.2f,%c,%s",
+				abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S',
+				abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W',
+				waypointName.c_str()));
+		}
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	}
+}
+
 // Decode PGN 129793 AIS Date and Time report
 // AIS Message Type 4 and if date is present also Message Type 11
 bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *nmeaSentences) {
@@ -2233,7 +2862,7 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 		speedOverGround = payload[16] | (payload[17] << 8);
 
 		int communicationState;
-		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16) & 0x7FFFF);
+		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
 
 		int transceiverInformation; 
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
@@ -2337,7 +2966,7 @@ bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *n
 		for (int i = 0; i < 156; i++) {
 			safetyMessage.append(1, (char)payload[11 + i]);
 		}
-		// BUG BUG Not sue if ths is encoded same as Addressed Safety Message
+		// BUG BUG Not sure if ths is encoded same as Addressed Safety Message
 		//std::string safetyMessage;
 		//int safetyMessageLength = payload[6];
 		//if (payload[7] == 1) {
@@ -2448,7 +3077,7 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 		// Encode the VDM Message using 6bit ASCII
 		wxString encodedVDMMessage = AISEncodePayload(newVec);
 
-		// Send the VDM message, use 28 characters as an arbitry number for multiple NMEA 183 sentences
+		// Send the VDM message, use 28 characters as an arbitary number for multiple NMEA 183 sentences
 		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + (encodedVDMMessage.Length() % 28) >  0 ? 1 : 0;
 		if (numberOfVDMMessages == 1) {
 			nmeaSentences->push_back(wxString::Format("!AIVDM,1,1,,A,%s,%d", encodedVDMMessage, fillBits));
@@ -2863,23 +3492,238 @@ bool DecodePGN130577(const byte *payload, std::vector<wxString> *nmeaSentences) 
 	}
 }
 
-
-// BUG BUG For future versions to transmit data onto the NMEA2000 network
-// BUG BUG Port my exisiting .Net methods.
+// Send an ISO Request
+int TwoCanDevice::SendISORequest(const byte destination, const unsigned int pgn) {
+	CanHeader header;
+	header.pgn = 59904;
+	header.destination = destination;
+	header.source = networkAddress;
+	header.priority = 5;
+	
+	unsigned int id;
+	TwoCanUtils::EncodeCanHeader(&id,&header);
+		
+	byte payload[3];
+	payload[0] = pgn & 0xFF;
+	payload[1] = (pgn >> 8) & 0xFF;
+	payload[2] = (pgn >> 16) & 0xFF;
+	
+#ifdef __WXMSW__
+	return (writeFrame(id, 3, payload));
+#endif
+	
+#ifdef __LINUX__
+	return (linuxSocket->Write(id,3,payload));
+#endif
+}
 
 // Claim an Address on the NMEA 2000 Network
-int TwoCanDevice::ClaimAddress() {
-	return 0;
+int TwoCanDevice::SendAddressClaim(const unsigned int sourceAddress) {
+	CanHeader header;
+	header.pgn = 60928;
+	header.destination = CONST_GLOBAL_ADDRESS;
+	header.source = sourceAddress;
+	header.priority = 5;
+	
+	unsigned int id;
+	TwoCanUtils::EncodeCanHeader(&id,&header);
+	
+	byte payload[8];
+	int manufacturerCode = CONST_MANUFACTURER_CODE;
+	int deviceFunction = CONST_DEVICE_FUNCTION;
+	int deviceClass = CONST_DEVICE_CLASS;
+	int deviceInstance = 0;
+	int systemInstance = 0;
+
+	payload[0] = uniqueId & 0xFF;
+	payload[1] = (uniqueId >> 8) & 0xFF;
+	payload[2] = (uniqueId >> 16) & 0x1F;
+	payload[2] |= (manufacturerCode << 5) & 0xE0;
+	payload[3] = manufacturerCode >> 3;
+	payload[4] = deviceInstance;
+	payload[5] = deviceFunction;
+	payload[6] = deviceClass << 1;
+	payload[7] = 0x80 | (CONST_MARINE_INDUSTRY << 4) | systemInstance;
+
+	// Add my entry to the network map
+	networkMap[header.source].manufacturerId = manufacturerCode;
+	networkMap[header.source].uniqueId = uniqueId;
+	// BUG BUG What to do for my time stamp ??
+
+	// And while we're at it, calculate my deviceName (aka NMEA 'NAME')
+	deviceName = (unsigned long long)payload[0] | ((unsigned long long)payload[1] << 8) | ((unsigned long long)payload[2] << 16) | ((unsigned long long)payload[3] << 24) | ((unsigned long long)payload[4] << 32) | ((unsigned long long)payload[5] << 40) | ((unsigned long long)payload[6] << 48) | ((unsigned long long)payload[7] << 54);
+	
+#ifdef __WXMSW__
+	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
+#endif
+	
+#ifdef __LINUX__
+	return (linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&payload[0]));
+#endif
+}
+
+// Transmit NMEA 2000 Heartbeat
+int TwoCanDevice::SendHeartbeat() {
+	CanHeader header;
+	header.pgn = 126993;
+	header.destination = CONST_GLOBAL_ADDRESS;
+	header.source = networkAddress;
+	header.priority = 5;
+
+	unsigned int id;
+	TwoCanUtils::EncodeCanHeader(&id, &header);
+
+	byte payload[8];
+	memset(payload, 0xFF, CONST_PAYLOAD_LENGTH);
+
+	//60000 milliseconds
+	payload[0] = 600 & 0xFF;
+	payload[1]  = (600 >> 8) & 0xFF;
+	payload[2] = 1;
+	payload[3] = 1; // Class 1 CAN State
+	payload[4] = 1; // Class 2 CAN State
+	payload[5] = 1; // No idea  &0xF0;
+
+#ifdef __WXMSW__
+	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
+#endif
+
+#ifdef __LINUX__
+	return (linuxSocket->Write(id, CONST_PAYLOAD_LENGTH, &payload[0]));
+#endif
+
 }
 
 // Transmit NMEA 2000 Product Information
-int TwoCanDevice::TransmitProductInformation() {
-	return 0;
+int TwoCanDevice::SendProductInformation() {
+	CanHeader header;
+	header.pgn = 126996;
+	header.destination = CONST_GLOBAL_ADDRESS;
+	header.source = networkAddress;
+	header.priority = 5;
+	
+	byte payload[134];
+		
+	unsigned short dbver = CONST_DATABASE_VERSION;
+	memcpy(&payload[0],&dbver,sizeof(unsigned short)); 
+
+	unsigned short pcode = CONST_PRODUCT_CODE;
+	memcpy(&payload[2],&pcode,sizeof(unsigned short));
+	
+	// Note all of the string values are stored without terminating NULL character
+	// Model ID Bytes [4] - [35]
+	memset(&payload[4],0,32);
+	char *hwVersion = CONST_MODEL_ID;
+	memcpy(&payload[4], hwVersion,strlen(hwVersion));
+	
+	// Software Version Bytes [36] - [67]
+	// BUG BUG Should derive from PLUGIN_VERSION_MAJOR and PLUGIN_VERSION_MINOR
+	memset(&payload[36],0,32);
+	char *swVersion = CONST_SOFTWARE_VERSION;  
+	memcpy(&payload[36], swVersion,strlen(swVersion));
+		
+	// Model Version Bytes [68] - [99]
+	memset(&payload[68],0,32);
+	memcpy(&payload[68], hwVersion,strlen(hwVersion));
+	
+	// Serial Number Bytes [100] - [131] - Let's reuse our uniqueId as the serial number
+	memset(&payload[100],0,32);
+	std::string tmp;
+	tmp = std::to_string(uniqueId);
+	memcpy(&payload[100], tmp.c_str(),tmp.length());
+	
+	payload[132] = CONST_CERTIFICATION_LEVEL;
+	
+	payload[133] = CONST_LOAD_EQUIVALENCY;
+
+	wxString *mid;
+	mid = new wxString(CONST_MODEL_ID);
+		
+	strcpy(networkMap[header.source].productInformation.modelId,mid->c_str());
+	return FragmentFastMessage(&header,sizeof(payload),&payload[0]);
+
 }
 
-// Respond to ISO Rqsts
-int TwoCanDevice::ISORqstResponse() {
-	return 0;
+// Transmit Supported Parameter Group Numbers
+int TwoCanDevice::SendSupportedPGN() {
+	CanHeader header;
+	header.pgn = 126464;
+	header.destination = CONST_GLOBAL_ADDRESS;
+	header.source = networkAddress;
+	header.priority = 5;
+	
+	// BUG BUG Should define our supported Parameter Group Numbers somewhere else, not compiled int the code ??
+	unsigned int receivedPGN[] = {59904, 59392, 60928, 65240, 126464, 126992, 126993, 126996, 
+		127250,	127251, 127258, 128259, 128267, 128275, 129025, 129026, 129029, 129033, 
+		129028, 129039, 129040, 129041, 129283, 129793, 129794, 129798, 129801, 129802, 
+		129808,	129809, 129810, 130306, 130310, 130312, 130577 };
+	unsigned int transmittedPGN[] = {59392, 59904, 60928, 126208, 126464, 126993, 126996 };
+	
+	// Payload is a one byte function code (receive or transmit) and 3 bytes for each PGN 
+	int arraySize;
+	arraySize = sizeof(receivedPGN)/sizeof(unsigned int);
+	
+	byte *receivedPGNPayload;
+	receivedPGNPayload = (byte *)malloc((arraySize * 3) + 1);
+	receivedPGNPayload[0] = 0; // I think receive function code is zero
+
+	for (int i = 0; i < arraySize; i++) {
+		receivedPGNPayload[(i*3) + 1] = receivedPGN[i] & 0xFF;
+		receivedPGNPayload[(i*3) + 2] = (receivedPGN[i] >> 8) & 0xFF;
+		receivedPGNPayload[(i*3) + 3] = (receivedPGN[i] >> 16 ) & 0xFF;
+	}
+	
+	FragmentFastMessage(&header,sizeof(receivedPGNPayload),receivedPGNPayload);
+	
+	free(receivedPGNPayload);
+
+	arraySize = sizeof(transmittedPGN)/sizeof(unsigned int);
+	byte *transmittedPGNPayload;
+	transmittedPGNPayload = (byte *)malloc((arraySize * 3) + 1);
+	transmittedPGNPayload[0] = 1; // I think transmit function code is 1
+	for (int i = 0; i < arraySize; i++) {
+		transmittedPGNPayload[(i*3) + 1] = transmittedPGN[i] & 0xFF;
+		transmittedPGNPayload[(i*3) + 2] = (transmittedPGN[i] >> 8) & 0xFF;
+		transmittedPGNPayload[(i*3) + 3] = (transmittedPGN[i] >> 16 ) & 0xFF;
+	}
+	
+	FragmentFastMessage(&header,sizeof(transmittedPGNPayload),transmittedPGNPayload);
+
+	free(transmittedPGNPayload);
+	
+	return TWOCAN_RESULT_SUCCESS;
+}
+
+// Respond to an ISO Rqst
+// BUG BUG at present just NACK everything
+int TwoCanDevice::SendISOResponse(unsigned int sender, unsigned int pgn) {
+	CanHeader header;
+	header.pgn = 59392;
+	header.destination = sender;
+	header.source = networkAddress;
+	header.priority = 5;
+	
+	unsigned int id;
+	TwoCanUtils::EncodeCanHeader(&id,&header);
+		
+	byte payload[8];
+	payload[0] = 1; // 0 = Ack, 1 = Nack, 2 = Access Denied, 3 = Network Busy
+	payload[1] = 0; // No idea, the field is called Group Function
+	payload[2] = 0; // No idea
+	payload[3] = 0;
+	payload[4] = 0;
+	payload[5] = pgn & 0xFF;
+	payload[6] = (pgn >> 8) & 0xFF;
+	payload[7] = (pgn >> 16) & 0xFF;
+	
+#ifdef __WXMSW__
+	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
+#endif
+	
+#ifdef __LINUX__
+	return (linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&payload[0]));
+#endif
+ 
 }
 
 // Shamelessly copied from somewhere, another plugin ?
@@ -2895,12 +3739,98 @@ void TwoCanDevice::SendNMEASentence(wxString sentence) {
 // Shamelessly copied from somewhere, another plugin ?
 wxString TwoCanDevice::ComputeChecksum(wxString sentence) {
 	unsigned char calculatedChecksum = 0;
-	for (wxString::const_iterator i = sentence.begin() + 1; i != sentence.end(); ++i) {
-		calculatedChecksum ^= static_cast<unsigned char> (*i);
+	for (wxString::const_iterator it = sentence.begin() + 1; it != sentence.end(); ++it) {
+		calculatedChecksum ^= static_cast<unsigned char> (*it);
 	}
 	return(wxString::Format(wxT("%02X"), calculatedChecksum));
 }
 
+// Fragment a Fast Packet Message into 8 byte payload chunks
+int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLength, byte *payload) {
+	unsigned int id;
+	int returnCode;
+	byte data[8];
+	
+	TwoCanUtils::EncodeCanHeader(&id,header);
+		
+	// Send the first frame
+	// BUG BUG should maintain a map of sequential ID's for each PGN
+	byte sid = 0;
+	data[0] = sid;
+	data[1] = payloadLength;
+	memcpy(&data[2], &payload[0], 6);
+	
+#ifdef __WXMSW__
+		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
+#endif
+	
+#ifdef __LINUX__
+	returnCode = linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
+#endif
+
+	if (returnCode != TWOCAN_RESULT_SUCCESS) {
+		wxLogError(_T("TwoCan Device, Error sending fast message frame"));
+		// BUG BUG Should we log the frame ??
+		return returnCode;
+	}
+	
+	sid += 1;
+	wxThread::Sleep(CONST_TEN_MILLIS);
+	
+	// Now the intermediate frames
+	int iterations;
+	iterations = (int)((payloadLength - 6) / 7);
+		
+	for (int i = 0; i < iterations; i++) {
+		data[0] = sid;
+		memcpy(&data[1],&payload[6 + (i * 7)],7);
+		
+#ifdef __WXMSW__
+		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
+#endif
+
+		
+#ifdef __LINUX__
+		returnCode = linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
+#endif
+
+		if (returnCode != TWOCAN_RESULT_SUCCESS) {
+			wxLogError(_T("TwoCan Device, Error sending fast message frame"));
+			// BUG BUG Should we log the frame ??
+			return returnCode;
+		}
+		
+		sid += 1;
+		wxThread::Sleep(CONST_TEN_MILLIS);
+	}
+	
+	// Is there a remaining frame ?
+	int remainingBytes;
+	remainingBytes = (payloadLength - 6) % 7;
+	if (remainingBytes > 0) {
+		data[0] = sid;
+		memset(&data[1],0xFF,7);
+		memcpy(&data[1], &payload[payloadLength - remainingBytes], remainingBytes );
+		
+#ifdef __WXMSW__
+		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
+#endif
+
+		
+#ifdef __LINUX__
+		returnCode = linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
+#endif
+		if (returnCode != TWOCAN_RESULT_SUCCESS) {
+			wxLogError(_T("TwoCan Device, Error sending fast message frame"));
+			// BUG BUG Should we log the frame ??
+			return returnCode;
+		}
+	}
+	
+	return TWOCAN_RESULT_SUCCESS;
+}
+
+	
 // Encode an 8 bit ASCII character using NMEA 0183 6 bit encoding
 char TwoCanDevice::AISEncodeCharacter(char value)  {
 		char result = value < 40 ? value + 48 : value + 56;
@@ -2948,9 +3878,9 @@ std::vector<bool> TwoCanDevice::AISDecodePayload(wxString SixBitData) {
 }
 
 // Assemble AIS VDM message, fragmenting if necessary
-std::vector<wxString> TwoCanDevice::AssembleAISMessage(std::vector<bool> binaryData, const int messageType) {
+	std::vector<wxString> TwoCanDevice::AssembleAISMessage(std::vector<bool> binaryData, const int messageType) {
 	std::vector<wxString> result;
-//	result.push_back(wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData)));
+	result.push_back(wxString::Format("!AIVDM,1,1,,B,%s,0", AISEncodePayload(binaryData)));
 	return result;
 }
 

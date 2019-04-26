@@ -1,4 +1,4 @@
-// Copyright(C) 2018 by Steven Adler
+// Copyright(C) 2018-2019 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
 //
-// NMEA2000® is a registered Trademark of the National Marine Electronics Association
+// NMEA2000Â® is a registered Trademark of the National Marine Electronics Association
 
 
 // Project: TwoCan Plugin
@@ -25,10 +25,10 @@
 // Date: 6/8/2018
 // Version: 1.0
 // 1.3 - Added Support for Linux (socketCAN interfaces)
+// 1.4 - Implemented support for active mode, participate on NMEA 2000 network
 // Outstanding Features: 
-// 1. Prevent selection of driver that is not present
+// 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
-// 3. Once NetworkMap and Active Network device complete, re-instantiate the Notebook Pages.
 //
 
 #include "twocansettings.h"
@@ -45,30 +45,6 @@ TwoCanSettings::TwoCanSettings(wxWindow* parent, wxWindowID id, const wxString& 
 	TwoCanSettings::SetIcon(icon);
 }
 
-wxString TwoCanSettings::GetCanAdapter(){
-	return canAdapterName;
-}
-
-void TwoCanSettings::SetCanAdapter(wxString name) {
-	canAdapterName = name;
-}
-
-int TwoCanSettings::GetParameterGroupNumbers(){
-	return parameterGroupNumbers;
-}
-
-void TwoCanSettings::SetParameterGroupNumbers(int pgn) {
-	parameterGroupNumbers = pgn;
-}
-
-int TwoCanSettings::GetRawLogging(){
-	return rawLogging;
-}
-
-void TwoCanSettings::SetRawLogging(int logging) {
-	rawLogging = logging;
-}
-
 TwoCanSettings::~TwoCanSettings() {
 // Just in case we are closed from the dialog's close button 
 	
@@ -83,9 +59,9 @@ TwoCanSettings::~TwoCanSettings() {
 }
 
 void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
-	settingsDirty = FALSE;
-	
-	// Populate the pgn listbox and check the respective items from the setting "supportedPGN"
+	this->settingsDirty = FALSE;
+		
+	// Settings Tab
 	wxArrayString *pgn = new wxArrayString();
 
 	// BUG BUG Localization
@@ -100,94 +76,138 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("130306 ") + _("Wind") + _T(" (MWV)"));
 	pgn->Add(_T("130310 ") + _("Water Temperature") + _(" (MWT)"));
 	pgn->Add(_T("129808 ") + _("Digital Selective Calling") + _T(" (DSC)"));
-	pgn->Add(_T("129038..41") + _("AIS Class A & B messages") + _T(" (VDM)"));
-
+	pgn->Add(_T("129038..41 ") + _("AIS Class A & B messages") + _T(" (VDM)"));
+	pgn->Add(_T("129283..5 ") + _("Route/Waypoint") + _T("(BWR/BOD/WPL/RTE)"));
+		
 	// Populate the listbox and check/uncheck as appropriate
 	for (size_t i = 0; i < pgn->Count(); i++) {
 		chkListPGN->Append(pgn->Item(i));
-		chkListPGN->Check(i, (parameterGroupNumbers & (int)pow(2, i) ? TRUE : FALSE));
+		chkListPGN->Check(i, (supportedPGN & (int)pow(2, i) ? TRUE : FALSE));
 	}
 
 	// Search for the twocan plugin drivers that are present
 	EnumerateDrivers();
 	
 	// Populate the ComboBox and set the default driver selection
-	for (adapterIterator = adapters.begin(); adapterIterator != adapters.end(); adapterIterator++){
+	for (AvailableAdapters::iterator it = this->adapters.begin(); it != this->adapters.end(); it++){
 		// For Windows, the first item of the hashmap is the "friendly name", the second is the full path of the driver
 		// For Linux, both the first & second item of the hashmap is either "Log File Reader" or can adapter name, eg. "can0"
-		cmbInterfaces->Append(adapterIterator->first);
+		cmbInterfaces->Append(it->first);
 		// Ensure that the driver being used is selected in the Combobox 
-		if (canAdapterName == adapterIterator->second) {
-			cmbInterfaces->SetStringSelection(adapterIterator->first);
+		if (canAdapter == it->second) {
+			cmbInterfaces->SetStringSelection(it->first);
 		}
 	}
 
 	// BUG BUG Localization
-	checkLogRaw->SetLabel(_("Log raw NMEA 2000 frames"));
+	chkLogRaw->SetLabel(_("Log raw NMEA 2000 frames"));
 
-	if (rawLogging & FLAGS_LOG_RAW) {
-		checkLogRaw->SetValue(TRUE);
+	// BUG BUG Support different log formats
+	if (logLevel & FLAGS_LOG_RAW) {
+		chkLogRaw->SetValue(TRUE);
 	}
 
-	// Bitmap image for the About Page
+	// About Tab
 	bmpAbout->SetBitmap(wxBitmap(twocan_64));
+  
+	// BUG BUG Localization & version numbers
+	txtAbout->SetLabel(_T("TwoCan PlugIn for OpenCPN\nEnables some NMEA2000\xae data to be directly integrated with OpenCPN.\nSend bug reports to twocanplugin@hotmail.com"));
 
-	// BUG BUG Localization
-	// BUG BUG Version numbering
-	txtAbout->SetLabel(_("TwoCan PlugIn for OpenCPN\nVersion 1.0\nEnables some NMEA2000\u00AE data to be directly integrated with OpenCPN.\nSend bug reports to twocanplugin@hotmail.com"));
-
-	// Debug Window
+	// Debug Tab
 	// BUG BUG Localization
 	btnPause->SetLabel((debugWindowActive) ? _("Stop") : _("Start"));
 
-	// Network Map
-	// not yet working
-	//for (int i = 0; i <= CONST_MAX_DEVICES; i++) {
-	//	dataGridNetwork->SetCellValue(i, 0, wxString::Format("%d",networkMap[i].networkAddress));
-	//	dataGridNetwork->SetCellValue(i, 1, wxString::Format("%d",networkMap[i].uniqueId));
-	//	dataGridNetwork->SetCellValue(i, 2, wxString::Format("%d",networkMap[i].manufacturerId));
-	//}
-	
-	// So do not display it
-	notebookTabs->DeletePage(1);
+	// Network Tab
+	// Resize the grid to fit the width and not expand vertically
+	// BUG BUG Should be seme defualt values to achieve this
+	wxSize gridSize;
+	gridSize = this->GetClientSize();
+	gridSize.SetHeight(gridSize.GetHeight() * 0.75f);
+	gridSize.SetWidth(gridSize.GetWidth());
+	dataGridNetwork->SetMinSize(gridSize);
+	dataGridNetwork->SetMaxSize(gridSize);
 
-	// Similarly do not display NMEA2000 device tab, until it is implemented
-	notebookTabs->DeletePage(1);
-
-	// BUG BUG Couldn't work out how to hide the page, rather than delete it.
+	for (int i = 0; i < CONST_MAX_DEVICES; i++) {
+		// Renumber row labels to match network address 0 - 253
+		dataGridNetwork->SetRowLabelValue(i, std::to_string(i));
+		// No need to iterate over non-existent entries
+		if ((networkMap[i].uniqueId > 0) || (strlen(networkMap[i].productInformation.modelId) > 0) ) {
+			dataGridNetwork->SetCellValue(i, 0, wxString::Format("%lu", networkMap[i].uniqueId));
+			// Look up the manufacturer name
+			std::unordered_map<int, std::string>::iterator it = deviceManufacturers.find(networkMap[i].manufacturerId);
+			if (it != deviceManufacturers.end()) {
+				dataGridNetwork->SetCellValue(i, 1, it->second);
+			}
+			else {
+				dataGridNetwork->SetCellValue(i, 1, wxString::Format("%d", networkMap[i].manufacturerId));
+			}
+			dataGridNetwork->SetCellValue(i, 2, wxString::Format("%s", networkMap[i].productInformation.modelId));
+			// We don't receive our own heartbeats so ignore our time stamp value
+			if (networkMap[i].uniqueId != uniqueId) {
+				wxGridCellAttr *attr;
+				attr = new wxGridCellAttr;
+				// Differentiate dead/alive devices 
+				attr->SetTextColour((wxDateTime::Now() > (networkMap[i].timestamp + wxTimeSpan::Seconds(60))) ? *wxRED : *wxGREEN);
+				dataGridNetwork->SetAttr(i, 0, attr);
+			}
+		}
+	}
 	
+	// Device tab
+	chkDeviceMode->SetValue(deviceMode);
+	if (deviceMode == TRUE) {
+		chkEnableHeartbeat->SetValue(enableHeartbeat);
+	}
+	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
+	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
+	labelModelId->SetLabel(wxString::Format("Model ID: TwoCan plugin"));
+	labelManufacturer->SetLabel("Manufacturer: TwoCan");
+	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %s", CONST_SOFTWARE_VERSION));
+		
 	Fit();
 }
 
 // BUG BUG Should prevent the user from shooting themselves in the foot if they select a driver that is not present
 void TwoCanSettings::OnChoice(wxCommandEvent &event) {
 	// BUG BUG should only set the dirty flag if we've actually selected a different driver
-	settingsDirty = TRUE;
+	this->settingsDirty = TRUE;
 }
 
 // Select NMEA 2000 parameter group numbers to be converted to their respective NMEA 0183 sentences
 void TwoCanSettings::OnCheckPGN(wxCommandEvent &event) {
-	settingsDirty = TRUE;
+	this->settingsDirty = TRUE;
 } 
 
 // Enable Logging of Raw NMEA 2000 frames
 void TwoCanSettings::OnCheckLog(wxCommandEvent &event) {
-	settingsDirty = TRUE;
+	this->settingsDirty = TRUE;
 }
 
+// Toggle real time display of received NMEA 2000 frames
 void TwoCanSettings::OnPause(wxCommandEvent &event) {
-	// Toggle real time display of received NMEA 2000 frames
 	debugWindowActive = !debugWindowActive;
 	// BUG BUG Localization
 	TwoCanSettings::btnPause->SetLabel((debugWindowActive) ? _("Stop") : _("Start"));
 }
 
+// Copy the text box contents to the clipboard
 void TwoCanSettings::OnCopy(wxCommandEvent &event) {
-	// Copy the text box contents to the clipboard
 	if (wxTheClipboard->Open()) {
 		wxTheClipboard->SetData(new wxTextDataObject(txtDebug->GetValue()));
 		wxTheClipboard->Close();
 	}
+}
+
+// Set whether the device is an actve or passive node on the NMEA 2000 network
+void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
+	chkEnableHeartbeat->Enable(chkDeviceMode->IsChecked());
+	chkEnableHeartbeat->SetValue(FALSE);
+	this->settingsDirty = TRUE;
+}
+
+// Set whether the device sends heartbeats onto the network
+void TwoCanSettings::OnCheckHeartbeat(wxCommandEvent &event) {
+	this->settingsDirty = TRUE;
 }
 
 void TwoCanSettings::OnOK(wxCommandEvent &event) {
@@ -195,9 +215,9 @@ void TwoCanSettings::OnOK(wxCommandEvent &event) {
 	debugWindowActive = FALSE;
 
 	// Save the settings
-	if (settingsDirty) {
+	if (this->settingsDirty) {
 		SaveSettings();
-		settingsDirty = FALSE;
+		this->settingsDirty = FALSE;
 	}
 
 	// Clear the clipboard
@@ -212,9 +232,9 @@ void TwoCanSettings::OnOK(wxCommandEvent &event) {
 
 void TwoCanSettings::OnApply(wxCommandEvent &event) {
 	// Save the settings
-	if (settingsDirty) {
+	if (this->settingsDirty) {
 		SaveSettings();
-		settingsDirty = FALSE;
+		this->settingsDirty = FALSE;
 	}
 }
 
@@ -237,25 +257,36 @@ void TwoCanSettings::SaveSettings(void) {
 	wxArrayInt checkedItems;
 	chkListPGN->GetCheckedItems(checkedItems);
 
-	parameterGroupNumbers = 0;
+	supportedPGN = 0;
 	// Save the bitflags representing the checked items
 	for (wxArrayInt::const_iterator it = checkedItems.begin(); it < checkedItems.end(); it++) {
-		parameterGroupNumbers |= 1 << (int)*it;
+		supportedPGN |= 1 << (int)*it;
 	}
 
-	rawLogging = 0;
-	if (checkLogRaw->IsChecked()) {
-		rawLogging= FLAGS_LOG_RAW;
+	logLevel = 0;
+	if (chkLogRaw->IsChecked()) {
+		logLevel = FLAGS_LOG_RAW;
+	}
+
+	enableHeartbeat = FALSE;
+	if (chkEnableHeartbeat->IsChecked()) {
+		enableHeartbeat = TRUE;
+	}
+		
+	deviceMode = FALSE;
+	if (chkDeviceMode->IsChecked()) {
+		deviceMode = TRUE;
 	}
 
 	if (cmbInterfaces->GetSelection() != wxNOT_FOUND) {
-		canAdapterName = adapters[cmbInterfaces->GetStringSelection()];
+		canAdapter = adapters[cmbInterfaces->GetStringSelection()];
 	} 
 	else {
-		canAdapterName = _T("None");
+		canAdapter = _T("None");
 	}
 }
 
+// Lists the available CAN bus or Logfile interfaces 
 bool TwoCanSettings::EnumerateDrivers(void) {
 	
 #ifdef  __WXMSW__ 
@@ -279,13 +310,13 @@ bool TwoCanSettings::EnumerateDrivers(void) {
 		wxString fileName;
 		wxString fileSpec = wxT("*.dll");
 		
-		bool cont = adapterDirectory.GetFirst(&fileName, fileSpec, wxDIR_FILES);
-		while (cont){
+		bool foundFile = adapterDirectory.GetFirst(&fileName, fileSpec, wxDIR_FILES);
+		while (foundFile){
 
 			// Construct full path to selected driver and fetch driver information
 			GetDriverInfo(wxString::Format("%s%s", adapterDirectoryName.GetFullPath(), fileName));
 
-			cont = adapterDirectory.GetNext(&fileName);
+			foundFile = adapterDirectory.GetNext(&fileName);
 		} 
 	}
 	else {
@@ -297,7 +328,7 @@ bool TwoCanSettings::EnumerateDrivers(void) {
 	
 #ifdef __LINUX__
 	// Add the built-in Log File Reader to the Adapter hashmap
-	// BUG BUG add a #define for this string constant
+	// BUG BUG Should add a #define for this string constant
 	adapters["Log File Reader"] = "Log File Reader";
 	// Add any physical CAN Adapters
 	std::vector<wxString> canAdapters;
@@ -319,7 +350,7 @@ bool TwoCanSettings::EnumerateDrivers(void) {
 		//	adapters[interfaceRequest.ifr_name] = interfaceRequest.ifr_name;
 		for (auto it = canAdapters.begin(); it != canAdapters.end(); ++it) {
 			wxLogMessage(_T("TwoCan Settings, Found CAN adapter: %s"),*it);
-			adapters[*it] = *it;
+			this->adapters[*it] = *it;
 		}
 		
 	}
@@ -331,6 +362,7 @@ bool TwoCanSettings::EnumerateDrivers(void) {
 
 #ifdef  __WXMSW__ 
 
+// Retrieve the human friendly name for the different Windows drivers to populate the combo box
 void TwoCanSettings::GetDriverInfo(wxString fileName) {
 	HMODULE dllHandle;
 	LPFNDLLDriverName driverName = NULL;

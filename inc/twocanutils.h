@@ -1,4 +1,4 @@
-// Copyright(C) 2018 by Steven Adler
+// Copyright(C) 2018-2019 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -15,15 +15,20 @@
 // You should have received a copy of the GNU General Public License
 // along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
 //
-// NMEA2000® is a registered Trademark of the National Marine Electronics Association
+// NMEA2000Â® is a registered Trademark of the National Marine Electronics Association
 
 #ifndef TWOCAN_UTILS_H
 #define TWOCAN_UTILS_H
 
+// For error definitions
+#include "twocanerror.h"
+
 // For specific Windows functions & typedefs such as LPDWORD etc.
-#ifdef  __WXMSW__ 
-	#define WINDOWS_LEAN_AND_MEAN
-	#include <windows.h>
+#ifdef __WXMSW__
+#include <windows.h>
+
+// IP helper API for GetMacAddress
+#include <iphlpapi.h>
 #endif
 
 // For wxWidgets Pi
@@ -32,27 +37,61 @@
 // For strtoul
 #include <stdlib.h>
 
+// For memcpy
+#include <string.h>
+
 // Some NMEA 2000 constants
-#define CONST_GLOBAL_ADDRESS 255
 #define CONST_HEADER_LENGTH 4
 #define CONST_PAYLOAD_LENGTH 8
 #define CONST_FRAME_LENGTH (CONST_HEADER_LENGTH + CONST_PAYLOAD_LENGTH)
-// Note to self, I think this is correct, address 255 is the global address, 254 may be used for something else ??
+
+// Note to self, I think this is correct, address 255 is the global address, 254 is the NULL address
+#define CONST_GLOBAL_ADDRESS 255
 #define CONST_MAX_DEVICES 253 
+#define CONST_NULL_ADDRESS 254
+
 // Maximum payload for NMEA multi-frame Fast Message
 #define CONST_MAX_FAST_PACKET 223_LENGTH
-// Maximum payload for ISO 11783 Multi Packet
+
+// Maximum payload for ISO 11783-3 Multi Packet
 #define CONST_MAX_ISO_MULTI_PACKET_LENGTH 1785 
 
-// Maximum number of multi-frame Fast Messages we can support, just an arbitary number
+// For this device's ISO Address Claim 
+// BUG BUG Should be user configurable
+#define CONST_MANUFACTURER_CODE 2019 // I assume proper numbers are issued by NMEA
+#define CONST_DEVICE_FUNCTION 130 // BUG BUG Should have an enum for all of the NMEA 2000 device function codes
+#define CONST_DEVICE_CLASS 120 // BUG BUG Should have an enum for all of the NMEA 2000 device class codes
+#define CONST_MARINE_INDUSTRY 4
+
+// For this device's NMEA Product Information
+// BUG BUG Should be user configurable
+#define CONST_DATABASE_VERSION 2100
+#define CONST_PRODUCT_CODE 1770 // Trivia - Captain Cook discovers Australia !
+#define CONST_CERTIFICATION_LEVEL 0 // We have not been certified, although I think we support the PGN's required for level 1
+#define CONST_LOAD_EQUIVALENCY 1 // PC is self powered, so assume little or no drain on NMEA 2000 network
+#define CONST_MODEL_ID "TwoCan plugin"
+#define CONST_SOFTWARE_VERSION  "1.4" // BUG BUG Should derive from PLUGIN_VERSION_MAJOR etc.
+
+// Maximum number of multi-frame Fast Messages we can support in the Fast Message Buffer, just an arbitary number
 #define CONST_MAX_MESSAGES 100
+
 // Stale Fast Message expiration  (I think Fast Messages must be sent within 250 msec)
 #define CONST_TIME_EXCEEDED 250
+
 // Whether an existing Fast Message entry exists, in order to append a frame
 #define NOT_FOUND -1
 
+// Dropped or missing frames from a Fast Message
+#define CONST_DROPPEDFRAME_THRESHOLD 200
+#define CONST_DROPPEDFRAME_PERIOD 5
+
+// Some time intervals 
+#define CONST_TEN_MILLIS 10
+#define CONST_ONE_SECOND 100 * CONST_TEN_MILLIS
+#define CONST_ONE_MINUTE 60 * CONST_ONE_SECOND
 
 // Some useful conversion functions
+
 // Radians to degrees and vice versa
 #define RADIANS_TO_DEGREES(x) (x * 180 / M_PI)
 #define DEGREES_TO_RADIANS(x) (x * M_PI / 180)
@@ -84,6 +123,9 @@
 
 #define HEADING_TRUE 0
 #define HEADING_MAGNETIC 1
+
+#define GREAT_CIRCLE 0
+#define RHUMB_LINE 1
 
 #define	GNSS_FIX_NONE 0
 #define	GNSS_FIX_GNSS 1
@@ -135,15 +177,16 @@
 #define FLAGS_MWT 256
 #define FLAGS_DSC 512
 #define FLAGS_AIS 1024
+#define FLAGS_RTE 2048
 
 
 // Bit values to determine in which format the log file is written
 // RAW is the only mode currently implemented
 #define FLAGS_LOG_RAW 1 // My format 12 pairs of hex digits, 4 the CAN 2.0 Id, 8 the payload 
-#define FLAGS_LOG_KEES 2 // I recall seeing this format used in Open Skipper
-#define FLAGS_LOG_ACTISENSE 4 // And this one as well.
-#define FLAGS_LOG_YACHTDEVICES 8 
-#define FLAGS_LOG_CANDUMP 16
+#define FLAGS_LOG_KEES 2 // I recall seeing this format used in Canboat
+#define FLAGS_LOG_ACTISENSE 4 // And this one in Open Skipper.
+#define FLAGS_LOG_YACHTDEVICES 8 // Found some samples from their Voyge Data Recorder
+#define FLAGS_LOG_CANDUMP 16 // Candump, a Linux utility
 
 // All the NMEA 2000 data is transmitted as an unsigned char which for convenience sake, I call a byte
 typedef unsigned char byte;
@@ -156,19 +199,41 @@ typedef struct CanHeader {
 	unsigned int pgn;
 } CanHeader;
 
+// NMEA 2000 Product Information, transmitted in PGN 126996 NMEA Product Information
+typedef struct ProductInformation {
+	unsigned int dataBaseVersion;
+	unsigned int productCode;
+	// Note these are transmitted as unterminated 32 bit strings, allow for the additional terminating NULL
+	char modelId[33];
+	char softwareVersion[33];
+	char modelVersion[33];
+	char serialNumber[33];
+	byte certificationLevel;
+	byte loadEquivalency;
+} ProductInformation;
+
 // NMEA 2000 Device Information, transmitted in PGN 60928 ISO Address Claim
 typedef struct DeviceInformation {
-	// Network Address is not part of the address claim, but it is the source address of the frame. 
-	// Maintain a reference to it to use as an index into entries for a network map
-	byte networkAddress;
-	unsigned int uniqueId;
+	unsigned long uniqueId;
 	unsigned int deviceClass;
 	unsigned int deviceFunction;
 	byte deviceInstance;
 	byte industryGroup;
 	unsigned int manufacturerId;
+	// Network Address is not part of the 60928 address claim, as the source network address is in the header
+	// however this field is part of PGN 65420 Commanded Address
+	byte networkAddress;
+	// NAME is the value of the 8 bytes that make up this PGN. The NAME is used for resolving addess claim conflicts
+	unsigned long deviceName;
 } DeviceInformation;
 
+// Used  to store the data for the Network Map, combines elements from address claim & poduct information
+typedef struct NetworkInformation {
+	unsigned long uniqueId;
+	unsigned int manufacturerId;
+	ProductInformation productInformation;
+	wxDateTime timestamp; // Updated upon reception of heartbeat or address claim. Used to determin stale entries
+} NetworkInformation;
 
 // Utility functions used by both the TwoCanDevice and the CAN adapters
 
@@ -184,10 +249,15 @@ public:
 	// Decodes a 29 bit CAN header from a byte array
 	static int DecodeCanHeader(const byte *buf, CanHeader *header);
 	// And its companion, encode a 29 bit CAN Header to a byte array
-	static int EncodeCanHeader(byte *buf, const CanHeader *header);
+	static int EncodeCanHeader(unsigned int *id, const CanHeader *header);
 	// Convert a string of hex characters to the corresponding byte array
 	static int ConvertHexStringToByteArray(const byte *hexstr, const unsigned int len, byte *buf);
 	// BUG BUG Any other conversion functions required ??
+
+	// Used to generate the unique id for Windows versions (Note the Linux version is defined in twocansocket
+#ifdef __WXMSW__
+	static int GetUniqueNumber(unsigned long *uniqueNumber);
+#endif
 	
 };
 

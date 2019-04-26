@@ -1,4 +1,4 @@
-TwoCan plug-in for OpenCPN
+﻿TwoCan plug-in for OpenCPN
 ==========================
 
 Inspired by Canboat and Openskipper, frustrated by those who claim "OpenCPN is not a hardware experimenter's platform", and desiring to give back something to the OpenCPN community.
@@ -26,11 +26,25 @@ Two hardware adapters have been successfully tested under Linux:
 Canable Cantact - (see above) 
 Waveshare CAN Hat for Raspberry PI - https://www.waveshare.com/product/modules/communication/rs232-rs485-can/rs485-can-hat.htm
 
-A good reference to using & configuring the CAN interfaces on Linux can be found at: https://elinux.org/Bringing_CAN_interface_up
+A good reference to using & configuring the CAN interfaces on Linux can be found at: https://elinux.org/Bringing_CAN_interface_up.
+
+To summarise,
+To bring up Native CAN Interface (eg. Waveshare)
+sudo ip link set can0 type can bitrate 250000
+sudo ip link set up can0
+
+To bring up Serial CAN interface (eg. Canable)
+sudo slcand -o -s5 -t hw -S 1000000 /dev/ttyACM0
+sudo ip link set up slcan0
+
+if using Active Mode (new in version 1.4)
+sudo ifconfig * txqueuelen 1000 (replace * with either can0 or slcan0 as appropriate)
 
 The Linux Log File Reader automagically™ detects the four supported log file formats.
 
-In addition, NMEA 2000 frames may be logged by the plugin. By default they are written using the TwoCan format and are written to the user's home directory and named using the following convention: twocan-YYYY-MM-DD_HHmmSS.log
+In addition, NMEA 2000 frames may be logged by the plugin. By default they are written using the TwoCan format and are written to the user's home directory and named using the following convention: twocan-YYYY-MM-DD_HHmmSS.log.
+
+The current release; 1.4 allows TwoCan to be configured to actively participate on the NMEA 2000 network, claiming an address, sending heartbeats and responding to a few requests (such as product infrmation). Please note that this is not fully tested and may interfere with the correct functin of the NMEA 2000 network. If any problems are found, disable the active device functionality and if possible, file a bg report.
 
 Obtaining the source code
 -------------------------
@@ -75,9 +89,13 @@ Note: I haven't tested creating Linux installation packages, however make instal
 
 Problems
 --------
-Warning: In some cases, changing the TwoCan preferences causes OpenCPN to crash. The workaround is to manually edit the OpenCPN configuration file. Under the section [PlugIns/TwoCan], set the value Adapter=None. Clearly I've left something dangling and the plugin barfs when changing settings mid-stream.
+If building using gcc, note that are many -Wwrite-strings, -Wunused-but-set-variable and -Wunused-variable warnings, that I'll get around to fixing one day, but at present can be safely ignored.
 
-Please send bug reports/questions to the opencpn forum or via email to twocanplugin@hotmail.com
+In some rare cases, changing the TwoCan preferences midstream causes OpenCPN to crash. If the settings can'tbe updated from the prefernces dialog, the workaround is to manually edit the OpenCPN configuration file. Under the section [PlugIns/TwoCan], set the value as appropriate. To reset the plugin with no adapterm set Adapter=None. Clearly I've left something dangling and the plugin barfs when changing settings mid-stream.
+
+In the Linux version, for some bizarre reason known only unto the wxWidget's gods, the network dataview doesn't size correctly.
+
+Please send bug reports/questions/comments to the opencpn forum or via email to twocanplugin@hotmail.com
 
 
 License
