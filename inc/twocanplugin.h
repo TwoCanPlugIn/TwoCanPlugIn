@@ -26,7 +26,6 @@
 #ifndef WX_PRECOMP
       #include <wx/wx.h>
 #endif
-
 // Defines version numbers for this plugin
 #include "version.h"
 

@@ -26,6 +26,9 @@
 
 #include "twocanerror.h"
 
+#ifdef __LINUX__
+#include <cerrno>
+#endif
 
 char *GetErrorMessage(int errorCode) {
 	
