@@ -90,6 +90,12 @@
 #define CONST_ONE_SECOND 100 * CONST_TEN_MILLIS
 #define CONST_ONE_MINUTE 60 * CONST_ONE_SECOND
 
+// NMEA 2000 priorities - derived from observation. As priority is only 3 bits, values range from 0-7
+#define CONST_PRIORITY_MEDIUM 6 // seen for 60928 ISO Address Claim, 59904 ISO Request
+#define CONST_PRIORITY_LOW 7 // Seen for 126996 Product Information
+#define CONST_PRIORITY_VERY_HIGH 2 // Seen for Navigation Data and Speed through Water
+#define CONST_PRIORITY_HIGH 3 // Seen for Depth
+
 // Some useful conversion functions
 
 // Radians to degrees and vice versa
