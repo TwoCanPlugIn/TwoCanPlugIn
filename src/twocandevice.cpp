@@ -128,10 +128,11 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 					wxLogMessage(_T("TwoCan Device, Error sending ISO Request  for 60928 to %lu: %lu"), i, returnCode);
 				}
 				wxThread::Sleep(CONST_TEN_MILLIS);
+				numberOfDevices += 1;
 			}
-			numberOfDevices += 1;
 		}
 	}
+	
 	
 	if (numberOfDevices == 0) {
 		// No devices present on the network (yet)
@@ -142,7 +143,6 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 		else {
 			wxLogMessage(_T("TwoCan Device, Error sending ISO Request for 60928  to %lu: %lu"), CONST_GLOBAL_ADDRESS, returnCode);
 		}
-		wxThread::Sleep(CONST_TEN_MILLIS);
 	}	
 
 	
@@ -183,7 +183,6 @@ int TwoCanDevice::Init(wxString driverPath) {
 		wxLogMessage(_T("TwoCan Device, Loaded driver %s"), driverPath);
 		// If we are an active device, claim an address on the network (PGN 60928)  and send our product info (PGN 126996)
 		if (deviceMode == TRUE) {
-			networkAddress = 0;
 			TwoCanUtils::GetUniqueNumber(&uniqueId);
 			wxLogMessage(_T("TwoCan Device, Unique Number: %lu"), uniqueId);
 			returnCode = SendAddressClaim(networkAddress);
@@ -235,7 +234,6 @@ int TwoCanDevice::Init(wxString driverPath) {
 		wxLogMessage(_T("TwoCan Device, Loaded CAN Interface %s"),driverPath);
 		// if we are an active device, claim an address
 		if (deviceMode == TRUE) {
-			networkAddress = 0;
 			if (TwoCanSocket::GetUniqueNumber(&uniqueId) == TWOCAN_RESULT_SUCCESS) {
 				wxLogMessage(_T("TwoCan Device, Unique Number: %lu"),uniqueId);
 				returnCode = SendAddressClaim(networkAddress);

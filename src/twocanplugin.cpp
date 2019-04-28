@@ -43,7 +43,7 @@ bool debugWindowActive;
 bool enableHeartbeat;
 int logLevel;
 unsigned long uniqueId;
-unsigned int networkAddress;
+int networkAddress;
 NetworkInformation networkMap[CONST_MAX_DEVICES];
 
 // The class factories, used to create and destroy instances of the PlugIn
@@ -105,6 +105,13 @@ int TwoCan::Init(void) {
 
 // OpenCPN is either closing down, or we have been disabled from the Preferences Dialog
 bool TwoCan::DeInit(void) {
+	// Persist our network address to prevent address claim conflicts next time we start
+	if (deviceMode == TRUE) {
+		if (configSettings) {
+			configSettings->SetPath(_T("/PlugIns/TwoCan"));
+			configSettings->Write(_T("Address"), networkAddress);
+		}
+	}
 	// Terminate the TwoCan Device Thread, but only if we have a valid driver selected !
 	if (canAdapter.CmpNoCase(_T("None")) != 0) {
 		if (twoCanDevice->IsRunning()) {
@@ -234,6 +241,7 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("PGN"), &supportedPGN, 0);
 		configSettings->Read(_T("Mode"), &deviceMode, FALSE);
 		configSettings->Read(_T("Log"), &logLevel, 0);
+		configSettings->Read(_T("Address"), &networkAddress, 0);
 		configSettings->Read(_T("Heartbeat"), &enableHeartbeat, FALSE);
 		return TRUE;
 	}
@@ -242,6 +250,7 @@ bool TwoCan::LoadConfiguration(void) {
 		supportedPGN = 0;
 		deviceMode = FALSE;
 		logLevel = 0;
+		networkAddress = 0;
 		enableHeartbeat = FALSE;
 		// BUG BUG Automagically find an installed adapter
 		canAdapter = _T("None");
@@ -256,6 +265,7 @@ bool TwoCan::SaveConfiguration(void) {
 		configSettings->Write(_T("PGN"), supportedPGN);
 		configSettings->Write(_T("Log"), logLevel);
 		configSettings->Write(_T("Mode"), deviceMode);
+		configSettings->Write(_T("Address"), networkAddress);
 		configSettings->Write(_T("Heartbeat"), enableHeartbeat);
 		return TRUE;
 	}

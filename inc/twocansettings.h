@@ -205,7 +205,7 @@ extern NetworkInformation networkMap[CONST_MAX_DEVICES];
 extern unsigned long uniqueId;
 
 // The current NMEA 2000 network address of this device
-extern unsigned int networkAddress;
+extern int networkAddress;
 
 class TwoCanSettings : public TwoCanSettingsBase
 {

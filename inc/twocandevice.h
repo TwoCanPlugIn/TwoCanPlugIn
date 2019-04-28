@@ -120,7 +120,7 @@ extern NetworkInformation networkMap[CONST_MAX_DEVICES];
 extern unsigned long uniqueId;
 
 // The current NMEA 2000 network address of this device
-extern unsigned int networkAddress;
+extern int networkAddress;
 
 #ifdef  __WXMSW__ 
 // NMEA 2000 imported driver function prototypes
