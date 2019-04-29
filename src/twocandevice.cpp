@@ -56,6 +56,9 @@ TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_DETACHED) 
 	receivedFrames = 0;
 	transmittedFrames = 0;
 	droppedFrames = 0;
+	
+	// mnonotonically incrementing counter
+	heartbeatCounter = 0;
 
 	// Each AIS multi sentence message has a sequential Message ID
 	AISsequentialMessageId = 0;
@@ -108,7 +111,7 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 			// BUG BUG Perhaps add an extra field in which to store the devices' hearbeat interval, rather than comparing against 60'
 				returnCode = SendISORequest(i, 60928);
 				if (returnCode == TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to: %lu"), i);
+					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to %lu"), i);
 				}
 				else {
 					wxLogMessage(_T("TwoCan Device, Error sending ISO Request  for 60928 to %lu: %lu"), i, returnCode);
@@ -201,11 +204,11 @@ int TwoCanDevice::Init(wxString driverPath) {
 
 				}
 				// If we have at least successfully claimed an address and sent our product info, and the heartbeat is enabled, 
-				// start a timer that will send PGN 126993 NMEA Heartbeat every 30 seconds
+				// start a timer that will send PGN 126993 NMEA Heartbeat every 60 seconds
 				if (enableHeartbeat == TRUE) {
 					heartbeatTimer = new wxTimer();
 					heartbeatTimer->Bind(wxEVT_TIMER, &TwoCanDevice::OnHeartbeat, this);
-					heartbeatTimer->Start(CONST_ONE_SECOND * 30, wxTIMER_CONTINUOUS);
+					heartbeatTimer->Start(CONST_ONE_SECOND * 60, wxTIMER_CONTINUOUS);
 				}
 			}
 		}
@@ -243,11 +246,11 @@ int TwoCanDevice::Init(wxString driverPath) {
 				else {
 					wxLogMessage(_T("TwoCan Device, Claimed network address: %lu"), networkAddress);
 					// If we have at least successfully claimed an address and the heartbeat is enabled, 
-					// start a timer that will send PGN 126993 NMEA Heartbeat every 30 seconds
+					// start a timer that will send PGN 126993 NMEA Heartbeat every 60 seconds
 					if (enableHeartbeat == TRUE) {
 						heartbeatTimer = new wxTimer();
 						heartbeatTimer->Bind(wxEVT_TIMER, &TwoCanDevice::OnHeartbeat, this);
-						heartbeatTimer->Start(CONST_ONE_SECOND * 30, wxTIMER_CONTINUOUS);;
+						heartbeatTimer->Start(CONST_ONE_SECOND * 60, wxTIMER_CONTINUOUS);;
 					}
 					returnCode = SendProductInformation();
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
@@ -956,6 +959,8 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			deviceInformation.networkAddress = header.source;
 			
 			// BUG BUG Extraneous Noise Remove for production
+			
+			#if __DEBUG__
 
 			wxLogMessage(_T("TwoCan Network, Address: %d"), deviceInformation.networkAddress);
 			wxLogMessage(_T("TwoCan Network, Manufacturer: %d"), deviceInformation.manufacturerId);
@@ -963,6 +968,8 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			wxLogMessage(_T("TwoCan Network, Class: %d"), deviceInformation.deviceClass);
 			wxLogMessage(_T("TwoCan Network, Function: %d"), deviceInformation.deviceFunction);
 			wxLogMessage(_T("TwoCan Network, Industry %d"), deviceInformation.industryGroup);
+			
+			#endif
 		
 			// Maintain the map of the NMEA 2000 network.
 			// either this is a newly discovered device, or it is resending its address claim
@@ -1054,7 +1061,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		break;
 		
 	case 126993: // Heartbeat
-		DecodePGN126993(payload);
+		DecodePGN126993(header.source, payload);
 		// Update the matching entry in the network map
 		// BUG BUG what happens if we are yet to have populated this entry with the device details ?? Probably nothing...
 		networkMap[header.source].timestamp = wxDateTime::Now();
@@ -1065,6 +1072,8 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		DecodePGN126996(payload, &productInformation);
 		
 		// BUG BUG Extraneous Noise
+		
+		#if __DEBUG__
 		wxLogMessage(_T("TwoCan Node, Network Address %d"), header.source);
 		wxLogMessage(_T("TwoCan Node, DB Ver: %d"), productInformation.dataBaseVersion);
 		wxLogMessage(_T("TwoCan Node, Product Code: %d"), productInformation.productCode);
@@ -1074,6 +1083,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		wxLogMessage(_T("TwoCan Node, Model Version: %s"), productInformation.modelVersion);
 		wxLogMessage(_T("TwoCan Node, Software Version: %s"), productInformation.softwareVersion);
 		wxLogMessage(_T("TwoCan Node, Serial Number: %s"), productInformation.serialNumber);
+		#endif
 		
 		// Maintain the map of the NMEA 2000 network.
 		networkMap[header.source].productInformation = productInformation;
@@ -1372,7 +1382,7 @@ bool TwoCanDevice::DecodePGN126992(const byte *payload, std::vector<wxString> *n
 
 // BUG BUG  Untested as have yet to see any of these for real
 // Decode PGN 126993 NMEA Heartbeat
-bool TwoCanDevice::DecodePGN126993(const byte *payload) {
+bool TwoCanDevice::DecodePGN126993(const int source, const byte *payload) {
 	if (payload != NULL) {
 
 		unsigned int timeOffset;
@@ -1391,7 +1401,9 @@ bool TwoCanDevice::DecodePGN126993(const byte *payload) {
 		equipmentState = payload[5] & 0xF0;
 
 		// BUG BUG Remove for production once this has been tested
-		wxLogMessage(wxString::Format("TwoCan Heartbeat, Time: %d, Count: %d, CAN 1: %d, CAN 2: %d", timeOffset, counter, class1CanState, class2CanState));
+		#if __DEBUG__
+		wxLogMessage(wxString::Format("TwoCan Heartbeat, Source: %d, Time: %d, Count: %d, CAN 1: %d, CAN 2: %d", source, timeOffset, counter, class1CanState, class2CanState));
+		#endif
 		
 		return TRUE;
 	}
@@ -3574,14 +3586,21 @@ int TwoCanDevice::SendHeartbeat() {
 	byte payload[8];
 	memset(payload, 0xFF, CONST_PAYLOAD_LENGTH);
 
-	//60000 milliseconds
-	payload[0] = 600 & 0xFF;
-	payload[1]  = (600 >> 8) & 0xFF;
-	payload[2] = 1;
-	payload[3] = 1; // Class 1 CAN State
-	payload[4] = 1; // Class 2 CAN State
-	payload[5] = 1; // No idea  &0xF0;
+	//BUG BUG 60000 milliseconds equals one minute. Should match this to the heartbeat timer interval
+	payload[0] = 0x60; // 60000 & 0xFF;
+	payload[1]  = 0xEA; // (60000 >> 8) & 0xFF;
+	payload[2] = heartbeatCounter;
+	payload[3] = 0xFF; // Class 1 CAN State, From observation of B&G devices indicates 255 ? undefined ??
+	payload[4] = 0xFF; // Class 2 CAN State, From observation of B&G devices indicates 255 ? undefined ??
+	payload[5] = 0xFF; // No idea, leave as 255 undefined
+	payload[6] = 0xFF; //            "
+	payload[7] = 0xFF; //            "
 
+	heartbeatCounter++;
+	if (heartbeatCounter == 253) {  // From observation of B&G devices, appears to rollover after 252 ??
+		heartbeatCounter = 0;
+	}
+	
 #ifdef __WXMSW__
 	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
 #endif

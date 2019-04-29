@@ -93,7 +93,7 @@ extern const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT;
 #define CONST_LOGFILE_NAME _T("twocan.log")
 #endif
 
-// Globally defined variabes
+// Globally defined variables
 
 // Name of currently selected CAN Interface
 extern wxString canAdapter;
@@ -210,6 +210,7 @@ private:
 	// Heartbeat timer
 	wxTimer *heartbeatTimer;
 	void OnHeartbeat(wxEvent &event);
+	int heartbeatCounter;
 
 	// Statistics
 	int receivedFrames;
@@ -272,7 +273,7 @@ private:
 	bool DecodePGN126992(const byte *payload, std::vector<wxString> *nmeaSentences);
 	
 	// Decode PGN 126993 NMEA heartbeat
-	bool DecodePGN126993(const byte *payload);
+	bool DecodePGN126993(const int souce, const byte *payload);
 
 	// Decode PGN 126996 NMEA Product Information
 	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
