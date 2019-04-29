@@ -495,18 +495,17 @@ int TwoCanDevice::LoadWindowsDriver(wxString driverPath) {
 				return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DEVICE,TWOCAN_ERROR_OPEN_DATA_RECEIVED_EVENT);
 			}
 
-			// Get and save the pointer to the write function
-			writeFrame = (LPFNDLLWrite)GetProcAddress(dllHandle, "WriteAdapter");
+			// Get and save the pointer to the write function if we are an active device
+			if (deviceMode == TRUE) {
+				writeFrame = (LPFNDLLWrite)GetProcAddress(dllHandle, "WriteAdapter");
 
-			if (writeFrame != NULL)	{
-				return TWOCAN_RESULT_SUCCESS;
-			}
-			else {
-				// BUG BUG Log non fatal error, the plug-in can still receive data.
-				wxLogError(_T("TwoCan Device, Invalid Write function: %d\n"), GetLastError());
-				deviceMode = FALSE;
-				enableHeartbeat = FALSE;
-				//return SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_INVALID_WRITE_FUNCTION);
+				if (writeFrame == NULL)	{
+					// BUG BUG Log non fatal error, the plug-in can still receive data.
+					wxLogError(_T("TwoCan Device, Invalid Write function: %d\n"), GetLastError());
+					deviceMode = FALSE;
+					enableHeartbeat = FALSE;
+					//return SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_INVALID_WRITE_FUNCTION);
+				}
 			}
 						
 			return TWOCAN_RESULT_SUCCESS;
@@ -1064,6 +1063,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		
 	case 126996: // Product Information
 		DecodePGN126996(payload, &productInformation);
+		
 		// BUG BUG Extraneous Noise
 		wxLogMessage(_T("TwoCan Node, Network Address %d"), header.source);
 		wxLogMessage(_T("TwoCan Node, DB Ver: %d"), productInformation.dataBaseVersion);
@@ -3496,7 +3496,7 @@ int TwoCanDevice::SendISORequest(const byte destination, const unsigned int pgn)
 	header.pgn = 59904;
 	header.destination = destination;
 	header.source = networkAddress;
-	header.priority = 5;
+	header.priority = CONST_PRIORITY_MEDIUM;
 	
 	unsigned int id;
 	TwoCanUtils::EncodeCanHeader(&id,&header);
@@ -3521,7 +3521,7 @@ int TwoCanDevice::SendAddressClaim(const unsigned int sourceAddress) {
 	header.pgn = 60928;
 	header.destination = CONST_GLOBAL_ADDRESS;
 	header.source = sourceAddress;
-	header.priority = 5;
+	header.priority = CONST_PRIORITY_MEDIUM;
 	
 	unsigned int id;
 	TwoCanUtils::EncodeCanHeader(&id,&header);
@@ -3566,7 +3566,7 @@ int TwoCanDevice::SendHeartbeat() {
 	header.pgn = 126993;
 	header.destination = CONST_GLOBAL_ADDRESS;
 	header.source = networkAddress;
-	header.priority = 5;
+	header.priority = CONST_PRIORITY_MEDIUM;
 
 	unsigned int id;
 	TwoCanUtils::EncodeCanHeader(&id, &header);
@@ -3598,7 +3598,7 @@ int TwoCanDevice::SendProductInformation() {
 	header.pgn = 126996;
 	header.destination = CONST_GLOBAL_ADDRESS;
 	header.source = networkAddress;
-	header.priority = 5;
+	header.priority = CONST_PRIORITY_MEDIUM;
 	
 	byte payload[134];
 		
@@ -3648,7 +3648,7 @@ int TwoCanDevice::SendSupportedPGN() {
 	header.pgn = 126464;
 	header.destination = CONST_GLOBAL_ADDRESS;
 	header.source = networkAddress;
-	header.priority = 5;
+	header.priority = CONST_PRIORITY_MEDIUM;
 	
 	// BUG BUG Should define our supported Parameter Group Numbers somewhere else, not compiled int the code ??
 	unsigned int receivedPGN[] = {59904, 59392, 60928, 65240, 126464, 126992, 126993, 126996, 
@@ -3699,7 +3699,7 @@ int TwoCanDevice::SendISOResponse(unsigned int sender, unsigned int pgn) {
 	header.pgn = 59392;
 	header.destination = sender;
 	header.source = networkAddress;
-	header.priority = 5;
+	header.priority = CONST_PRIORITY_MEDIUM;
 	
 	unsigned int id;
 	TwoCanUtils::EncodeCanHeader(&id,&header);
