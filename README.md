@@ -27,7 +27,8 @@ Yacht Devices: 19:07:47.607 R 0DF80503 00 2B 2D 9E 44 5A A0 A1
 For Linux it does not use a "plug-in" driver model, rather it uses two "baked in" classes that support the SocketCAN interface and the log file reader. Any CAN bus adapter that supports the SocketCAN interface "should" work. It has been tested with both native interfaces (eg. can0), serial interfaces (eg. slcan0) and virtual interfaces (eg. vcan0). 
 
 Two hardware adapters have been successfully tested under Linux:
-Canable Cantact - (see above) 
+Canable Cantact - (see above)
+
 Waveshare CAN Hat for Raspberry PI - https://www.waveshare.com/product/modules/communication/rs232-rs485-can/rs485-can-hat.htm
 
 A good reference to using & configuring the CAN interfaces on Linux can be found at: https://elinux.org/Bringing_CAN_interface_up.
@@ -57,9 +58,9 @@ For Linux (or I should more correctly say for Raspbian), the WaveShare CAN hat f
 
 sudo ifconfig can* txqueuelen 1000 (replace * with 0, 1 or whatever number your can interface is configured to use) 
 
-For the Canable Cantact device it appears to drop frames (I may never have noticed this in previous TwoCan releases as the plugin never requested or received some of these NMEA 2000 fast message frames). The workaround is to reflash the Canable Cantact device with the candlelight firmware, which then enables the device to use the Native CAN interface. It also requires the same command described above to increase the transmission queue length.
+For the Canable Cantact device it appears to drop frames (I may never have noticed this in previous TwoCan releases as the plugin never requested or received some of these NMEA 2000 fast message frames). The workaround is to reflash the Canable Cantact device with the candlelight firmware, which then enables the device to use the Native CAN interface rather than serial line CAN (slcan). It also requires the same command described above to increase the transmission queue length.
 
-For Windows, updated plugin drivers for the hardware adapters are required. The only hardware adapter that has been updated and tested is the Kvaser Leaflight.
+For Windows, updated plugin drivers for the hardware adapters are required. The only hardware adapter that has been updated and tested is the Kvaser Leaflight. The plugin drivers for the other two hardware adapters have not yet been updated to support active mode.
 
 Obtaining the source code
 -------------------------
