@@ -57,7 +57,7 @@ TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_DETACHED) 
 	transmittedFrames = 0;
 	droppedFrames = 0;
 	
-	// mnonotonically incrementing counter
+	// monotonically incrementing counter
 	heartbeatCounter = 0;
 
 	// Each AIS multi sentence message has a sequential Message ID
@@ -125,7 +125,7 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 				// No address claim has been received for this device
 				returnCode = SendISORequest(i, 60928);
 				if (returnCode == TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to: %lu"), i);
+					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to %lu"), i);
 				}
 				else {
 					wxLogMessage(_T("TwoCan Device, Error sending ISO Request  for 60928 to %lu: %lu"), i, returnCode);
@@ -141,7 +141,7 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 		// No devices present on the network (yet)
 		returnCode = SendISORequest(CONST_GLOBAL_ADDRESS, 60928);
 		if (returnCode == TWOCAN_RESULT_SUCCESS) {
-			wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to: %lu"), CONST_GLOBAL_ADDRESS);
+			wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to %lu"), CONST_GLOBAL_ADDRESS);
 		}
 		else {
 			wxLogMessage(_T("TwoCan Device, Error sending ISO Request for 60928  to %lu: %lu"), CONST_GLOBAL_ADDRESS, returnCode);
@@ -889,7 +889,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 	std::vector<wxString> nmeaSentences;
 	bool result = FALSE;
 
-	// If we receive a frame from a devce, then by definition it is still alive!
+	// If we receive a frame from a device, then by definition it is still alive!
 	networkMap[header.source].timestamp = wxDateTime::Now();
 	
 	switch (header.pgn) {
@@ -960,7 +960,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			
 			// BUG BUG Extraneous Noise Remove for production
 			
-			#if __DEBUG__
+#ifndef NDEBUG
 
 			wxLogMessage(_T("TwoCan Network, Address: %d"), deviceInformation.networkAddress);
 			wxLogMessage(_T("TwoCan Network, Manufacturer: %d"), deviceInformation.manufacturerId);
@@ -969,7 +969,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			wxLogMessage(_T("TwoCan Network, Function: %d"), deviceInformation.deviceFunction);
 			wxLogMessage(_T("TwoCan Network, Industry %d"), deviceInformation.industryGroup);
 			
-			#endif
+#endif
 		
 			// Maintain the map of the NMEA 2000 network.
 			// either this is a newly discovered device, or it is resending its address claim
@@ -1073,7 +1073,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		
 		// BUG BUG Extraneous Noise
 		
-		#if __DEBUG__
+#ifndef NDEBUG
 		wxLogMessage(_T("TwoCan Node, Network Address %d"), header.source);
 		wxLogMessage(_T("TwoCan Node, DB Ver: %d"), productInformation.dataBaseVersion);
 		wxLogMessage(_T("TwoCan Node, Product Code: %d"), productInformation.productCode);
@@ -1083,7 +1083,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		wxLogMessage(_T("TwoCan Node, Model Version: %s"), productInformation.modelVersion);
 		wxLogMessage(_T("TwoCan Node, Software Version: %s"), productInformation.softwareVersion);
 		wxLogMessage(_T("TwoCan Node, Serial Number: %s"), productInformation.serialNumber);
-		#endif
+#endif
 		
 		// Maintain the map of the NMEA 2000 network.
 		networkMap[header.source].productInformation = productInformation;
@@ -1380,7 +1380,6 @@ bool TwoCanDevice::DecodePGN126992(const byte *payload, std::vector<wxString> *n
 	}
 }
 
-// BUG BUG  Untested as have yet to see any of these for real
 // Decode PGN 126993 NMEA Heartbeat
 bool TwoCanDevice::DecodePGN126993(const int source, const byte *payload) {
 	if (payload != NULL) {
@@ -1401,9 +1400,9 @@ bool TwoCanDevice::DecodePGN126993(const int source, const byte *payload) {
 		equipmentState = payload[5] & 0xF0;
 
 		// BUG BUG Remove for production once this has been tested
-		#if __DEBUG__
+#ifndef NDEBUG
 		wxLogMessage(wxString::Format("TwoCan Heartbeat, Source: %d, Time: %d, Count: %d, CAN 1: %d, CAN 2: %d", source, timeOffset, counter, class1CanState, class2CanState));
-		#endif
+#endif
 		
 		return TRUE;
 	}
@@ -1537,7 +1536,7 @@ bool TwoCanDevice::DecodePGN127258(const byte *payload, std::vector<wxString> *n
 
 		variation = RADIANS_TO_DEGREES((float)variation / 10000);
 
-		// BUG BUG Needs too be added to other sentences such as HDG and RMC conversions
+		// BUG BUG Needs to be added to other sentences such as HDG and RMC conversions
 		// As there is no direct NMEA 0183 sentence just for variation
 		return FALSE;
 	}
@@ -2555,7 +2554,7 @@ bool TwoCanDevice::DecodePGN129285(const byte * payload, std::vector<wxString> *
 		supplementaryInfo = payload[8] & 0x30;
 
 		// NMEA reserved
-		// unsigned short reserveA = payload[8} & 0x0F;
+		// unsigned short reservedA = payload[8} & 0x0F;
 
 		std::string routeName;
 		// BUG BUG If this is null terminated, just use strcpy
