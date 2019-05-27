@@ -1100,8 +1100,9 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		break;
 		
 	case 127251: // Rate of Turn
-		// BUG BUG Needs a flag ??
-		result = DecodePGN127251(payload, &nmeaSentences);
+		if (supportedPGN & FLAGS_ROT) {
+			result = DecodePGN127251(payload, &nmeaSentences);
+		}
 		break;
 		
 	case 127258: // Magnetic Variation

@@ -77,7 +77,8 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("130310 ") + _("Water Temperature") + _(" (MWT)"));
 	pgn->Add(_T("129808 ") + _("Digital Selective Calling") + _T(" (DSC)"));
 	pgn->Add(_T("129038..41 ") + _("AIS Class A & B messages") + _T(" (VDM)"));
-	pgn->Add(_T("129283..5 ") + _("Route/Waypoint") + _T("(BWR/BOD/WPL/RTE)"));
+	pgn->Add(_T("129283..5 ") + _("Route/Waypoint") + _T(" (BWR/BOD/WPL/RTE)"));
+	pgn->Add(_T("127251 ") + _("Rate of Turn") + _T(" (ROT)"));
 		
 	// Populate the listbox and check/uncheck as appropriate
 	for (size_t i = 0; i < pgn->Count(); i++) {
@@ -98,7 +99,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 			cmbInterfaces->SetStringSelection(it->first);
 		}
 	}
-
+	
 	// BUG BUG Localization
 	chkLogRaw->SetLabel(_("Log raw NMEA 2000 frames"));
 

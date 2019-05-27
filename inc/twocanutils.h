@@ -184,6 +184,7 @@
 #define FLAGS_DSC 512
 #define FLAGS_AIS 1024
 #define FLAGS_RTE 2048
+#define FLAGS_ROT 4096
 
 
 // Bit values to determine in which format the log file is written
