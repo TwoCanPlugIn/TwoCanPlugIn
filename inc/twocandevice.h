@@ -368,8 +368,14 @@ private:
 	// Decode PGN 130310 NMEA Water & Air Temperature and Pressure
 	bool DecodePGN130310(const byte *payload, std::vector<wxString> *nmeaSentences);
 
+	// Decode PGN 130311 NMEA Environmental Parameters (supercedes 130310)
+	bool DecodePGN130311(const byte *payload, std::vector<wxString> *nmeaSentences);
+
 	// Decode PGN 130312 NMEA Temperature
 	bool DecodePGN130312(const byte *payload, std::vector<wxString> *nmeaSentences);
+	
+	// Decode PGN 130316 NMEA Temperature Extended Range
+	bool DecodePGN130316(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 130577 NMEA Direction Data
 	bool DecodePGN130577(const byte *payload, std::vector<wxString> *nmeaSentences);

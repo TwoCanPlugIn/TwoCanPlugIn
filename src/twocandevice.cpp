@@ -1223,10 +1223,22 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			result = DecodePGN130310(payload, &nmeaSentences);
 		}
 		break;
+		
+	case 130311: // Environmental Parameters (supercedes 130310)
+		if (supportedPGN & FLAGS_MWT) {
+			result = DecodePGN130311(payload, &nmeaSentences);
+		}
+		break;
 	
 	case 130312: // Temperature
 		if (supportedPGN & FLAGS_MWT) {
 			result = DecodePGN130312(payload, &nmeaSentences);
+		}
+		break;
+		
+	case 130316: // Temperature Extended Range
+		if (supportedPGN & FLAGS_MWT) {
+			result = DecodePGN130316(payload, &nmeaSentences);
 		}
 		break;
 			
@@ -3423,6 +3435,44 @@ bool TwoCanDevice::DecodePGN130310(const byte *payload, std::vector<wxString> *n
 	}
 }
 
+// Decode PGN 130311 NMEA Environment  (supercedes 130311)
+// $--MTW,x.x,C*hh<CR><LF>
+bool TwoCanDevice::DecodePGN130311(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte sid;
+		sid = payload[0];
+
+		byte temperatureSource;
+		temperatureSource = payload[1] & 0x3F;
+		
+		byte humiditySource;
+		humiditySource = (payload[1] & 0xC0) >> 6;
+		
+		int temperature;
+		temperature = payload[2] | (payload[3] << 8);
+			
+		int humidity;
+		humidity = payload[4] | (payload[5] << 8);
+		//	Resolution 0.004
+			
+		int pressure;
+		pressure = payload[6] | (payload[7] << 8);
+		
+		if (temperatureSource == TEMPERATURE_SEA) {
+			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", (float)(temperature * 0.01f) + CONST_KELVIN));
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+	}
+	else {
+		return FALSE;
+	}
+}
+
+
 // Decode PGN 130312 NMEA Temperature
 // $--MTW,x.x,C*hh<CR><LF>
 bool TwoCanDevice::DecodePGN130312(const byte *payload, std::vector<wxString> *nmeaSentences) {
@@ -3456,6 +3506,41 @@ bool TwoCanDevice::DecodePGN130312(const byte *payload, std::vector<wxString> *n
 		return FALSE;
 	}
 }
+
+// Decode PGN 130316 NMEA Temperature Extended Range
+// $--MTW,x.x,C*hh<CR><LF>
+bool TwoCanDevice::DecodePGN130316(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte sid;
+		sid = payload[0];
+
+		byte instance;
+		instance = payload[1];
+
+		byte source;
+		source = payload[2];
+
+		unsigned int actualTemperature;
+		actualTemperature = payload[3] | (payload[4] << 8) | (payload[5] << 16);
+
+		unsigned int setTemperature;
+		setTemperature = payload[6] | (payload[7] << 8);
+
+		if (source == TEMPERATURE_SEA) {
+
+			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", (float)(actualTemperature * 0.001f) + CONST_KELVIN));
+			return TRUE; 
+		}
+		else {
+			return FALSE;
+		}
+	}
+	else {
+		return FALSE;
+	}
+}
+
 
 // Decode PGN 130577 NMEA Direction Data
 // BUG BUG Work out what to convert this to
