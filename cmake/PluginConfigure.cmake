@@ -5,6 +5,7 @@
 ##---------------------------------------------------------------------------
 
 SET(PLUGIN_SOURCE_DIR .)
+include  ("VERSION.cmake")
 
 # This should be 2.8.0 to have FindGTK2 module
 IF (COMMAND cmake_policy)
@@ -16,6 +17,7 @@ ENDIF (COMMAND cmake_policy)
 MESSAGE (STATUS "*** Staging to build ${PACKAGE_NAME} ***")
 
 configure_file(cmake/version.h.in ${PROJECT_SOURCE_DIR}/src/version.h)
+
 SET(PACKAGE_VERSION "${PLUGIN_VERSION_MAJOR}.${PLUGIN_VERSION_MINOR}.${PLUGIN_VERSION_PATCH}")
 
 #SET(CMAKE_BUILD_TYPE Debug)
