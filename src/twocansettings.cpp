@@ -296,6 +296,7 @@ bool TwoCanSettings::EnumerateDrivers(void) {
 
 	adapterDirectoryName.AppendDir(_T("plugins"));
 	adapterDirectoryName.AppendDir(_T("twocan_pi"));
+	adapterDirectoryName.AppendDir(_T("data"));
 	adapterDirectoryName.AppendDir(_T("drivers"));
 	adapterDirectoryName.Normalize();
 
