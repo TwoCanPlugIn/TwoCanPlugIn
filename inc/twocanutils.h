@@ -70,7 +70,7 @@
 #define CONST_CERTIFICATION_LEVEL 0 // We have not been certified, although I think we support the PGN's required for level 1
 #define CONST_LOAD_EQUIVALENCY 1 // PC is self powered, so assume little or no drain on NMEA 2000 network
 #define CONST_MODEL_ID "TwoCan plugin"
-#define CONST_SOFTWARE_VERSION  "1.4" // BUG BUG Should derive from PLUGIN_VERSION_MAJOR etc.
+#define CONST_SOFTWARE_VERSION  "1.5" // BUG BUG Should derive from PLUGIN_VERSION_MAJOR etc.
 
 // Maximum number of multi-frame Fast Messages we can support in the Fast Message Buffer, just an arbitary number
 #define CONST_MAX_MESSAGES 100
@@ -185,15 +185,17 @@
 #define FLAGS_AIS 1024
 #define FLAGS_RTE 2048
 #define FLAGS_ROT 4096
+#define FLAGS_XTE 8192
+#define FLAGS_XDR 16384
 
 
 // Bit values to determine in which format the log file is written
-// RAW is the only mode currently implemented
+#define FLAGS_LOG_NONE 0
 #define FLAGS_LOG_RAW 1 // My format 12 pairs of hex digits, 4 the CAN 2.0 Id, 8 the payload 
-#define FLAGS_LOG_KEES 2 // I recall seeing this format used in Canboat
-#define FLAGS_LOG_ACTISENSE 4 // And this one in Open Skipper.
-#define FLAGS_LOG_YACHTDEVICES 8 // Found some samples from their Voyge Data Recorder
-#define FLAGS_LOG_CANDUMP 16 // Candump, a Linux utility
+#define FLAGS_LOG_CANBOAT 2 // I recall seeing this format used in Canboat
+#define FLAGS_LOG_CANDUMP 3 // Candump, a Linux utility
+#define FLAGS_LOG_YACHTDEVICES 4 // Found some samples from their Voyage Data Recorder
+#define FLAGS_LOG_CSV 5 // Comma Separted Variables
 
 // All the NMEA 2000 data is transmitted as an unsigned char which for convenience sake, I call a byte
 typedef unsigned char byte;
@@ -234,12 +236,12 @@ typedef struct DeviceInformation {
 	unsigned long deviceName;
 } DeviceInformation;
 
-// Used  to store the data for the Network Map, combines elements from address claim & poduct information
+// Used  to store the data for the Network Map, combines elements from address claim & product information
 typedef struct NetworkInformation {
 	unsigned long uniqueId;
 	unsigned int manufacturerId;
 	ProductInformation productInformation;
-	wxDateTime timestamp; // Updated upon reception of heartbeat or address claim. Used to determin stale entries
+	wxDateTime timestamp; // Updated upon reception of heartbeat or address claim. Used to determine stale entries
 } NetworkInformation;
 
 // Utility functions used by both the TwoCanDevice and the CAN adapters
@@ -265,6 +267,109 @@ public:
 #ifdef __WXMSW__
 	static int GetUniqueNumber(unsigned long *uniqueNumber);
 #endif
+
+	// Data validation
+	// Found somewhere, either Canboat or OpenSkipper
+	// For each data type, the following is defined
+	// MAX VALUE indicates Data not available
+	// MAX VALUE -1 indicates Data out of range
+	// MAX VALUE - 2 indicates NMEA reserved (not sure exactly what it is reserved for)
+
+	// BUG BUG from a performance perspective would checking (value > MAX_VALUE - 2) be better ?
+	template<typename T>
+	static bool IsDataValid(T value);
+
+	static bool IsDataValid(byte value) {
+		if ((value += UCHAR_MAX) || (value == UCHAR_MAX - 1) || (value == UCHAR_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+
+	static bool IsDataValid(char value) {
+		if ((value == CHAR_MAX) || (value == CHAR_MAX - 1) || (value == CHAR_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+
+	static bool IsDataValid(unsigned short value) {
+		if ((value == USHRT_MAX) || (value == USHRT_MAX - 1) || (value == USHRT_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+
+	static bool IsDataValid(short value) {
+		if ((value == SHRT_MAX) || (value == SHRT_MAX - 1) || (value == SHRT_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+
+	static bool IsDataValid(unsigned int value) {
+		if ((value == UINT_MAX) || (value == UINT_MAX - 1) || (value == UINT_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+
+	static bool IsDataValid(int value) {
+		if ((value == INT_MAX) || (value == INT_MAX - 1) || (value == INT_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+
+	static bool IsDataValid(unsigned long value) {
+		if ((value == ULONG_MAX) || (value == ULONG_MAX - 1) || (value == ULONG_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+
+	static bool IsDataValid(long value) {
+		if ((value == LONG_MAX) || (value == LONG_MAX - 1) || (value == LONG_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+	
+	static bool IsDataValid(unsigned long long value) {
+		if ((value == ULLONG_MAX) || (value == ULLONG_MAX - 1) || (value == ULLONG_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+
+	static bool IsDataValid(long long value) {
+		if ((value == LLONG_MAX) || (value == LLONG_MAX - 1) || (value == LLONG_MAX - 2)) {
+			return FALSE;
+		}
+		else {
+			return TRUE;
+		}
+	}
+
+
 	
 };
 

@@ -1,9 +1,9 @@
-ï»¿TwoCan plug-in for OpenCPN
+TwoCan plug-in for OpenCPN
 ==========================
 
 Inspired by Canboat and Openskipper, frustrated by those who claim "OpenCPN is not a hardware experimenter's platform", and desiring to give back something to the OpenCPN community.
 
-TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000Â® networks. It enables some NMEA2000Â® data to be directly integrated with OpenCPN by converting some NMEA2000Â® messages to NMEA 183 sentences and inserting them into the OpenCPN data stream.
+TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000® networks. It enables some NMEA2000® data to be directly integrated with OpenCPN by converting some NMEA2000® messages to NMEA 183 sentences and inserting them into the OpenCPN data stream.
 
 For Windows it uses a "plug-in" driver model to support different CAN bus adapters and different log file formats. 
 Three hardware adapters are currently supported:
@@ -26,10 +26,14 @@ Yacht Devices: 19:07:47.607 R 0DF80503 00 2B 2D 9E 44 5A A0 A1
 
 For Linux it does not use a "plug-in" driver model, rather it uses two "baked in" classes that support the SocketCAN interface and the log file reader. Any CAN bus adapter that supports the SocketCAN interface "should" work. It has been tested with both native interfaces (eg. can0), serial interfaces (eg. slcan0) and virtual interfaces (eg. vcan0). 
 
-Two hardware adapters have been successfully tested under Linux:
+I have successfully used two hardware adapters under Linux:
 Canable Cantact - (see above)
 
 Waveshare CAN Hat for Raspberry PI - https://www.waveshare.com/product/modules/communication/rs232-rs485-can/rs485-can-hat.htm
+
+Another user is succesfully using the following adapter:
+USBtin
+https://www.fischl.de/usbtin/
 
 A good reference to using & configuring the CAN interfaces on Linux can be found at: https://elinux.org/Bringing_CAN_interface_up.
 
@@ -46,13 +50,13 @@ sudo slcand -o -s5 -t hw -S 1000000 /dev/ttyACM0
 
 sudo ip link set up slcan0
 
-The Linux Log File Reader automagicallyâ„¢ detects the four supported log file formats.
+The Linux Log File Reader automagically™ detects the four supported log file formats.
 
-In addition, NMEA 2000 frames may be logged by the plugin. By default they are written using the TwoCan format and are written to the user's home directory and named using the following convention: twocan-YYYY-MM-DD_HHmmSS.log.
+In addition, NMEA 2000 frames may be logged by the plugin. Prior to Version 1.5 only the raw TwoCan log format was supported. With Version 1.5 the following formats are supported: TwoCan Raw, Canboat, Candump, Yacht Devices and Comma Separated Variable (CSV). All log files fils are written to the user's home directory and named using the following convention: twocan-YYYY-MM-DD_HHmmSS.log.
 
-The current release, version 1.4 allows TwoCan to be configured to actively participate on the NMEA 2000 network, claiming an address, sending heartbeats and responding to a few requests (such as product information). Please note that this is not fully tested and may interfere with the correct functioning of the NMEA 2000 network. If any problems occur, disable the active device functionality and if possible, file a bug report.
+From version 1.4 onwards, the TwoCan plugin may be configured to actively participate on the NMEA 2000 network, claiming an address, sending heartbeats and responding to a few requests (such as product information). Please note that this is not fully tested and may interfere with the correct functioning of the NMEA 2000 network. If any problems occur, disable the active device functionality and if possible, file a bug report.
 
-If using the active device feature in version 1.4 please be aware of the following:
+If using the active device feature in versions 1.4 & 1.5 please be aware of the following:
 
 For Linux (or I should more correctly say for Raspbian), the WaveShare CAN hat functions correctly, but requires the additional following command:
 
@@ -118,4 +122,4 @@ License
 -------
 The plugin code is licensed under the terms of the GPL v3 or, at your convenience, a later version.
 
-NMEA2000Â® is a registered trademark of the National Marine Electronics Association.
+NMEA2000® is a registered trademark of the National Marine Electronics Association.

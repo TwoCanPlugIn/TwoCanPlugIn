@@ -77,8 +77,10 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("130310 ") + _("Water Temperature") + _(" (MWT)"));
 	pgn->Add(_T("129808 ") + _("Digital Selective Calling") + _T(" (DSC)"));
 	pgn->Add(_T("129038..41 ") + _("AIS Class A & B messages") + _T(" (VDM)"));
-	pgn->Add(_T("129283..5 ") + _("Route/Waypoint") + _T(" (BWR/BOD/WPL/RTE)"));
+	pgn->Add(_T("129285 ") + _("Route/Waypoint") + _T(" (BWR/BOD/WPL/RTE)"));
 	pgn->Add(_T("127251 ") + _("Rate of Turn") + _T(" (ROT)"));
+	pgn->Add(_T("129283 ") + _("Cross Track Error") + _T(" (XTE)"));
+	pgn->Add(_T("127257 ") + _("Attitude") + _T(" (XDR)"));
 		
 	// Populate the listbox and check/uncheck as appropriate
 	for (size_t i = 0; i < pgn->Count(); i++) {
@@ -100,14 +102,6 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 		}
 	}
 	
-	// BUG BUG Localization
-	chkLogRaw->SetLabel(_("Log raw NMEA 2000 frames"));
-
-	// BUG BUG Support different log formats
-	if (logLevel & FLAGS_LOG_RAW) {
-		chkLogRaw->SetValue(TRUE);
-	}
-
 	// About Tab
 	bmpAbout->SetBitmap(wxBitmap(twocan_64));
   
@@ -156,14 +150,34 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	
 	// Device tab
 	chkDeviceMode->SetValue(deviceMode);
+	chkEnableHeartbeat->Enable(chkDeviceMode->IsChecked());
 	if (deviceMode == TRUE) {
 		chkEnableHeartbeat->SetValue(enableHeartbeat);
+	}
+	else {
+		chkEnableHeartbeat->SetValue(FALSE);
 	}
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
 	labelModelId->SetLabel(wxString::Format("Model ID: TwoCan plugin"));
 	labelManufacturer->SetLabel("Manufacturer: TwoCan");
 	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %s", CONST_SOFTWARE_VERSION));
+
+	// Logging Options
+	// Add Logging Options to the hashmap
+	logging["None"] = FLAGS_LOG_NONE;
+	logging["TwoCan"] = FLAGS_LOG_RAW;
+	logging["Canboat"] = FLAGS_LOG_CANBOAT;
+	logging["Candump"] = FLAGS_LOG_CANDUMP;
+	logging["YachtDevices"] = FLAGS_LOG_YACHTDEVICES;
+	logging["CSV"] = FLAGS_LOG_CSV;
+
+	for (LoggingOptions::iterator it = this->logging.begin(); it != this->logging.end(); it++){
+		cmbLogging->Append(it->first);
+		if (logLevel == it->second) {
+			cmbLogging->SetStringSelection(it->first);
+		}
+	}
 		
 	Fit();
 }
@@ -180,7 +194,7 @@ void TwoCanSettings::OnCheckPGN(wxCommandEvent &event) {
 } 
 
 // Enable Logging of Raw NMEA 2000 frames
-void TwoCanSettings::OnCheckLog(wxCommandEvent &event) {
+void TwoCanSettings::OnLogging(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
 
@@ -264,11 +278,6 @@ void TwoCanSettings::SaveSettings(void) {
 		supportedPGN |= 1 << (int)*it;
 	}
 
-	logLevel = 0;
-	if (chkLogRaw->IsChecked()) {
-		logLevel = FLAGS_LOG_RAW;
-	}
-
 	enableHeartbeat = FALSE;
 	if (chkEnableHeartbeat->IsChecked()) {
 		enableHeartbeat = TRUE;
@@ -284,6 +293,14 @@ void TwoCanSettings::SaveSettings(void) {
 	} 
 	else {
 		canAdapter = _T("None");
+	}
+
+	logLevel = FLAGS_LOG_NONE;
+	if (cmbLogging->GetSelection() != wxNOT_FOUND) {
+		logLevel = logging[cmbLogging->GetStringSelection()];
+	}
+	else {
+		logLevel = FLAGS_LOG_NONE;
 	}
 }
 

@@ -37,6 +37,8 @@
 // For Linux , "baked in" classes for the Log File reader and SocketCAN interface
 #include "twocanlogreader.h"
 #include "twocansocket.h"
+// For logging to get time values
+#include <sys/time.h>
 #endif
 
 // STL
@@ -113,7 +115,7 @@ extern bool enableHeartbeat;
 // Whether to Log raw NMEA 2000 messages
 extern int logLevel;
 
-// List of devices dicovered on the NMEA 2000 network
+// List of devices discovered on the NMEA 2000 network
 extern NetworkInformation networkMap[CONST_MAX_DEVICES];
 
 // The uniqueID of this device (also used as the serial number)
@@ -210,7 +212,7 @@ private:
 	// Heartbeat timer
 	wxTimer *heartbeatTimer;
 	void OnHeartbeat(wxEvent &event);
-	int heartbeatCounter;
+	byte heartbeatCounter;
 
 	// Statistics
 	int receivedFrames;
@@ -253,6 +255,9 @@ private:
 	int MapAppendEntry(const CanHeader header, const byte *data, const int position);
 	int MapFindMatchingEntry(const CanHeader header);
 	int MapGarbageCollector(void);
+	
+	// Log received frames
+	void LogReceivedFrames(const CanHeader *header, const byte *frame);
 
 	// Big switch statement to determine which function is called to decode each received NMEA 2000 message
 	void ParseMessage(const CanHeader header, const byte *payload);
@@ -273,7 +278,7 @@ private:
 	bool DecodePGN126992(const byte *payload, std::vector<wxString> *nmeaSentences);
 	
 	// Decode PGN 126993 NMEA heartbeat
-	bool DecodePGN126993(const int souce, const byte *payload);
+	bool DecodePGN126993(const int source, const byte *payload);
 
 	// Decode PGN 126996 NMEA Product Information
 	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
@@ -283,6 +288,9 @@ private:
 
 	// Decode PGN 127251 NMEA Rate of Turn (ROT)
 	bool DecodePGN127251(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 1272571 NMEA Attitude
+	bool DecodePGN127257(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 127258 NMEA Magnetic Variation
 	bool DecodePGN127258(const byte *payload, std::vector<wxString> *nmeaSentences);

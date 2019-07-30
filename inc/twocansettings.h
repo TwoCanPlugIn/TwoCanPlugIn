@@ -219,7 +219,7 @@ protected:
 	void OnInit(wxInitDialogEvent& event);
 	void OnChoice(wxCommandEvent &event);
 	void OnCheckPGN(wxCommandEvent &event);
-	void OnCheckLog(wxCommandEvent &event);
+	void OnLogging(wxCommandEvent &event);
 	void OnCheckMode(wxCommandEvent &event);
 	void OnCheckHeartbeat(wxCommandEvent &event);
 	void OnPause(wxCommandEvent &event);
@@ -240,6 +240,9 @@ private:
 	// Hashmap of CAN adapter names and corresponding "driver" files
 	WX_DECLARE_STRING_HASH_MAP(wxString, AvailableAdapters);
 	AvailableAdapters adapters;
+	// Hashmap of different logging options
+	WX_DECLARE_STRING_HASH_MAP(int, LoggingOptions);
+	LoggingOptions logging;
 
 };
 

@@ -79,6 +79,10 @@ int TwoCan::Init(void) {
 
 	// TwoCan preferences dialog
 	settingsDialog = NULL;
+	
+	// Initialize TwoCan Device to a nullptr to prevent crashes when trying to stop an unitialized device
+	// which is what happens upon forst startup. Bugger, there must be a better way.
+	twoCanDevice = nullptr;
 
 	// Toggles display of captured NMEA 2000 frames in the "debug" tab of the preferences dialog
 	debugWindowActive = FALSE;
@@ -114,8 +118,10 @@ bool TwoCan::DeInit(void) {
 	}
 	// Terminate the TwoCan Device Thread, but only if we have a valid driver selected !
 	if (canAdapter.CmpNoCase(_T("None")) != 0) {
-		if (twoCanDevice->IsRunning()) {
-			StopDevice();
+		if (twoCanDevice != nullptr) {
+			if (twoCanDevice->IsRunning()) {
+				StopDevice();
+			}
 		}
 	}
 	// Do not need to explicitly call the destructor for detached threads
@@ -277,13 +283,15 @@ bool TwoCan::SaveConfiguration(void) {
 void TwoCan::StopDevice(void) {
 	wxThread::ExitCode threadExitCode;
 	wxThreadError threadError;
-	if (twoCanDevice->IsRunning()) {
-		threadError = twoCanDevice->Delete(&threadExitCode, wxTHREAD_WAIT_DEFAULT);
-		if (threadError == wxTHREAD_NO_ERROR) {
-			wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Result: %d"), threadExitCode);
-		}
-		else {
-			wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Error: %d"), threadError);
+	if (twoCanDevice != nullptr) {
+		if (twoCanDevice->IsRunning()) {
+			threadError = twoCanDevice->Delete(&threadExitCode, wxTHREAD_WAIT_DEFAULT);
+			if (threadError == wxTHREAD_NO_ERROR) {
+				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Result: %d"), threadExitCode);
+			}
+			else {
+				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Error: %d"), threadError);
+			}
 		}
 	}
 }

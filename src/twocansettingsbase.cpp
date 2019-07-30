@@ -31,19 +31,17 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	labelInterface->Wrap( -1 );
 	sizerLabelInterface->Add( labelInterface, 0, wxALL, 5 );
 	
-	
 	sizerPanelSettings->Add( sizerLabelInterface, 0, wxEXPAND, 5 );
 	
-	wxBoxSizer* sizerCmbInterraces;
-	sizerCmbInterraces = new wxBoxSizer( wxHORIZONTAL );
+	wxBoxSizer* sizerCmbInterfaces;
+	sizerCmbInterfaces = new wxBoxSizer( wxHORIZONTAL );
 	
 	wxArrayString cmbInterfacesChoices;
 	cmbInterfaces = new wxChoice( panelSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, cmbInterfacesChoices, 0 );
 	cmbInterfaces->SetSelection( 0 );
-	sizerCmbInterraces->Add( cmbInterfaces, 1, wxALL, 5 );
+	sizerCmbInterfaces->Add( cmbInterfaces, 1, wxALL, 5 );
 	
-	
-	sizerPanelSettings->Add( sizerCmbInterraces, 0, wxEXPAND, 5 );
+	sizerPanelSettings->Add( sizerCmbInterfaces, 0, wxEXPAND, 5 );
 	
 	wxBoxSizer* sizerLabelPGN;
 	sizerLabelPGN = new wxBoxSizer( wxHORIZONTAL );
@@ -62,13 +60,8 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	chkListPGN = new wxCheckListBox( panelSettings, wxID_ANY, wxDefaultPosition, wxDefaultSize, chkListPGNChoices, 0 );
 	sizerchkListPGN->Add( chkListPGN, 1, wxALL|wxEXPAND, 5 );
 	
-	chkLogRaw = new wxCheckBox( panelSettings, wxID_ANY, wxT("Log Raw NMEA 2000 frames"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerchkListPGN->Add( chkLogRaw, 0, wxALL, 5 );
-	
-	
 	sizerPanelSettings->Add( sizerchkListPGN, 1, wxEXPAND, 5 );
-	
-	
+		
 	panelSettings->SetSizer( sizerPanelSettings );
 	panelSettings->Layout();
 	sizerPanelSettings->Fit( panelSettings );
@@ -83,7 +76,6 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	labelNetwork = new wxStaticText( panelNetwork, wxID_ANY, wxT("NMEA 2000 Devices"), wxDefaultPosition, wxDefaultSize, 0 );
 	labelNetwork->Wrap( -1 );
 	sizerLabelNetwork->Add( labelNetwork, 1, wxALL, 5 );
-	
 	
 	sizerPanelNetwork->Add( sizerLabelNetwork, 0, wxEXPAND, 5 );
 	
@@ -125,57 +117,85 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	
 	sizerPanelNetwork->Add( sizerGridViewNetwork, 0, wxEXPAND, 5 );
 	
-	
 	panelNetwork->SetSizer( sizerPanelNetwork );
 	panelNetwork->Layout();
 	sizerPanelNetwork->Fit( panelNetwork );
 	notebookTabs->AddPage( panelNetwork, wxT("Network"), false );
+
 	panelDevice = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
-	wxBoxSizer* sizerpanelDevice;
-	sizerpanelDevice = new wxBoxSizer( wxVERTICAL );
+	
+	wxBoxSizer* sizerPanelDevice;
+	sizerPanelDevice = new wxBoxSizer( wxVERTICAL );
+
+	wxBoxSizer* sizerDeviceMode;
+	sizerDeviceMode = new wxBoxSizer(wxVERTICAL);
 	
 	chkDeviceMode = new wxCheckBox( panelDevice, wxID_ANY, wxT("Enable Active Mode"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerpanelDevice->Add( chkDeviceMode, 0, wxALL, 5 );
+	sizerDeviceMode->Add( chkDeviceMode, 0, wxALL, 5 );
 
 	chkEnableHeartbeat = new wxCheckBox(panelDevice, wxID_ANY, wxT("Send heartbeats"), wxDefaultPosition, wxDefaultSize, 0);
-	sizerpanelDevice->Add(chkEnableHeartbeat, 0, wxALL, 5);
+	sizerDeviceMode->Add(chkEnableHeartbeat, 0, wxALL, 5);
+
+	sizerPanelDevice->Add(sizerDeviceMode, 0, wxEXPAND, 5);
 	
-	m_staticline1 = new wxStaticLine( panelDevice, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-	sizerpanelDevice->Add( m_staticline1, 0, wxEXPAND | wxALL, 5 );
+	staticLine1 = new wxStaticLine( panelDevice, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+	sizerPanelDevice->Add( staticLine1, 0, wxEXPAND | wxALL, 5 );
+
+	wxBoxSizer* sizerDeviceDetails;
+	sizerDeviceDetails = new wxBoxSizer(wxVERTICAL);
 	
 	labelNetworkAddress = new wxStaticText(panelDevice, wxID_ANY, wxT("Network Address:"), wxDefaultPosition, wxDefaultSize, 0);
 	labelNetworkAddress->Wrap(-1);
-	sizerpanelDevice->Add(labelNetworkAddress, 0, wxALL, 5);
-
-
+	sizerDeviceDetails->Add(labelNetworkAddress, 0, wxALL, 5);
+	
 	labelUniqueId = new wxStaticText( panelDevice, wxID_ANY, wxT("Unique ID:"), wxDefaultPosition, wxDefaultSize, 0 );
 	labelUniqueId->Wrap( -1 );
-	sizerpanelDevice->Add( labelUniqueId, 0, wxALL, 5 );
+	sizerDeviceDetails->Add( labelUniqueId, 0, wxALL, 5 );
 
 	labelManufacturer = new wxStaticText(panelDevice, wxID_ANY, wxT("Manufacturer:"), wxDefaultPosition, wxDefaultSize, 0);
 	labelManufacturer->Wrap(-1);
-	sizerpanelDevice->Add(labelManufacturer, 0, wxALL, 5);
+	sizerDeviceDetails->Add(labelManufacturer, 0, wxALL, 5);
 	
 	labelModelId = new wxStaticText(panelDevice, wxID_ANY, wxT("Model Id:"), wxDefaultPosition, wxDefaultSize, 0);
 	labelModelId->Wrap(-1);
-	sizerpanelDevice->Add(labelModelId, 0, wxALL, 5);
+	sizerDeviceDetails->Add(labelModelId, 0, wxALL, 5);
 
 	labelSoftwareVersion = new wxStaticText(panelDevice, wxID_ANY, wxT("Software Version:"), wxDefaultPosition, wxDefaultSize, 0);
 	labelSoftwareVersion->Wrap(-1);
-	sizerpanelDevice->Add(labelSoftwareVersion, 0, wxALL, 5);
+	sizerDeviceDetails->Add(labelSoftwareVersion, 0, wxALL, 5);
 
 	labelDevice = new wxStaticText( panelDevice, wxID_ANY, wxT("Device Class: Inter/Intranetwork Device (25)"), wxDefaultPosition, wxDefaultSize, 0 );
 	labelDevice->Wrap( -1 );
-	sizerpanelDevice->Add( labelDevice, 0, wxALL, 5 );
+	sizerDeviceDetails->Add( labelDevice, 0, wxALL, 5 );
 	
 	labelFunction = new wxStaticText( panelDevice, wxID_ANY, wxT("Device Function: PG Gateway (130)"), wxDefaultPosition, wxDefaultSize, 0 );
 	labelFunction->Wrap( -1 );
-	sizerpanelDevice->Add( labelFunction, 0, wxALL, 5 );
+	sizerDeviceDetails->Add( labelFunction, 0, wxALL, 5 );
+
+	sizerPanelDevice->Add(sizerDeviceDetails, 0, wxEXPAND, 5);
 	
-	panelDevice->SetSizer( sizerpanelDevice );
+	staticLine2 = new wxStaticLine(panelDevice, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL);
+	sizerPanelDevice->Add(staticLine2, 0, wxEXPAND | wxALL, 5);
+
+	wxBoxSizer* sizerLogging;
+	sizerLogging = new wxBoxSizer(wxVERTICAL);
+
+	labelLogging = new wxStaticText(panelDevice, wxID_ANY, wxT("Log received NMEA 2000 frames"), wxDefaultPosition, wxDefaultSize, 0);
+	labelLogging->Wrap(-1);
+	sizerLogging->Add(labelLogging, 0, wxALL, 5);
+
+	wxArrayString cmbLoggingChoices;
+	cmbLogging = new wxChoice(panelDevice, wxID_ANY, wxDefaultPosition, wxDefaultSize, cmbLoggingChoices, 0);
+	cmbLogging->SetSelection(0);
+	sizerLogging->Add(cmbLogging, 1, wxALL, 5);
+	
+	sizerPanelDevice->Add(sizerLogging, 0, wxEXPAND, 5);
+
+	panelDevice->SetSizer( sizerPanelDevice );
 	panelDevice->Layout();
-	sizerpanelDevice->Fit( panelDevice );
+	sizerPanelDevice->Fit( panelDevice );
 	notebookTabs->AddPage( panelDevice, wxT("Device"), false );
+
 	panelDebug = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* sizerPanelDebug;
 	sizerPanelDebug = new wxBoxSizer( wxVERTICAL );
@@ -186,7 +206,6 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	labelDebug = new wxStaticText( panelDebug, wxID_ANY, wxT("Received Frames"), wxDefaultPosition, wxDefaultSize, 0 );
 	labelDebug->Wrap( -1 );
 	sizerLabelDebug->Add( labelDebug, 0, wxALL, 5 );
-	
 	
 	sizerLabelDebug->Add( 0, 0, 1, wxEXPAND, 5 );
 	
@@ -278,9 +297,9 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	this->Connect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
 	cmbInterfaces->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoice ), NULL, this );
 	chkListPGN->Connect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
-	chkLogRaw->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckLog ), NULL, this );
 	chkEnableHeartbeat->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(TwoCanSettingsBase::OnCheckHeartbeat), NULL, this);
 	chkDeviceMode->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );
+	cmbLogging->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(TwoCanSettingsBase::OnLogging), NULL, this);
 	btnPause->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
 	btnOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnOK ), NULL, this );
@@ -294,9 +313,9 @@ TwoCanSettingsBase::~TwoCanSettingsBase()
 	this->Disconnect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
 	cmbInterfaces->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoice ), NULL, this );
 	chkListPGN->Disconnect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
-	chkLogRaw->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckLog ), NULL, this );
 	chkDeviceMode->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );
 	chkEnableHeartbeat->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(TwoCanSettingsBase::OnCheckHeartbeat), NULL, this);
+	cmbLogging->Disconnect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(TwoCanSettingsBase::OnLogging), NULL, this);
 	btnPause->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
 	btnOK->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnOK ), NULL, this );

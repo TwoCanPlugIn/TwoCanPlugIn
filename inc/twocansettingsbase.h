@@ -46,13 +46,13 @@ class TwoCanSettingsBase : public wxDialog
 		wxPanel* panelSettings;
 		wxStaticText* labelInterface;
 		wxStaticText* labelPGN;
-		wxCheckBox* chkLogRaw;
 		wxPanel* panelNetwork;
 		wxStaticText* labelNetwork;
 		wxPanel* panelDevice;
 		wxCheckBox* chkDeviceMode;
 		wxCheckBox* chkEnableHeartbeat;;
-		wxStaticLine* m_staticline1;
+		wxStaticLine* staticLine1;
+		wxStaticLine* staticLine2;
 		wxStaticText* labelNetworkAddress;
 		wxStaticText* labelUniqueId;
 		wxStaticText* labelManufacturer;
@@ -60,6 +60,7 @@ class TwoCanSettingsBase : public wxDialog
 		wxStaticText* labelSoftwareVersion;
 		wxStaticText* labelDevice;
 		wxStaticText* labelFunction;
+		wxStaticText* labelLogging;
 		wxPanel* panelDebug;
 		wxStaticText* labelDebug;
 		wxPanel* panelAbout;
@@ -73,9 +74,9 @@ class TwoCanSettingsBase : public wxDialog
 		virtual void OnInit( wxInitDialogEvent& event ) { event.Skip(); }
 		virtual void OnChoice( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckPGN( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckLog( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckMode( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckHeartbeat(wxCommandEvent& event) { event.Skip(); }
+		virtual void OnLogging(wxCommandEvent& event) { event.Skip(); }
 		virtual void OnPause( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCopy( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
@@ -87,6 +88,7 @@ class TwoCanSettingsBase : public wxDialog
 		wxChoice* cmbInterfaces;
 		wxCheckListBox* chkListPGN;
 		wxGrid* dataGridNetwork;
+		wxChoice* cmbLogging;
 		wxButton* btnPause;
 		wxButton* btnCopy;
 		wxTextCtrl* txtDebug;
