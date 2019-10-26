@@ -81,6 +81,9 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("127251 ") + _("Rate of Turn") + _T(" (ROT)"));
 	pgn->Add(_T("129283 ") + _("Cross Track Error") + _T(" (XTE)"));
 	pgn->Add(_T("127257 ") + _("Attitude") + _T(" (XDR)"));
+	pgn->Add(_T("127488..49 ") + _("Engine Parameters") + _T(" (XDR)"));
+	pgn->Add(_T("127505 ") + _("Fluid Levels") + _T(" (XDR) "));
+	pgn->Add(_T("127245 ") + _("Rudder Angle") + _T(" (RSA)"));
 		
 	// Populate the listbox and check/uncheck as appropriate
 	for (size_t i = 0; i < pgn->Count(); i++) {

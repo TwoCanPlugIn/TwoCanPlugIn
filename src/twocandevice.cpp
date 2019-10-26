@@ -34,6 +34,7 @@
 // 1.3 - 16/3/2019, Linux support via SocketCAN
 // 1.4 - 25/4/2019. Active Mode implemented.
 // 1.5 - 10/7/2019. Checks for valid data, flags for XTE, PGN Attitude, additional log formats
+// 1.6 - 10/10/2019. added PGN 127245 (Rudder), 127488 (Engine, Rapid), 127489 (Engine, Dynamic), 127505 (Fluid Levels)
 // Outstanding Features: 
 // 1. Bi-directional gateway ??
 // 2. Rewrite/Port Adapter drivers to C++
@@ -64,6 +65,9 @@ TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_DETACHED) 
 
 	// Each AIS multi sentence message has a sequential Message ID
 	AISsequentialMessageId = 0;
+
+	// Until engineInstance > 0 then assume a single engined vessel
+	IsMultiEngineVessel = FALSE;
 	
 	// Any raw logging ?
 	if (logLevel > FLAGS_LOG_NONE) {
@@ -1188,6 +1192,12 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		// No NMEA 0183 sentences to pass onto OpenCPN
 		result = FALSE;
 		break;
+
+	case 127245: // Rudder
+		if (supportedPGN & FLAGS_RDR) {
+			result = DecodePGN127245(payload, &nmeaSentences);
+		}
+		break;
 		
 	case 127250: // Heading
 		if (supportedPGN & FLAGS_HDG) {
@@ -1211,6 +1221,24 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		// BUG BUG needs flags 
 		// BUG BUG Not actually used anywhere
 		result = DecodePGN127258(payload, &nmeaSentences);
+		break;
+
+	case 127488: // Engine Parameters, Rapid Update
+		if (supportedPGN & FLAGS_ENG) {
+			result = DecodePGN127488(payload, &nmeaSentences);
+		}
+		break;
+
+	case 127489: // Engine Parameters, Dynamic
+		if (supportedPGN & FLAGS_ENG) {
+			result = DecodePGN127489(payload, &nmeaSentences);
+		}
+		break;
+
+	case 127505: // Fluid Levels
+		if (supportedPGN & FLAGS_TNK) {
+			result = DecodePGN127505(payload, &nmeaSentences);
+		}
 		break;
 		
 	case 128259: // Boat Speed
@@ -1591,6 +1619,45 @@ int TwoCanDevice::DecodePGN126996(const byte *payload, ProductInformation *produ
 	}
 }
 
+// Decode PGN 127245 NMEA Rudder
+// $--RSA, x.x, A, x.x, A*hh<CR><LF>
+bool TwoCanDevice::DecodePGN127245(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte instance;
+		instance = payload[0];
+
+		byte directionOrder;
+		directionOrder = payload[1] & 0x03;
+
+		short angleOrder; // 0001 radians
+		angleOrder = payload[3] | (payload[4] << 8);
+
+		short position; // 0001 radians
+		position = payload[5] | (payload[6] << 8);
+
+		if (TwoCanUtils::IsDataValid(position)) {
+			// Main (or Starboard Rudder
+			if (instance == 0) { 
+				nmeaSentences->push_back(wxString::Format("$IIRSA,%.2f,A,0.0,V", RADIANS_TO_DEGREES((float)position / 10000)));
+				return TRUE;
+			}
+			// Port Rudder
+			if (instance == 1) {
+				nmeaSentences->push_back(wxString::Format("$IIRSA,0.0,V,%.2f,A", RADIANS_TO_DEGREES((float)position / 10000)));
+				return TRUE;
+			}
+			return FALSE;
+		}
+		else {
+			return FALSE;
+		}
+	}
+	else {
+		return FALSE;
+	}
+}
+
 // Decode PGN 127250 NMEA Vessel Heading
 // $--HDG, x.x, x.x, a, x.x, a*hh<CR><LF>
 // $--HDT,x.x,T*hh<CR><LF>
@@ -1789,6 +1856,224 @@ bool TwoCanDevice::DecodePGN127258(const byte *payload, std::vector<wxString> *n
 	}
 }
 
+// Decode PGN 127488 NMEA Engine Parameters, Rapid Update
+bool TwoCanDevice::DecodePGN127488(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte engineInstance;
+		engineInstance = payload[0];
+
+		unsigned short engineSpeed;
+		engineSpeed = payload[1] | (payload[2] << 8);
+
+		unsigned short engineBoostPressure;
+		engineBoostPressure = payload[3] | (payload[4] << 8);
+
+		// BUG BUG Need to clarify units & resolution, although unlikely to use this anywhere
+		short engineTrim;
+		engineTrim = payload[5];
+
+		// Note that until we receive data from engine instance 1, we will always assume it is a single engine vessel
+		if (engineInstance > 0) {
+			IsMultiEngineVessel = TRUE;
+		}
+
+		if (TwoCanUtils::IsDataValid(engineSpeed)) {
+
+			switch (engineInstance) {
+				// Note use of flag to identify whether single engine or dual engine as
+				// engineInstance 0 in a dual engine configuration is the port engine
+				// BUG BUG Should I use XDR or RPM sentence ?? Depends on how I code the Engine Dashboard !!
+			case 0:
+				if (IsMultiEngineVessel) {
+					nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,PORT", engineSpeed * 0.25f));
+					// nmeaSentences->push_back(wxString::Format("$IIRPM,E,2,%.2f,,A", engineSpeed * 0.25f));
+				}
+				else {
+					nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,MAIN", engineSpeed * 0.25f));
+					// nmeaSentences->push_back(wxString::Format("$IIRPM,E,0,%.2f,,A", engineSpeed * 0.25f));
+				}
+				break;
+			case 1:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,STBD", engineSpeed * 0.25f));
+				// nmeaSentences->push_back(wxString::Format("$IIRPM,E,1,%.2f,,A", engineSpeed * 0.25f));
+				break;
+			default:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,MAIN", engineSpeed * 0.25f));
+				// nmeaSentences->push_back(wxString::Format("$IIRPM,E,0,%.2f,,A", engineSpeed * 0.25f));
+				break;
+			}
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+	}
+	else {
+		return FALSE;
+	}
+}
+
+// Decode PGN 127489 NMEA Engine Parameters, Dynamic
+bool TwoCanDevice::DecodePGN127489(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte engineInstance;
+		engineInstance = payload[0];
+
+		unsigned short oilPressure; // hPa
+		oilPressure = payload[1] | (payload[2] << 8);
+
+		unsigned short oilTemperature; // 0.01 degree resolution, in Kelvin
+		oilTemperature = payload[3] | (payload[4] << 8);
+
+		unsigned short engineTemperature; // 0.01 degree resolution, in Kelvin
+		engineTemperature = payload[5] | (payload[6] << 8);
+
+		unsigned short alternatorPotential; // 0.01 Volts
+		alternatorPotential = payload[7] | (payload[8] << 8);
+
+		unsigned short fuelRate; // 0.1 Litres/hour
+		fuelRate = payload[9] | (payload[10] << 8);
+
+		unsigned short totalEngineHours;  // seconds
+		totalEngineHours = payload[11] | (payload[12] << 8) | (payload[13] << 16) | (payload[14] << 24);
+
+		unsigned short coolantPressure; // hPA
+		coolantPressure = payload[15] | (payload[16] << 8);
+
+		unsigned short fuelPressure; // hPa
+		fuelPressure = payload[17] | (payload[18] << 8);
+
+		unsigned short reserved;
+		reserved = payload[19];
+
+		short statusOne;
+		statusOne = payload[20] | (payload[21] << 8);
+		// BUG BUG Think of using XDR switch status wirth meaningful naming
+		// XDR parameters, "S", No units, "1" = On, "0" = Off
+		// BUG BG Would need either icons or text messages to display the status in the dashboard
+		// {"0": "Check Engine"},
+		// { "1": "Over Temperature" },
+		// { "2": "Low Oil Pressure" },
+		// { "3": "Low Oil Level" },
+		// { "4": "Low Fuel Pressure" },
+		// { "5": "Low System Voltage" },
+		// { "6": "Low Coolant Level" },
+		// { "7": "Water Flow" },
+		// { "8": "Water In Fuel" },
+		// { "9": "Charge Indicator" },
+		// { "10": "Preheat Indicator" },
+		// { "11": "High Boost Pressure" },
+		// { "12": "Rev Limit Exceeded" },
+		// { "13": "EGR System" },
+		// { "14": "Throttle Position Sensor" },
+		// { "15": "Emergency Stop" }]
+
+		short statusTwo;
+		statusTwo = payload[22] | (payload[23] << 8);
+
+		// {"0": "Warning Level 1"},
+		// { "1": "Warning Level 2" },
+		// { "2": "Power Reduction" },
+		// { "3": "Maintenance Needed" },
+		// { "4": "Engine Comm Error" },
+		// { "5": "Sub or Secondary Throttle" },
+		// { "6": "Neutral Start Protect" },
+		// { "7": "Engine Shutting Down" }]
+
+		byte engineLoad;  // percentage
+		engineLoad = payload[24];
+
+		byte engineTorque; // percentage
+		engineTorque = payload[25];
+
+		// As above, until data is received from engine instance 1 we always assume a single engine vessel
+		if (engineInstance > 0) {
+			IsMultiEngineVessel = TRUE;
+		}
+		if ((TwoCanUtils::IsDataValid(oilPressure)) && (TwoCanUtils::IsDataValid(engineTemperature)) && (TwoCanUtils::IsDataValid(alternatorPotential))) {
+
+			switch (engineInstance) {
+			case 0:
+				if (IsMultiEngineVessel) {
+					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,PORT,C,%.2f,C,PORT,U,%.2f,V,PORT", (float)(oilPressure * 0.001f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+					// Type G = Generic, I'm defining units as H to define hours
+					nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,PORT", (float)totalEngineHours / 3600));
+				}
+				else {
+					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 0.001f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+					nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,MAIN", (float)totalEngineHours / 3600));
+				}
+				break;
+			case 1:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,STBD,C,%.2f,C,STBD,U,%.2f,V,STBD", (float)(oilPressure * 0.001f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,STBD", (float)totalEngineHours / 3600));
+				break;
+			default:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 0.001f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,MAIN", (float)totalEngineHours / 3600));
+				break;
+			}
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+	}
+	else {
+		return FALSE;
+	}
+}
+
+// Decode PGN 127505 NMEA Fluid Levels
+bool TwoCanDevice::DecodePGN127505(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte instance;
+		instance = payload[0] & 0xF;
+
+		byte tankType;
+		tankType = (payload[0] & 0xF0) >> 4;
+
+		unsigned short tankLevel; // percentage in 0.025 increments
+		tankLevel = payload[1] | (payload[2] << 8);
+
+		unsigned int tankCapacity; // 0.1 L
+		tankCapacity = payload[3] | (payload[4] << 8) | (payload[5] << 16) | (payload[6] << 24);
+
+		if ((TwoCanUtils::IsDataValid(tankLevel)) && (TwoCanUtils::IsDataValid(tankCapacity))) {
+			switch (tankType) {
+				// BUG BUG Using Type = V (Volume) but units = P to indicate percentage rather than M (Cubic Meters)
+			case 0:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,FUEL", (float)tankLevel * 0.025f));
+				break;
+			case 1:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,H20", (float)tankLevel * 0.025f));
+				break;
+			case 2:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,GREY", (float)tankLevel * 0.025f));
+				break;
+			case 3:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,LIVE", (float)tankLevel * 0.025f));
+				break;
+			case 4:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,OIL", (float)tankLevel * 0.025f));
+				break;
+			case 5:
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,BLK", (float)tankLevel * 0.025f));
+				break;
+			}
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+	}
+	else {
+		return FALSE;
+	}
+}
 
 // Decode PGN 128259 NMEA Speed & Heading
 // $--VHW, x.x, T, x.x, M, x.x, N, x.x, K*hh<CR><LF>

@@ -223,6 +223,10 @@ private:
 	// File handle for logging raw frame data
 	wxFile rawLogFile;
 
+	// Flag to indicate whether vessel has single or multiple engines
+	// Used to format the MAIN, PORT or STBD XDR & RPM NMEA 0183 sentences depending on NMEA 2000 Engine Instance.
+	bool IsMultiEngineVessel;
+
 	// All the NMEA 2000 goodness
 
 	// the 8 byte NAME of this device derived from the 8 bytes used in PGN 60928
@@ -282,6 +286,9 @@ private:
 
 	// Decode PGN 126996 NMEA Product Information
 	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
+
+	// Decode PGN 127245 NMEA Rudder
+	bool DecodePGN127245(const byte *payload, std::vector<wxString> *nmeaSentences);
 	
 	// Decode PGN 127250 NMEA Vessel Heading
 	bool DecodePGN127250(const byte *payload, std::vector<wxString> *nmeaSentences);
@@ -289,11 +296,20 @@ private:
 	// Decode PGN 127251 NMEA Rate of Turn (ROT)
 	bool DecodePGN127251(const byte *payload, std::vector<wxString> *nmeaSentences);
 
-	// Decode PGN 1272571 NMEA Attitude
+	// Decode PGN 127257 NMEA Attitude
 	bool DecodePGN127257(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 127258 NMEA Magnetic Variation
 	bool DecodePGN127258(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 127488 NMEA Engine Parameters, Rapid Update
+	bool DecodePGN127488(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 127489 NMEA Engine Paramters, Dynamic
+	bool DecodePGN127489(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 127505 NMEA Fluid Levels
+	bool DecodePGN127505(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 128259 NMEA Speed & Heading
 	bool DecodePGN128259(const byte *payload, std::vector<wxString> *nmeaSentences);

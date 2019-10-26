@@ -5,6 +5,51 @@ Inspired by Canboat and Openskipper, frustrated by those who claim "OpenCPN is n
 
 TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000® networks. It enables some NMEA2000® data to be directly integrated with OpenCPN by converting some NMEA2000® messages to NMEA 183 sentences and inserting them into the OpenCPN data stream.
 
+The current version, 1.6 supports the following NMEA 2000 Parameter Group Numbers (PGN):
+59392 ISO Acknowledgement,
+59904 ISO Request
+60928 ISO Address Claim
+65240 ISO Commanded Address
+126992 NMEA System Time
+126993 NMEA heartbeat
+126996 NMEA Product Information
+127245 NMEA Rudder
+127250 NMEA Vessel Heading
+127251 NMEA Rate of Turn (ROT)
+127257 NMEA Attitude
+127258 NMEA Magnetic Variation
+127488 NMEA Engine Parameters, Rapid Update
+127489 NMEA Engine Paramters, Dynamic
+127505 NMEA Fluid Levels
+128259 NMEA Speed & Heading
+128267 NMEA Depth
+128275 Distance Log
+129025 NMEA Position Rapid Update
+129026 NMEA COG SOG Rapid Update
+129029 NMEA GNSS Position
+129033 NMEA Date & Time
+129038 AIS Class A Position Report
+129039 AIS Class B Position Report
+129040 AIS Class B Extended Position Report
+129041 AIS Aids To Navigation (AToN) Report
+129283 NMEA Cross Track Error (XTE)
+129284 Navigation Data
+129285 Navigation Route/WP Information
+129793 AIS Date and Time report
+Decode PGN 129794 AIS Class A Static Data
+129798 AIS SAR Aircraft Position Report
+129801 AIS Addressed Safety Related Message
+129802 AIS Safety Related Broadcast Message 
+129808 DSC Message
+129809 AIS Class B Static Data Report, Part A 
+129810 AIS Class B Static Data Report, Part B 
+130306 NMEA Wind
+130310 NMEA Water & Air Temperature and Pressure
+130311 NMEA Environmental Parameters (supercedes 130310)
+130312 NMEA Temperature
+130316 NMEA Temperature Extended Range
+130577 NMEA Direction Data
+
 For Windows it uses a "plug-in" driver model to support different CAN bus adapters and different log file formats. 
 Four hardware adapters are currently supported:
 
@@ -65,7 +110,7 @@ In addition, NMEA 2000 frames may be logged by the plugin. Prior to Version 1.5 
 
 From version 1.4 onwards, the TwoCan plugin may be configured to actively participate on the NMEA 2000 network, claiming an address, sending heartbeats and responding to a few requests (such as product information). Please note that this is not fully tested and may interfere with the correct functioning of the NMEA 2000 network. If any problems occur, disable the Active Mode functionality and if possible, file a bug report.
 
-If using the Active Mode feature in versions 1.4 & 1.5 please be aware of the following:
+If using the Active Mode feature in versions 1.4, 1.5 or 1.6, please be aware of the following:
 
 For Windows, updated plugin drivers for the hardware adapters are required if you wish to use Active Mode. The only hardware adapters that have been updated and tested are the Kvaser Leaflight and Rusoku Toucan Marine. I have yet to update the plugin drivers for the Canable Cantact and Axiomtek AX92903 adapters to support Active Mode.
 

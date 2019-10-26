@@ -187,7 +187,9 @@
 #define FLAGS_ROT 4096
 #define FLAGS_XTE 8192
 #define FLAGS_XDR 16384
-
+#define FLAGS_ENG 32768
+#define FLAGS_TNK 65536
+#define FLAGS_RDR 131072
 
 // Bit values to determine in which format the log file is written
 #define FLAGS_LOG_NONE 0
