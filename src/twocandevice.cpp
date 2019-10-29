@@ -1921,7 +1921,7 @@ bool TwoCanDevice::DecodePGN127489(const byte *payload, std::vector<wxString> *n
 		byte engineInstance;
 		engineInstance = payload[0];
 
-		unsigned short oilPressure; // hPa
+		unsigned short oilPressure; // hPa (1hPa = 100Pa)
 		oilPressure = payload[1] | (payload[2] << 8);
 
 		unsigned short oilTemperature; // 0.01 degree resolution, in Kelvin
@@ -2000,22 +2000,21 @@ bool TwoCanDevice::DecodePGN127489(const byte *payload, std::vector<wxString> *n
 			switch (engineInstance) {
 			case 0:
 				if (IsMultiEngineVessel) {
-					// BUG BUG Not sure of Pressure resolution, Canalboat indicates hPa therefore 100Pa = 1hPa 
-					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,PORT,C,%.2f,C,PORT,U,%.2f,V,PORT", (float)(oilPressure * 100), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,PORT,C,%.2f,C,PORT,U,%.2f,V,PORT", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 					// Type G = Generic, I'm defining units as H to define hours
 					nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,PORT", (float)totalEngineHours / 3600));
 				}
 				else {
-					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 100), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 					nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,MAIN", (float)totalEngineHours / 3600));
 				}
 				break;
 			case 1:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,STBD,C,%.2f,C,STBD,U,%.2f,V,STBD", (float)(oilPressure * 100), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,STBD,C,%.2f,C,STBD,U,%.2f,V,STBD", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 				nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,STBD", (float)totalEngineHours / 3600));
 				break;
 			default:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 0100), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 				nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,MAIN", (float)totalEngineHours / 3600));
 				break;
 			}
