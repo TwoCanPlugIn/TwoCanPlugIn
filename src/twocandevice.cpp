@@ -1950,9 +1950,10 @@ bool TwoCanDevice::DecodePGN127489(const byte *payload, std::vector<wxString> *n
 
 		short statusOne;
 		statusOne = payload[20] | (payload[21] << 8);
-		// BUG BUG Think of using XDR switch status wirth meaningful naming
+		// BUG BUG Think of using XDR switch status with meaningful naming
 		// XDR parameters, "S", No units, "1" = On, "0" = Off
-		// BUG BG Would need either icons or text messages to display the status in the dashboard
+		// Eg. "$IIXDR,S,1,,S100,S,1,,S203" to indicate Status One - Check Engine, Status 2 - Maintenance Needed
+		// BUG BUG Would need either icons or text messages to display the status in the dashboard
 		// {"0": "Check Engine"},
 		// { "1": "Over Temperature" },
 		// { "2": "Low Oil Pressure" },
@@ -1992,26 +1993,29 @@ bool TwoCanDevice::DecodePGN127489(const byte *payload, std::vector<wxString> *n
 		if (engineInstance > 0) {
 			IsMultiEngineVessel = TRUE;
 		}
+
+		// BUG BUG Instead of using logical and, separate into separate sentences so if invalid value for one or two sensors, we still send something
 		if ((TwoCanUtils::IsDataValid(oilPressure)) && (TwoCanUtils::IsDataValid(engineTemperature)) && (TwoCanUtils::IsDataValid(alternatorPotential))) {
 
 			switch (engineInstance) {
 			case 0:
 				if (IsMultiEngineVessel) {
-					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,PORT,C,%.2f,C,PORT,U,%.2f,V,PORT", (float)(oilPressure * 0.001f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+					// BUG BUG Not sure of Pressure resolution, Canalboat indicates hPa therefore 100Pa = 1hPa 
+					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,PORT,C,%.2f,C,PORT,U,%.2f,V,PORT", (float)(oilPressure * 100), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 					// Type G = Generic, I'm defining units as H to define hours
 					nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,PORT", (float)totalEngineHours / 3600));
 				}
 				else {
-					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 0.001f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 100), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 					nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,MAIN", (float)totalEngineHours / 3600));
 				}
 				break;
 			case 1:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,STBD,C,%.2f,C,STBD,U,%.2f,V,STBD", (float)(oilPressure * 0.001f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,STBD,C,%.2f,C,STBD,U,%.2f,V,STBD", (float)(oilPressure * 100), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 				nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,STBD", (float)totalEngineHours / 3600));
 				break;
 			default:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 0.001f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 0100), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 				nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,MAIN", (float)totalEngineHours / 3600));
 				break;
 			}
