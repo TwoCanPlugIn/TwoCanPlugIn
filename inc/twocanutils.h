@@ -70,7 +70,7 @@
 #define CONST_CERTIFICATION_LEVEL 0 // We have not been certified, although I think we support the PGN's required for level 1
 #define CONST_LOAD_EQUIVALENCY 1 // PC is self powered, so assume little or no drain on NMEA 2000 network
 #define CONST_MODEL_ID "TwoCan plugin"
-#define CONST_SOFTWARE_VERSION  "1.5" // BUG BUG Should derive from PLUGIN_VERSION_MAJOR etc.
+#define CONST_SOFTWARE_VERSION  "1.6" // BUG BUG Should derive from PLUGIN_VERSION_MAJOR etc.
 
 // Maximum number of multi-frame Fast Messages we can support in the Fast Message Buffer, just an arbitary number
 #define CONST_MAX_MESSAGES 100
@@ -101,6 +101,14 @@
 // Radians to degrees and vice versa
 #define RADIANS_TO_DEGREES(x) (x * 180 / M_PI)
 #define DEGREES_TO_RADIANS(x) (x * M_PI / 180)
+
+// Celsius to Fahrenheit
+#define CELSIUS_TO_FAHRENHEIT(x) ((x * 9 / 5) + 32)
+#define FAHRENHEIT_TO_CELSIUS(x) ((x - 32) * 5 / 9)
+
+// Pascal to Pounds Per Square Inch (PSI)
+#define PASCAL_TO_PSI(x) (x * 0.00014504)
+#define PSI_TO_PASCAL(x) (x * 6894.75729)
 
 // Metres per second
 #define CONVERT_MS_KNOTS 1.94384
