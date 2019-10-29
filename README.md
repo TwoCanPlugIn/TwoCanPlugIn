@@ -1,54 +1,9 @@
-TwoCan plug-in for OpenCPN
+﻿TwoCan plug-in for OpenCPN
 ==========================
 
 Inspired by Canboat and Openskipper, frustrated by those who claim "OpenCPN is not a hardware experimenter's platform", and desiring to give back something to the OpenCPN community.
 
 TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000® networks. It enables some NMEA2000® data to be directly integrated with OpenCPN by converting some NMEA2000® messages to NMEA 183 sentences and inserting them into the OpenCPN data stream.
-
-The current version, 1.6 supports the following NMEA 2000 Parameter Group Numbers (PGN):
-59392 ISO Acknowledgement,
-59904 ISO Request
-60928 ISO Address Claim
-65240 ISO Commanded Address
-126992 NMEA System Time
-126993 NMEA heartbeat
-126996 NMEA Product Information
-127245 NMEA Rudder
-127250 NMEA Vessel Heading
-127251 NMEA Rate of Turn (ROT)
-127257 NMEA Attitude
-127258 NMEA Magnetic Variation
-127488 NMEA Engine Parameters, Rapid Update
-127489 NMEA Engine Paramters, Dynamic
-127505 NMEA Fluid Levels
-128259 NMEA Speed & Heading
-128267 NMEA Depth
-128275 Distance Log
-129025 NMEA Position Rapid Update
-129026 NMEA COG SOG Rapid Update
-129029 NMEA GNSS Position
-129033 NMEA Date & Time
-129038 AIS Class A Position Report
-129039 AIS Class B Position Report
-129040 AIS Class B Extended Position Report
-129041 AIS Aids To Navigation (AToN) Report
-129283 NMEA Cross Track Error (XTE)
-129284 Navigation Data
-129285 Navigation Route/WP Information
-129793 AIS Date and Time report
-Decode PGN 129794 AIS Class A Static Data
-129798 AIS SAR Aircraft Position Report
-129801 AIS Addressed Safety Related Message
-129802 AIS Safety Related Broadcast Message 
-129808 DSC Message
-129809 AIS Class B Static Data Report, Part A 
-129810 AIS Class B Static Data Report, Part B 
-130306 NMEA Wind
-130310 NMEA Water & Air Temperature and Pressure
-130311 NMEA Environmental Parameters (supercedes 130310)
-130312 NMEA Temperature
-130316 NMEA Temperature Extended Range
-130577 NMEA Direction Data
 
 For Windows it uses a "plug-in" driver model to support different CAN bus adapters and different log file formats. 
 Four hardware adapters are currently supported:
@@ -65,7 +20,7 @@ Four log file formats are currently supported (with examples of their file forma
 
 TwoCan: 0x01,0x01,0xF8,0x09,0x64,0xD9,0xDF,0x19,0xC7,0xB9,0x0A,0x04
 
-Candump (Linux utilty): (1542794025.315691) can0 1DEFFF03#A00FE59856050404  
+Candump (Linux utility): (1542794025.315691) can0 1DEFFF03#A00FE59856050404  
 
 Kees Verruijt's Canboat: 2014-08-14T19:00:00.042,3,128267,1,255,8,0B,F5,0D,8D,24,01,00,00
 
@@ -119,6 +74,53 @@ For Linux (or I should more correctly say for Raspbian), the WaveShare CAN hat f
 sudo ifconfig can* txqueuelen 1000 (replace * with 0, 1 or whatever number your can interface is configured to use) 
 
 For the Canable Cantact using the slcan firmware device it appears to drop frames (I may never have noticed this in previous TwoCan releases as the plugin never requested or received some of these NMEA 2000 fast message frames). The workaround is to reflash the Canable Cantact device with the candlelight firmware, which then enables the device to use the Native CAN interface rather than serial line CAN (slcan). It also requires the same command described above to increase the transmission queue length.
+
+List of supported NMEA 2000 Parameter Group Numbers (PGN)
+---------------------------------------------------------
+
+59392 ISO Acknowledgement,
+59904 ISO Request
+60928 ISO Address Claim
+65240 ISO Commanded Address
+126992 NMEA System Time
+126993 NMEA heartbeat
+126996 NMEA Product Information
+127245 NMEA Rudder
+127250 NMEA Vessel Heading
+127251 NMEA Rate of Turn (ROT)
+127257 NMEA Attitude
+127258 NMEA Magnetic Variation
+127488 NMEA Engine Parameters, Rapid Update
+127489 NMEA Engine Paramters, Dynamic
+127505 NMEA Fluid Levels
+128259 NMEA Speed & Heading
+128267 NMEA Depth
+128275 NMEA Distance Log
+129025 NMEA Position Rapid Update
+129026 NMEA COG SOG Rapid Update
+129029 NMEA GNSS Position
+129033 NMEA Date & Time
+129038 AIS Class A Position Report
+129039 AIS Class B Position Report
+129040 AIS Class B Extended Position Report
+129041 AIS Aids To Navigation (AToN) Report
+129283 NMEA Cross Track Error (XTE)
+129284 NMEA Navigation Data
+129285 NMEA Navigation Route/WP Information
+129793 AIS Date and Time report
+129794 AIS Class A Static Data
+129798 AIS SAR Aircraft Position Report
+129801 AIS Addressed Safety Related Message
+129802 AIS Safety Related Broadcast Message 
+129808 NMEA DSC Message
+129809 AIS Class B Static Data Report, Part A 
+129810 AIS Class B Static Data Report, Part B 
+130306 NMEA Wind
+130310 NMEA Water & Air Temperature and Pressure
+130311 NMEA Environmental Parameters (supercedes 130310)
+130312 NMEA Temperature
+130316 NMEA Temperature Extended Range
+130577 NMEA Direction Data
 
 Obtaining the source code
 -------------------------
