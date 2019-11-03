@@ -2045,26 +2045,26 @@ bool TwoCanDevice::DecodePGN127505(const byte *payload, std::vector<wxString> *n
 		unsigned int tankCapacity; // 0.1 L
 		tankCapacity = payload[3] | (payload[4] << 8) | (payload[5] << 16) | (payload[6] << 24);
 
-		if ((TwoCanUtils::IsDataValid(tankLevel)) && (TwoCanUtils::IsDataValid(tankCapacity))) {
+		if (TwoCanUtils::IsDataValid(tankLevel)) {
 			switch (tankType) {
-				// BUG BUG Using Type = V (Volume) but units = P to indicate percentage rather than M (Cubic Meters)
+				// BUG BUG Using Transducer Type = V (Volume) but units = P to indicate percentage rather than M (Cubic Meters)
 			case 0:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,FUEL", (float)tankLevel * 0.025f));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,FUEL", (float)tankLevel * 0.004f));
 				break;
 			case 1:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,H20", (float)tankLevel * 0.025f));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,H20", (float)tankLevel * 0.004f));
 				break;
 			case 2:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,GREY", (float)tankLevel * 0.025f));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,GREY", (float)tankLevel * 0.004f));
 				break;
 			case 3:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,LIVE", (float)tankLevel * 0.025f));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,LIVE", (float)tankLevel * 0.004f));
 				break;
 			case 4:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,OIL", (float)tankLevel * 0.025f));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,OIL", (float)tankLevel * 0.004f));
 				break;
 			case 5:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,BLK", (float)tankLevel * 0.025f));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,BLK", (float)tankLevel * 0.004f));
 				break;
 			}
 			return TRUE;
