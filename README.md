@@ -7,6 +7,7 @@ TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000® networks. It 
 
 For Windows it uses a "plug-in" driver model to support different CAN bus adapters and different log file formats. 
 Four hardware adapters are currently supported:
+
 | CAN Adapter | Manufacturer Web Site |
 |-------------|-----------------------|
 |Kvaser Leaflight HS v2|https://www.kvaser.com/product/kvaser-leaf-light-hs-v2/|
@@ -15,6 +16,7 @@ Four hardware adapters are currently supported:
 |Rusoku Toucan Marine|http://www.rusoku.com/products/toucan-marine|
 
 Four log file formats are currently supported (with examples of their file format):
+
 | Format | Format example|
 |--------|---------------|
 |TwoCan|0x01,0x01,0xF8,0x09,0x64,0xD9,0xDF,0x19,0xC7,0xB9,0x0A,0x04|
@@ -73,6 +75,7 @@ For the Canable Cantact using the slcan firmware device it appears to drop frame
 
 List of supported NMEA 2000 Parameter Group Numbers (PGN)
 ---------------------------------------------------------
+
 |PGN|Description|
 |---|-----------|
 |59392| ISO Acknowledgement|
@@ -165,7 +168,9 @@ Run the resulting setup package created above for your platform.
 
 Eg. For Windows run twocan\_pi\_1.7.0-ov50.exe
 
-Eg. For Ubuntu run sudo dpkg -i twocan\_pi\_1.7.0-1_amd64.deb
+Eg. For Ubuntu (on PC's) run sudo dpkg -i twocan\_pi\_1.7.0-1_amd64.deb
+
+Eg. For Raspberry Pi run sudo dpkg -i twocan\_pi\_1.7.0-1_armhf.deb
 
 Problems
 --------
