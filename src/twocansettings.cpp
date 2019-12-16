@@ -26,6 +26,9 @@
 // Version: 1.0
 // 1.3 - Added Support for Linux (socketCAN interfaces)
 // 1.4 - Implemented support for active mode, participate on NMEA 2000 network
+// 1.5 - 10/7/2019. Flags for XTE, Attitude, Additional log formats
+// 1.6 - 10/10/2019 Flags for Rudder, Engine and Fluid levels
+// 1.7 - 10/12/2019 Flags for Battery
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -84,6 +87,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("127488..49 ") + _("Engine Parameters") + _T(" (XDR)"));
 	pgn->Add(_T("127505 ") + _("Fluid Levels") + _T(" (XDR) "));
 	pgn->Add(_T("127245 ") + _("Rudder Angle") + _T(" (RSA)"));
+	pgn->Add(_T("127508 ") + _("Battery Status") + _T(" (XDR)"));
 		
 	// Populate the listbox and check/uncheck as appropriate
 	for (size_t i = 0; i < pgn->Count(); i++) {

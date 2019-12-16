@@ -34,7 +34,8 @@
 // 1.3 - 16/3/2019, Linux support via SocketCAN
 // 1.4 - 25/4/2019. Active Mode implemented.
 // 1.5 - 10/7/2019. Checks for valid data, flags for XTE, PGN Attitude, additional log formats
-// 1.6 - 10/10/2019. added PGN 127245 (Rudder), 127488 (Engine, Rapid), 127489 (Engine, Dynamic), 127505 (Fluid Levels)
+// 1.6 - 10/10/2019 Added PGN 127245 (Rudder), 127488 (Engine, Rapid), 127489 (Engine, Dynamic), 127505 (Fluid Levels)
+// 1.7 - 10/12/2019 Aded PGN 127508 (Battery), AIS fixes
 // Outstanding Features: 
 // 1. Bi-directional gateway ??
 // 2. Rewrite/Port Adapter drivers to C++
@@ -1241,6 +1242,12 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		}
 		break;
 		
+	case 127508: // Battery Status
+		if (supportedPGN & FLAGS_BAT) {
+			result = DecodePGN127508(payload, &nmeaSentences);
+		}
+		break;
+		
 	case 128259: // Boat Speed
 		if (supportedPGN & FLAGS_VHW) {
 			result = DecodePGN128259(payload, &nmeaSentences);
@@ -2078,6 +2085,50 @@ bool TwoCanDevice::DecodePGN127505(const byte *payload, std::vector<wxString> *n
 	}
 }
 
+// Decode PGN 127508 NMEA Battery Status
+bool TwoCanDevice::DecodePGN127508(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte batteryInstance;
+		batteryInstance = payload[0] & 0xF;
+
+		unsigned short batteryVoltage; // 0.01 volts
+		batteryVoltage = payload[1] | (payload[2] << 8);
+
+		short batteryCurrent; // 0.1 amps	
+		batteryCurrent = payload[3] | (payload[4] << 8);
+		
+		unsigned short batteryTemperature; // 0.01 degree resolution, in Kelvin
+		batteryTemperature = payload[5] | (payload[6] << 8);
+		
+		byte sid;
+		sid = payload[7];
+		
+		// Using Transducer Type = U (Electrical), Units V (Voltage), A (Current in amps), C (Temperature in Celsius)
+		// Assuming battery instance 0 = STRT (Start or Engine battery) , 1 = HOUS (House or Auxilliary battery)"
+		
+		if ((TwoCanUtils::IsDataValid(batteryVoltage)) && (TwoCanUtils::IsDataValid(batteryCurrent))) {
+			if (batteryInstance == 0) { 
+				nmeaSentences->push_back(wxString::Format("$IIXDR,U,%.2f,V,STRT,U,%.2f,A,STRT,C,%.2f,C,STRT", 
+				(float)(batteryVoltage * 0.01f), (float)(batteryCurrent * 0.1f), (float)(batteryTemperature * 0.01f) + CONST_KELVIN));			
+			}
+			else { // Assume any instance other than 0 is a house or auxilliary battery
+				nmeaSentences->push_back(wxString::Format("$IIXDR,U,%.2f,V,HOUS,U,%.2f,A,HOUS,C,%.2f,C,HOUS", 
+				(float)(batteryVoltage * 0.01f), (float)(batteryCurrent * 0.1f), (float)(batteryTemperature * 0.01f) + CONST_KELVIN));			
+			}
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+	}
+	else {
+			return FALSE;
+	}
+}
+
+
+
 // Decode PGN 128259 NMEA Speed & Heading
 // $--VHW, x.x, T, x.x, M, x.x, N, x.x, K*hh<CR><LF>
 bool TwoCanDevice::DecodePGN128259(const byte *payload, std::vector<wxString> *nmeaSentences) {
@@ -2683,8 +2734,8 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 38, 8, 0xFF); // spare
 		AISInsertInteger(binaryData, 46, 10, CONVERT_MS_KNOTS * speedOverGround * 0.1f);
 		AISInsertInteger(binaryData, 56, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 57, 28, longitudeMinutes);
-		AISInsertInteger(binaryData, 85, 27, latitudeMinutes);
+		AISInsertInteger(binaryData, 57, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 85, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
 		AISInsertInteger(binaryData, 112, 12, RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f);
 		AISInsertInteger(binaryData, 124, 9, RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f);
 		AISInsertInteger(binaryData, 133, 6, timeStamp);
@@ -2811,8 +2862,8 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 38, 8, regionalReservedA);
 		AISInsertInteger(binaryData, 46, 10, CONVERT_MS_KNOTS * speedOverGround * 0.1f);
 		AISInsertInteger(binaryData, 56, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 57, 28, longitudeMinutes);
-		AISInsertInteger(binaryData, 85, 27, latitudeMinutes);
+		AISInsertInteger(binaryData, 57, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 85, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
 		AISInsertInteger(binaryData, 112, 12, RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f);
 		AISInsertInteger(binaryData, 124, 9, RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f);
 		AISInsertInteger(binaryData, 133, 6, timeStamp);
@@ -2946,8 +2997,8 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 38, 5, AToNType);
 		AISInsertString(binaryData, 43, 120, AToNNameLength <= 20 ? AToNName : AToNName.substr(0,20));
 		AISInsertInteger(binaryData, 163, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 164, 28, longitudeMinutes);
-		AISInsertInteger(binaryData, 192, 27, latitudeMinutes);
+		AISInsertInteger(binaryData, 164, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 192, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
 		AISInsertInteger(binaryData, 219, 9, refBow);
 		AISInsertInteger(binaryData, 228, 9, shipLength - refBow);
 		AISInsertInteger(binaryData, 237, 6, refStarboard);
@@ -3307,14 +3358,14 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 		AISInsertInteger(binaryData, 6, 2, repeatIndicator);
 		AISInsertInteger(binaryData, 8, 30, userID);
 		AISInsertInteger(binaryData, 38, 14, tm.GetYear());
-		AISInsertInteger(binaryData, 52, 4, tm.GetMonth());
+		AISInsertInteger(binaryData, 52, 4, tm.GetMonth() + 1);
 		AISInsertInteger(binaryData, 56, 5, tm.GetDay());
 		AISInsertInteger(binaryData, 61, 5, tm.GetHour());
 		AISInsertInteger(binaryData, 66, 6, tm.GetMinute());
 		AISInsertInteger(binaryData, 72, 6, tm.GetSecond());
 		AISInsertInteger(binaryData, 78, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 79, 28, longitudeMinutes);
-		AISInsertInteger(binaryData, 107, 27, latitudeMinutes);
+		AISInsertInteger(binaryData, 79, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 107, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
 		AISInsertInteger(binaryData, 134, 4, gnssType);
 		AISInsertInteger(binaryData, 138, 1, longRangeFlag); // Long Range flag doesn't appear to be set anywhere
 		AISInsertInteger(binaryData, 139, 9, spare);
@@ -3424,7 +3475,10 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 258, 6, shipBeam - refStarboard);
 		AISInsertInteger(binaryData, 264, 6, refStarboard);
 		AISInsertInteger(binaryData, 270, 4, gnssType);
-		AISInsertString(binaryData, 274, 20, eta.Format("%d%m%Y").ToStdString());
+		AISInsertInteger(binaryData, 274, 4, eta.GetMonth() + 1);
+		AISInsertInteger(binaryData, 278, 5, eta.GetDay());
+		AISInsertInteger(binaryData, 283, 5, eta.GetHour());
+		AISInsertInteger(binaryData, 288, 6, eta.GetMinute());
 		AISInsertInteger(binaryData, 294, 8, draft);
 		AISInsertString(binaryData, 302, 120, destination);
 		AISInsertInteger(binaryData, 422, 1, dteFlag);
@@ -3546,8 +3600,8 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 38, 12, altitude);
 		AISInsertInteger(binaryData, 50, 10, speedOverGround);
 		AISInsertInteger(binaryData, 60, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 61, 28, longitudeMinutes);
-		AISInsertInteger(binaryData, 89, 27, latitudeMinutes);
+		AISInsertInteger(binaryData, 61, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 89, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
 		AISInsertInteger(binaryData, 116, 12, courseOverGround);
 		AISInsertInteger(binaryData, 128, 6, timeStamp);
 		AISInsertInteger(binaryData, 134, 8, reservedForRegionalApplications); // 1 bit altitide sensor

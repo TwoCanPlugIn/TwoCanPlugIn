@@ -7,24 +7,20 @@ TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000® networks. It 
 
 For Windows it uses a "plug-in" driver model to support different CAN bus adapters and different log file formats. 
 Four hardware adapters are currently supported:
-
-Kvaser Leaflight HS v2 - https://www.kvaser.com/product/kvaser-leaf-light-hs-v2/
-
-Canable Cantact - http://canable.io/
-
-Axiomtek AX92903 - http://www.axiomtek.com/Default.aspx?MenuId=Products&FunctionId=ProductView&ItemId=8270&upcat=318&C=AX92903
-
-Rusoku Toucan Marine - http://www.rusoku.com/products/toucan-marine
+| CAN Adapter | Manufacturer Web Site |
+|-------------|-----------------------|
+|Kvaser Leaflight HS v2|https://www.kvaser.com/product/kvaser-leaf-light-hs-v2/|
+|Canable Cantact|http://canable.io/|
+|Axiomtek AX92903|http://www.axiomtek.com/Default.aspx?MenuId=Products&FunctionId=ProductView&ItemId=8270&upcat=318&C=AX92903|
+|Rusoku Toucan Marine|http://www.rusoku.com/products/toucan-marine|
 
 Four log file formats are currently supported (with examples of their file format):
-
-TwoCan: 0x01,0x01,0xF8,0x09,0x64,0xD9,0xDF,0x19,0xC7,0xB9,0x0A,0x04
-
-Candump (Linux utility): (1542794025.315691) can0 1DEFFF03#A00FE59856050404  
-
-Kees Verruijt's Canboat: 2014-08-14T19:00:00.042,3,128267,1,255,8,0B,F5,0D,8D,24,01,00,00
-
-Yacht Devices: 19:07:47.607 R 0DF80503 00 2B 2D 9E 44 5A A0 A1
+| Format | Format example|
+|--------|---------------|
+|TwoCan|0x01,0x01,0xF8,0x09,0x64,0xD9,0xDF,0x19,0xC7,0xB9,0x0A,0x04|
+|Candump (Linux utility)|(1542794025.315691) can0 1DEFFF03#A00FE59856050404|
+|Kees Verruijt's Canboat|2014-08-14T19:00:00.042,3,128267,1,255,8,0B,F5,0D,8D,24,01,00,00|
+|Yacht Devices|19:07:47.607 R 0DF80503 00 2B 2D 9E 44 5A A0 A1|
 
 For Linux it does not use a "plug-in" driver model, rather it uses two "baked in" classes that support the SocketCAN interface and the log file reader. Any CAN bus adapter that supports the SocketCAN interface "should" work. It has been tested with native interfaces (eg. can0), serial interfaces (eg. slcan0) and virtual interfaces (eg. vcan0). 
 
@@ -65,7 +61,7 @@ In addition, NMEA 2000 frames may be logged by the plugin. Prior to Version 1.5 
 
 From version 1.4 onwards, the TwoCan plugin may be configured to actively participate on the NMEA 2000 network, claiming an address, sending heartbeats and responding to a few requests (such as product information). Please note that this is not fully tested and may interfere with the correct functioning of the NMEA 2000 network. If any problems occur, disable the Active Mode functionality and if possible, file a bug report.
 
-If using the Active Mode feature in versions 1.4, 1.5 or 1.6, please be aware of the following:
+If using the Active Mode feature in versions 1.4, 1.5, 1.6 or 1.7, please be aware of the following:
 
 For Windows, updated plugin drivers for the hardware adapters are required if you wish to use Active Mode. The only hardware adapters that have been updated and tested are the Kvaser Leaflight and Rusoku Toucan Marine. I have yet to update the plugin drivers for the Canable Cantact and Axiomtek AX92903 adapters to support Active Mode.
 
@@ -77,50 +73,52 @@ For the Canable Cantact using the slcan firmware device it appears to drop frame
 
 List of supported NMEA 2000 Parameter Group Numbers (PGN)
 ---------------------------------------------------------
-
-59392 ISO Acknowledgement,
-59904 ISO Request
-60928 ISO Address Claim
-65240 ISO Commanded Address
-126992 NMEA System Time
-126993 NMEA heartbeat
-126996 NMEA Product Information
-127245 NMEA Rudder
-127250 NMEA Vessel Heading
-127251 NMEA Rate of Turn (ROT)
-127257 NMEA Attitude
-127258 NMEA Magnetic Variation
-127488 NMEA Engine Parameters, Rapid Update
-127489 NMEA Engine Paramters, Dynamic
-127505 NMEA Fluid Levels
-128259 NMEA Speed & Heading
-128267 NMEA Depth
-128275 NMEA Distance Log
-129025 NMEA Position Rapid Update
-129026 NMEA COG SOG Rapid Update
-129029 NMEA GNSS Position
-129033 NMEA Date & Time
-129038 AIS Class A Position Report
-129039 AIS Class B Position Report
-129040 AIS Class B Extended Position Report
-129041 AIS Aids To Navigation (AToN) Report
-129283 NMEA Cross Track Error (XTE)
-129284 NMEA Navigation Data
-129285 NMEA Navigation Route/WP Information
-129793 AIS Date and Time report
-129794 AIS Class A Static Data
-129798 AIS SAR Aircraft Position Report
-129801 AIS Addressed Safety Related Message
-129802 AIS Safety Related Broadcast Message 
-129808 NMEA DSC Message
-129809 AIS Class B Static Data Report, Part A 
-129810 AIS Class B Static Data Report, Part B 
-130306 NMEA Wind
-130310 NMEA Water & Air Temperature and Pressure
-130311 NMEA Environmental Parameters (supercedes 130310)
-130312 NMEA Temperature
-130316 NMEA Temperature Extended Range
-130577 NMEA Direction Data
+|PGN|Description|
+|---|-----------|
+|59392| ISO Acknowledgement|
+|59904| ISO Request|
+|60928| ISO Address Claim|
+|65240| ISO Commanded Address|
+|126992| NMEA System Time|
+|126993| NMEA Heartbeat|
+|126996| NMEA Product Information|
+|127245| NMEA Rudder|
+|127250| NMEA Vessel Heading|
+|127251| NMEA Rate of Turn|
+|127257| NMEA Attitude|
+|127258| NMEA Magnetic Variation|
+|127488| NMEA Engine Parameters, Rapid Update|
+|127489| NMEA Engine Paramters, Dynamic|
+|127505| NMEA Fluid Levels|
+|127508| NMEA Battery Status|
+|128259| NMEA Speed & Heading|
+|128267| NMEA Depth|
+|128275| NMEA Distance Log|
+|129025| NMEA Position Rapid Update|
+|129026| NMEA COG SOG Rapid Update|
+|129029| NMEA GNSS Position|
+|129033| NMEA Date & Time|
+|129038| AIS Class A Position Report|
+|129039| AIS Class B Position Report
+|129040| AIS Class B Extended Position Report|
+|129041| AIS Aids To Navigation (AToN) Report|
+|129283| NMEA Cross Track Error|
+|129284| NMEA Navigation Data|
+|129285| NMEA Navigation Route/Waypoint Information|
+|129793| AIS Date and Time Report|
+|129794| AIS Class A Static Data|
+|129798| AIS SAR Aircraft Position Report|
+|129801| AIS Addressed Safety Related Message|
+|129802| AIS Safety Related Broadcast Message|
+|129808| NMEA DSC Message|
+|129809| AIS Class B Static Data Report, Part A|
+|129810| AIS Class B Static Data Report, Part B|
+|130306| NMEA Wind|
+|130310| NMEA Water & Air Temperature and Pressure|
+|130311| NMEA Environmental Parameters (supercedes 130310)|
+|130312| NMEA Temperature|
+|130316| NMEA Temperature Extended Range|
+|130577| NMEA Direction Data|
 
 Obtaining the source code
 -------------------------
@@ -161,7 +159,13 @@ Creating an installation package
 
  cpack
 
-Note: I haven't tested creating Linux installation packages, however make install or simply copying the resulting libtwocan_pi.so shared library to the OpenCPN shared library directory (eg. /usr/lib/opencpn) works.
+Installation
+------------
+Run the resulting setup package created above for your platform.
+
+Eg. For Windows run twocan\_pi\_1.7.0-ov50.exe
+
+Eg. For Ubuntu run sudo dpkg -i twocan\_pi\_1.7.0-1_amd64.deb
 
 Problems
 --------

@@ -70,7 +70,7 @@
 #define CONST_CERTIFICATION_LEVEL 0 // We have not been certified, although I think we support the PGN's required for level 1
 #define CONST_LOAD_EQUIVALENCY 1 // PC is self powered, so assume little or no drain on NMEA 2000 network
 #define CONST_MODEL_ID "TwoCan plugin"
-#define CONST_SOFTWARE_VERSION  "1.6" // BUG BUG Should derive from PLUGIN_VERSION_MAJOR etc.
+#define CONST_SOFTWARE_VERSION  "1.7" // BUG BUG Should derive from PLUGIN_VERSION_MAJOR etc.
 
 // Maximum number of multi-frame Fast Messages we can support in the Fast Message Buffer, just an arbitary number
 #define CONST_MAX_MESSAGES 100
@@ -198,6 +198,7 @@
 #define FLAGS_ENG 32768
 #define FLAGS_TNK 65536
 #define FLAGS_RDR 131072
+#define FLAGS_BAT 262144
 
 // Bit values to determine in which format the log file is written
 #define FLAGS_LOG_NONE 0

@@ -310,6 +310,9 @@ private:
 
 	// Decode PGN 127505 NMEA Fluid Levels
 	bool DecodePGN127505(const byte *payload, std::vector<wxString> *nmeaSentences);
+	
+	// Decode PGN 127508 NMEA Battery Status
+	bool DecodePGN127508(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 128259 NMEA Speed & Heading
 	bool DecodePGN128259(const byte *payload, std::vector<wxString> *nmeaSentences);
