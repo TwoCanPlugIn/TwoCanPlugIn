@@ -1529,13 +1529,19 @@ bool TwoCanDevice::DecodePGN126992(const byte *payload, std::vector<wxString> *n
 
 		unsigned int secondsSinceMidnight;
 		secondsSinceMidnight = payload[4] | (payload[5] << 8) | (payload[6] << 16) | (payload[7] << 24);
-
-		wxDateTime tm;
-		tm.ParseDateTime("00:00:00 01-01-1970");
-		tm += wxDateSpan::Days(daysSinceEpoch);
-		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight /10000);
-		nmeaSentences->push_back(wxString::Format("$IIZDA,%s", tm.Format("%H%M%S.00,%d,%m,%Y,%z")));
-		return TRUE;
+		
+		if ((TwoCanUtils::IsDataValid(daysSinceEpoch)) && (TwoCanUtils::IsDataValid(secondsSinceMidnight))) {
+		
+			wxDateTime tm;
+			tm.ParseDateTime("00:00:00 01-01-1970");
+			tm += wxDateSpan::Days(daysSinceEpoch);
+			tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
+			nmeaSentences->push_back(wxString::Format("$IIZDA,%s", tm.Format("%H%M%S.00,%d,%m,%Y,%z")));
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
 	}
 	else {
 		return FALSE;
@@ -1546,20 +1552,22 @@ bool TwoCanDevice::DecodePGN126992(const byte *payload, std::vector<wxString> *n
 bool TwoCanDevice::DecodePGN126993(const int source, const byte *payload) {
 	if (payload != NULL) {
 
-		unsigned int timeOffset;
+		unsigned short timeOffset;
 		timeOffset = payload[0] | (payload[1] << 8);
 		
-		unsigned short counter;
+		byte counter;
 		counter = payload[2];
 
-		unsigned short class1CanState;
-		class1CanState = payload[3];
+		// BUG BUG following are not correct
 
-		unsigned short class2CanState;
-		class2CanState = payload[4];
+		byte class1CanState;
+		class1CanState = payload[3] & 0x07;
+
+		byte class2CanState;
+		class2CanState = (payload[3] & 0x38) >> 3;
 		
-		unsigned short equipmentState;
-		equipmentState = payload[5] & 0xF0;
+		byte equipmentState;
+		equipmentState = (payload[3] & 0x40) >> 6;
 
 		// BUG BUG Remove for production once this has been tested
 #ifndef NDEBUG
@@ -1768,7 +1776,7 @@ bool TwoCanDevice::DecodePGN127251(const byte *payload, std::vector<wxString> *n
 		// -ve sign means turning to port
 		
 		if (TwoCanUtils::IsDataValid(rateOfTurn)) {
-			nmeaSentences->push_back(wxString::Format("$IIROT,%.2f,A", RADIANS_TO_DEGREES((float)rateOfTurn / 600000)));
+			nmeaSentences->push_back(wxString::Format("$IIROT,%.2f,A", RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8)));
 			return TRUE;
 		}
 		else {
@@ -1891,24 +1899,24 @@ bool TwoCanDevice::DecodePGN127488(const byte *payload, std::vector<wxString> *n
 				// Note use of flag to identify whether single engine or dual engine as
 				// engineInstance 0 in a dual engine configuration is the port engine
 				// BUG BUG Should I use XDR or RPM sentence ?? Depends on how I code the Engine Dashboard !!
-			case 0:
-				if (IsMultiEngineVessel) {
-					nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,PORT", engineSpeed * 0.25f));
-					// nmeaSentences->push_back(wxString::Format("$IIRPM,E,2,%.2f,,A", engineSpeed * 0.25f));
-				}
-				else {
+				case 0:
+					if (IsMultiEngineVessel) {
+						nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,PORT", engineSpeed * 0.25f));
+						// nmeaSentences->push_back(wxString::Format("$IIRPM,E,2,%.2f,,A", engineSpeed * 0.25f));
+					}
+					else {
+						nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,MAIN", engineSpeed * 0.25f));
+						// nmeaSentences->push_back(wxString::Format("$IIRPM,E,0,%.2f,,A", engineSpeed * 0.25f));
+					}
+					break;
+				case 1:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,STBD", engineSpeed * 0.25f));
+					// nmeaSentences->push_back(wxString::Format("$IIRPM,E,1,%.2f,,A", engineSpeed * 0.25f));
+					break;
+				default:
 					nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,MAIN", engineSpeed * 0.25f));
 					// nmeaSentences->push_back(wxString::Format("$IIRPM,E,0,%.2f,,A", engineSpeed * 0.25f));
-				}
-				break;
-			case 1:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,STBD", engineSpeed * 0.25f));
-				// nmeaSentences->push_back(wxString::Format("$IIRPM,E,1,%.2f,,A", engineSpeed * 0.25f));
-				break;
-			default:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,MAIN", engineSpeed * 0.25f));
-				// nmeaSentences->push_back(wxString::Format("$IIRPM,E,0,%.2f,,A", engineSpeed * 0.25f));
-				break;
+					break;
 			}
 			return TRUE;
 		}
@@ -2055,24 +2063,24 @@ bool TwoCanDevice::DecodePGN127505(const byte *payload, std::vector<wxString> *n
 		if (TwoCanUtils::IsDataValid(tankLevel)) {
 			switch (tankType) {
 				// BUG BUG Using Transducer Type = V (Volume) but units = P to indicate percentage rather than M (Cubic Meters)
-			case 0:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,FUEL", (float)tankLevel * 0.004f));
-				break;
-			case 1:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,H20", (float)tankLevel * 0.004f));
-				break;
-			case 2:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,GREY", (float)tankLevel * 0.004f));
-				break;
-			case 3:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,LIVE", (float)tankLevel * 0.004f));
-				break;
-			case 4:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,OIL", (float)tankLevel * 0.004f));
-				break;
-			case 5:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,BLK", (float)tankLevel * 0.004f));
-				break;
+				case 0:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,FUEL", (float)tankLevel * 0.025f));
+					break;
+				case 1:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,H20", (float)tankLevel * 0.025f));
+					break;
+				case 2:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,GREY", (float)tankLevel * 0.025f));
+					break;
+				case 3:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,LIVE", (float)tankLevel * 0.025f));
+					break;
+				case 4:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,OIL", (float)tankLevel * 0.025f));
+					break;
+				case 5:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,BLK", (float)tankLevel * 0.025f));
+					break;
 			}
 			return TRUE;
 		}
@@ -2225,17 +2233,17 @@ bool TwoCanDevice::DecodePGN128275(const byte *payload, std::vector<wxString> *n
 
 		if (TwoCanUtils::IsDataValid(cumulativeDistance)) {
 			if (TwoCanUtils::IsDataValid(tripDistance)) {
-				nmeaSentences->push_back(wxString::Format("$IIVLW,,,,,%.2f,N,%.2f,N", CONVERT_METRES_NATICAL_MILES * tripDistance, CONVERT_METRES_NATICAL_MILES * cumulativeDistance));
+				nmeaSentences->push_back(wxString::Format("$IIVLW,,,,,%.2f,N,%.2f,N", CONVERT_METRES_NAUTICAL_MILES * tripDistance, CONVERT_METRES_NAUTICAL_MILES * cumulativeDistance));
 				return TRUE;
 			}
 			else {
-				nmeaSentences->push_back(wxString::Format("$IIVLW,,,,,,N,%.2f,N", CONVERT_METRES_NATICAL_MILES * cumulativeDistance));
+				nmeaSentences->push_back(wxString::Format("$IIVLW,,,,,,N,%.2f,N", CONVERT_METRES_NAUTICAL_MILES * cumulativeDistance));
 				return TRUE;
 			}
 		}
 		else {
 			if (TwoCanUtils::IsDataValid(tripDistance)) {
-				nmeaSentences->push_back(wxString::Format("$IIVLW,,,,,%.2f,N,,N", CONVERT_METRES_NATICAL_MILES * tripDistance));
+				nmeaSentences->push_back(wxString::Format("$IIVLW,,,,,%.2f,N,,N", CONVERT_METRES_NAUTICAL_MILES * tripDistance));
 				return TRUE;
 			}
 			else {
@@ -2391,7 +2399,7 @@ bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *n
 		byte sid;
 		sid = payload[0];
 
-		unsigned int daysSinceEpoch;
+		unsigned short daysSinceEpoch;
 		daysSinceEpoch = payload[1] | (payload[2] << 8);
 
 		unsigned int secondsSinceMidnight;
@@ -2501,9 +2509,13 @@ bool TwoCanDevice::DecodePGN129033(const byte *payload, std::vector<wxString> *n
 		tm.ParseDateTime("00:00:00 01-01-1970");
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
-		
-		nmeaSentences->push_back(wxString::Format("$IIZDA,%s,%d,%d", tm.Format("%H%M%S,%d,%m,%Y"), (int)localOffset / 60, localOffset % 60));
-		return TRUE;
+		if ((TwoCanUtils::IsDataValid(daysSinceEpoch))  && (TwoCanUtils::IsDataValid(secondsSinceMidnight))) {
+			nmeaSentences->push_back(wxString::Format("$IIZDA,%s,%d,%d", tm.Format("%H%M%S,%d,%m,%Y"), (int)localOffset / 60, localOffset % 60));
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
 	}
 	else {
 		return FALSE;
@@ -2572,25 +2584,23 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		int trueHeading;
 		trueHeading = payload[21] | (payload[22] << 8);
 
-		double rateOfTurn;
+		int rateOfTurn;
 		rateOfTurn = payload[23] | (payload[24] << 8);
 
 		int navigationalStatus;
 		navigationalStatus = payload[25] & 0x0F;
 
 		int reserved;
-		reserved = (payload[25] & 0xF0) >> 4;
-
-		// BUG BUG No idea about the bitlengths for the following, just guessing
+		reserved = (payload[25] & 0x30) >> 4;
 
 		int manoeuverIndicator;
-		manoeuverIndicator = payload[26] & 0x03;
+		manoeuverIndicator = (payload[25] & 0xC0) >> 6;
 
 		int spare;
-		spare = (payload[26] & 0x0C) >> 2;
+		spare = (payload[26] & 0x07);
 
 		int reservedForRegionalApplications;
-		reservedForRegionalApplications = (payload[26] & 0x30) >> 4;
+		reservedForRegionalApplications = (payload[26] & 0xF8) >> 3;
 
 		int sequenceID;
 		sequenceID = (payload[26] & 0xC0) >> 6;
@@ -2604,16 +2614,16 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 			AISRateOfTurn = -128;
 		}
 		// Greater or less than 708 degrees/min
-		else if ((RADIANS_TO_DEGREES(rateOfTurn * 3.125e-5) * 60) > 708) {
+		else if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60) > 708) {
 			AISRateOfTurn = 127;
 		}
 
-		else if ((RADIANS_TO_DEGREES(rateOfTurn * 3.125e-5) * 60) < -708) {
+		else if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60) < -708) {
 			AISRateOfTurn = -127;
 		}
 
 		else {
-			AISRateOfTurn = 4.733 * sqrt(RADIANS_TO_DEGREES(rateOfTurn * 3.125e-5) * 60);
+			AISRateOfTurn = 4.733 * sqrt(RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60);
 		}
 
 
@@ -2870,10 +2880,10 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 139, 4, regionalReservedB);
 		AISInsertString(binaryData, 143, 120, shipName);
 		AISInsertInteger(binaryData, 263, 8, shipType);
-		AISInsertInteger(binaryData, 271, 9, refBow);
-		AISInsertInteger(binaryData, 280, 9, shipLength - refBow);
-		AISInsertInteger(binaryData, 289, 6, refStarboard);
-		AISInsertInteger(binaryData, 295, 6, shipBeam - refStarboard);
+		AISInsertInteger(binaryData, 271, 9, refBow / 10);
+		AISInsertInteger(binaryData, 280, 9, (shipLength / 10) - (refBow / 10));
+		AISInsertInteger(binaryData, 289, 6, refStarboard / 10);
+		AISInsertInteger(binaryData, 295, 6, (shipBeam / 10) - (refStarboard / 10));
 		AISInsertInteger(binaryData, 301, 4, gnssType);
 		AISInsertInteger(binaryData, 305, 1, raimFlag);
 		AISInsertInteger(binaryData, 306, 1, dteFlag);
@@ -2883,9 +2893,17 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 		wxString encodedVDMMessage = AISEncodePayload(binaryData);
 		
 		// Send the VDM message, Note no fillbits
-		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + (encodedVDMMessage.Length() % 28) >  0 ? 1 : 0;
+		// One day I'll remember why I chose 28 as the length of a multisentence VDM message
+		// BUG BUG Or just send two messages, 26 bytes long
+		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + ((encodedVDMMessage.Length() % 28) >  0 ? 1 : 0);
+
 		for (int i = 0; i < numberOfVDMMessages; i++) {
-			nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.SubString(i * 28, 28)));
+			if (i == numberOfVDMMessages -1) { // This is the last message
+				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.Mid(i * 28, encodedVDMMessage.size() - (i * 28))));
+			}
+			else {
+				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.Mid(i * 28, 28)));
+			}
 		}
 		
 		AISsequentialMessageId += 1;
@@ -2985,7 +3003,7 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		int AToNNameLength = payload[26];
 		if (payload[27] == 1) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
 			for (int i = 0; i < AToNNameLength - 1; i++) {
-				AToNName.append(1, (char)payload[28 + i]);
+				AToNName.append(1, payload[28 + i]);
 			}
 		} 
 								
@@ -2999,10 +3017,10 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 163, 1, positionAccuracy);
 		AISInsertInteger(binaryData, 164, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
 		AISInsertInteger(binaryData, 192, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
-		AISInsertInteger(binaryData, 219, 9, refBow);
-		AISInsertInteger(binaryData, 228, 9, shipLength - refBow);
-		AISInsertInteger(binaryData, 237, 6, refStarboard);
-		AISInsertInteger(binaryData, 243, 6, shipBeam - refStarboard);
+		AISInsertInteger(binaryData, 219, 9, refBow / 10);
+		AISInsertInteger(binaryData, 228, 9, (shipLength / 10) - (refBow / 10));
+		AISInsertInteger(binaryData, 237, 6, refStarboard / 10);
+		AISInsertInteger(binaryData, 243, 6, (shipBeam / 10) - (refStarboard / 10));
 		AISInsertInteger(binaryData, 249, 4, gnssType);
 		AISInsertInteger(binaryData, 253, 6, timeStamp);
 		AISInsertInteger(binaryData, 259, 1, offPositionFlag);
@@ -3035,13 +3053,14 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		wxString encodedVDMMessage = AISEncodePayload(binaryData);
 		
 		// Send the VDM message
-		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + (encodedVDMMessage.Length() % 28) >  0 ? 1 : 0;
+		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + ((encodedVDMMessage.Length() % 28) >  0 ? 1 : 0);
+
 		for (int i = 0; i < numberOfVDMMessages; i++) {
-			if (i == numberOfVDMMessages - 1) { // Is this the last message, if so set fillbits as appropriate
-				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,%d", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.SubString(i * 28, 28), fillBits));
+			if (i == numberOfVDMMessages -1) { // This is the last message
+				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.Mid(i * 28, encodedVDMMessage.size() - (i * 28))));
 			}
 			else {
-				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.SubString(i * 28, 28)));
+				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.Mid(i * 28, 28)));
 			}
 		}
 		
@@ -3076,7 +3095,7 @@ bool TwoCanDevice::DecodePGN129283(const byte *payload, std::vector<wxString> *n
 		
 		if (TwoCanUtils::IsDataValid(crossTrackError)) {
 
-			nmeaSentences->push_back(wxString::Format("$IIXTE,A,A,%.2f,%c,N", fabsf(CONVERT_METRES_NATICAL_MILES * crossTrackError * 0.01f), crossTrackError < 0 ? 'L' : 'R'));
+			nmeaSentences->push_back(wxString::Format("$IIXTE,A,A,%.2f,%c,N", fabsf(CONVERT_METRES_NAUTICAL_MILES * crossTrackError * 0.01f), crossTrackError < 0 ? 'L' : 'R'));
 			return TRUE;
 		}
 		else {
@@ -3164,7 +3183,7 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 					abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', 
 					abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', 
 					RADIANS_TO_DEGREES((float)bearingPosition / 10000), 
-					CONVERT_METRES_NATICAL_MILES * distance, destinationWaypointId));
+					CONVERT_METRES_NAUTICAL_MILES * distance, destinationWaypointId));
 			}
 			else {
 				nmeaSentences->push_back(wxString::Format("$IIBWC,%s,%02d%05.2f,%c,%03d%05.2f,%c,,T,%.2f,M,%.2f,N,%d,A", 
@@ -3172,7 +3191,7 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 					abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', 
 					abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', 
 					RADIANS_TO_DEGREES((float)bearingPosition / 10000), \
-					CONVERT_METRES_NATICAL_MILES * distance, destinationWaypointId));
+					CONVERT_METRES_NAUTICAL_MILES * distance, destinationWaypointId));
 			}
 
 		}
@@ -3183,7 +3202,7 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 					abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S',
 					abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W',
 					RADIANS_TO_DEGREES((float)bearingPosition / 10000), \
-					CONVERT_METRES_NATICAL_MILES * distance, destinationWaypointId));
+					CONVERT_METRES_NAUTICAL_MILES * distance, destinationWaypointId));
 			}
 			else {
 				nmeaSentences->push_back(wxString::Format("$IIBWR,%s,%02d%05.2f,%c,%03d%05.2f,%c,,T,%.2f,M,%.2f,N,%d,A", 
@@ -3191,7 +3210,7 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 					abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S',
 					abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W',
 					RADIANS_TO_DEGREES((float)bearingPosition / 10000), \
-					CONVERT_METRES_NATICAL_MILES * distance, destinationWaypointId));
+					CONVERT_METRES_NAUTICAL_MILES * distance, destinationWaypointId));
 			}
 		}
 
@@ -3334,16 +3353,16 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
 
 		int daysSinceEpoch;
-		daysSinceEpoch = payload[21] | (payload[21] << 8);
+		daysSinceEpoch = payload[21] | (payload[22] << 8);
 
 		int reservedB;
-		reservedB = payload[22] & 0x0F;
+		reservedB = payload[23] & 0x0F;
 
 		int gnssType;
-		gnssType = (payload[22] & 0xF0) >> 4;
+		gnssType = (payload[23] & 0xF0) >> 4;
 
 		int spare;
-		spare = payload[23];
+		spare = payload[24];
 
 		int longRangeFlag = 0;
 
@@ -3388,7 +3407,7 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
-		std::vector<bool> binaryData(1024);
+		std::vector<bool> binaryData(426,0);
 	
 		unsigned int messageID;
 		messageID = payload[0] & 0x3F;
@@ -3416,18 +3435,17 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 		shipType = payload[36];
 
 		unsigned int shipLength;
-		shipLength = payload[37] | payload[38] << 8;
+		shipLength = payload[37] | (payload[38] << 8);
 
 		unsigned int shipBeam;
-		shipBeam = payload[39] | payload[40] << 8;
+		shipBeam = payload[39] | (payload[40] << 8);
 
 		unsigned int refStarboard;
-		refStarboard = payload[41] | payload[42] << 8;
+		refStarboard = payload[41] | (payload[42] << 8);
 
 		unsigned int refBow;
-		refBow = payload[43] | payload[44] << 8;
+		refBow = payload[43] | (payload[44] << 8);
 
-		// BUG BUG Just guessing that this is correct !!
 		unsigned int daysSinceEpoch;
 		daysSinceEpoch = payload[45] | (payload[46] << 8);
 
@@ -3440,24 +3458,23 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 		eta += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
 		unsigned int draft;
-		draft = payload[51] | payload[52] << 8;
+		draft = payload[51] | (payload[52] << 8);
 
 		std::string destination;
 		for (int i = 0; i < 20; i++) {
 			destination.append(1, (char)payload[53 + i]);
 		}
 		
-		// BUG BUG These could be back to front
-		unsigned int aisVersion;
-		aisVersion = (payload[73] & 0xC0) >> 6;
+		int aisVersion;
+		aisVersion = (payload[73] & 0x03);
 
-		unsigned int gnssType;
+		int gnssType;
 		gnssType = (payload[73] & 0x3C) >> 2;
 
-		unsigned int dteFlag;
-		dteFlag = (payload[73] & 0x02) >> 1;
+		int dteFlag;
+		dteFlag = (payload[73] & 0x40) >> 6;
 
-		unsigned int transceiverInformation;
+		int transceiverInformation;
 		transceiverInformation = payload[74] & 0x1F;
 
 		// Encode VDM Message using 6bit ASCII
@@ -3470,39 +3487,26 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 		AISInsertString(binaryData, 70, 42, callSign);
 		AISInsertString(binaryData, 112, 120, shipName);
 		AISInsertInteger(binaryData, 232, 8, shipType);
-		AISInsertInteger(binaryData, 240, 9, refBow);
-		AISInsertInteger(binaryData, 249, 9, shipLength - refBow);
-		AISInsertInteger(binaryData, 258, 6, shipBeam - refStarboard);
-		AISInsertInteger(binaryData, 264, 6, refStarboard);
+		AISInsertInteger(binaryData, 240, 9, refBow / 10);
+		AISInsertInteger(binaryData, 249, 9, (shipLength / 10) - (refBow / 10));
+		AISInsertInteger(binaryData, 258, 6, (shipBeam / 10) - (refStarboard / 10));
+		AISInsertInteger(binaryData, 264, 6, refStarboard / 10);
 		AISInsertInteger(binaryData, 270, 4, gnssType);
 		AISInsertInteger(binaryData, 274, 4, eta.GetMonth() + 1);
 		AISInsertInteger(binaryData, 278, 5, eta.GetDay());
 		AISInsertInteger(binaryData, 283, 5, eta.GetHour());
 		AISInsertInteger(binaryData, 288, 6, eta.GetMinute());
-		AISInsertInteger(binaryData, 294, 8, draft);
+		AISInsertInteger(binaryData, 294, 8, draft / 10);
 		AISInsertString(binaryData, 302, 120, destination);
 		AISInsertInteger(binaryData, 422, 1, dteFlag);
 		AISInsertInteger(binaryData, 423, 1, 0xFF); //spare
 		
-		// Add padding to align on 6 bit boundary
-		int fillBits = 0;
-		fillBits = 424 % 6;
-		if (fillBits > 0) {
-			AISInsertInteger(binaryData, 424, fillBits, 0);
-		}
-		
 		wxString encodedVDMMessage = AISEncodePayload(binaryData);
 		
-		// Send the VDM message
-		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + (encodedVDMMessage.Length() % 28) >  0 ? 1 : 0;
-		for (int i = 0; i < numberOfVDMMessages; i++) {
-			if (i == numberOfVDMMessages - 1) { // Is this the last message, if so set fillbits as appropriate
-				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,%d", numberOfVDMMessages, i,AISsequentialMessageId ,encodedVDMMessage.SubString(i * 28, 28),fillBits));
-			}
-			else {
-				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,0", numberOfVDMMessages, i, AISsequentialMessageId,encodedVDMMessage.SubString(i * 28, 28)));
-			}
-		}
+		// Send VDM message in two NMEA183 sentences
+
+		nmeaSentences->push_back(wxString::Format("!AIVDM,2,1,%d,%c,%s,0", AISsequentialMessageId, transceiverInformation==0?'A':'B', encodedVDMMessage.Mid(0,35)));
+		nmeaSentences->push_back(wxString::Format("!AIVDM,2,2,%d,%c,%s,2", AISsequentialMessageId, transceiverInformation==0?'A':'B', encodedVDMMessage.Mid(35,36)));
 
 		AISsequentialMessageId += 1;
 		if (AISsequentialMessageId == 10) {
@@ -3668,7 +3672,7 @@ bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *n
 		//std::string safetyMessage;
 		//int safetyMessageLength = payload[6];
 		//if (payload[7] == 1) {
-			// first byte of safetmessage indicates encoding; 0 for Unicode, 1 for ASCII
+			// first byte of safety message indicates encoding; 0 for Unicode, 1 for ASCII
 			//for (int i = 0; i < safetyMessageLength - 2; i++) {
 			//	safetyMessage += (static_cast<char>(payload[8 + i]));
 			//}
@@ -3694,13 +3698,14 @@ bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *n
 		wxString encodedVDMMessage = AISEncodePayload(binaryData);
 
 		// Send the VDM message
-		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + (encodedVDMMessage.Length() % 28) >  0 ? 1 : 0;
+		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + ((encodedVDMMessage.Length() % 28) >  0 ? 1 : 0);
+
 		for (int i = 0; i < numberOfVDMMessages; i++) {
-			if (i == numberOfVDMMessages - 1) { // Is this the last message, if so set fillbits as appropriate
-				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,%d", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.SubString(i * 28, 28), fillBits));
+			if (i == numberOfVDMMessages -1) { // This is the last message
+				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,%d", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.Mid(i * 28, encodedVDMMessage.size() - (i * 28)),fillBits));
 			}
 			else {
-				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.SubString(i * 28, 28)));
+				nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,B,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.Mid(i * 28, 28)));
 			}
 		}
 
@@ -3745,7 +3750,7 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 		std::string safetyMessage;
 		int safetyMessageLength = payload[6];
 		if (payload[7] == 1) { 
-			// first byte of safetmessage indicates encoding; 0 for Unicode, 1 for ASCII
+			// first byte of safety message indicates encoding; 0 for Unicode, 1 for ASCII
 			for (int i = 0; i < safetyMessageLength - 2; i++) {
 				safetyMessage += (static_cast<char>(payload[8 + i]));
 			}
@@ -3766,7 +3771,7 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 			AISInsertInteger(binaryData, 40 + (l * 6), fillBits, 0);
 		}
 
-		// BUG BUG Should check whether the binary message is smaller than 1008 btes otherwise
+		// BUG BUG Should check whether the binary message is smaller than 1008 bytes otherwise
 		// we just need a substring from the binaryData
 		std::vector<bool>::const_iterator first = binaryData.begin();
 		std::vector<bool>::const_iterator last = binaryData.begin() + 40 + (l * 6) + fillBits;
@@ -3776,17 +3781,17 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 		wxString encodedVDMMessage = AISEncodePayload(newVec);
 
 		// Send the VDM message, use 28 characters as an arbitary number for multiple NMEA 183 sentences
-		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + (encodedVDMMessage.Length() % 28) >  0 ? 1 : 0;
+		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + ((encodedVDMMessage.Length() % 28) >  0 ? 1 : 0);
 		if (numberOfVDMMessages == 1) {
 			nmeaSentences->push_back(wxString::Format("!AIVDM,1,1,,A,%s,%d", encodedVDMMessage, fillBits));
 		}
 		else {
 			for (int i = 0; i < numberOfVDMMessages; i++) {
 				if (i == numberOfVDMMessages - 1) { // Is this the last message, if so append number of fillbits as appropriate
-					nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,A,%s,%d", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.SubString(i * 28, 28), fillBits));
+					nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,A,%s,%d", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.Mid(i * 28, 28), fillBits));
 				}
 				else {
-					nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,A,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.SubString(i * 28, 28)));
+					nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,%d,A,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, encodedVDMMessage.Mid(i * 28, 28)));
 				}
 			}
 		}
@@ -4006,29 +4011,29 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 
 		std::string callSign;
 		for (int i = 0; i < 7; i++) {
-			callSign.append(1, (char)payload[12 + i]);
+			callSign.append(1, (char)payload[13 + i]);
 		}
 		
 		unsigned int shipLength;
-		shipLength = payload[19] | payload[20] << 8;
+		shipLength = payload[20] | (payload[21] << 8);
 
 		unsigned int shipBeam;
-		shipBeam = payload[21] | payload[22] << 8;
+		shipBeam = payload[22] | (payload[23] << 8);
 
 		unsigned int refStarboard;
-		refStarboard = payload[23] | payload[24] << 8;
+		refStarboard = payload[24] | (payload[25] << 8);
 
 		unsigned int refBow;
-		refBow = payload[25] | payload[26] << 8;
+		refBow = payload[26] | (payload[27] << 8);
 
 		unsigned int motherShipID; // aka mother ship MMSI
-		motherShipID = payload[27] | (payload[28] << 8) | (payload[29] << 16) | (payload[30] << 24);
+		motherShipID = payload[28] | (payload[29] << 8) | (payload[30] << 16) | (payload[31] << 24);
 
 		int reserved;
-		reserved = (payload[31] & 0x03);
+		reserved = (payload[32] & 0x03);
 
 		int spare;
-		spare = (payload[31] & 0xFC) >> 2;
+		spare = (payload[32] & 0xFC) >> 2;
 
 		AISInsertInteger(binaryData, 0, 6, messageID);
 		AISInsertInteger(binaryData, 6, 2, repeatIndicator);
@@ -4037,10 +4042,10 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 40, 8, shipType);
 		AISInsertString(binaryData, 48, 42, vendorId);
 		AISInsertString(binaryData, 90, 42, callSign);
-		AISInsertInteger(binaryData, 132, 9, refBow);
-		AISInsertInteger(binaryData, 141, 9, shipLength - refBow);
-		AISInsertInteger(binaryData, 150, 6, shipBeam - refStarboard);
-		AISInsertInteger(binaryData, 156, 6, refStarboard);
+		AISInsertInteger(binaryData, 132, 9, refBow / 10);
+		AISInsertInteger(binaryData, 141, 9, (shipLength / 10) - (refBow / 10));
+		AISInsertInteger(binaryData, 150, 6, (shipBeam / 10) - (refStarboard / 10));
+		AISInsertInteger(binaryData, 156, 6, refStarboard / 10);
 		AISInsertInteger(binaryData, 162 ,6 , 0); //spare
 		
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
