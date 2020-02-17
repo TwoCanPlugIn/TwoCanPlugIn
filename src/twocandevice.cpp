@@ -1812,7 +1812,7 @@ bool TwoCanDevice::DecodePGN127257(const byte *payload, std::vector<wxString> *n
 		pitch = payload[3] | (payload[4] << 8);
 
 		short roll;
-		roll = payload[5] | (payload[4] << 8);
+		roll = payload[5] | (payload[6] << 8);
 
 		wxString xdrString;
 
@@ -1858,7 +1858,7 @@ bool TwoCanDevice::DecodePGN127258(const byte *payload, std::vector<wxString> *n
 		daysSinceEpoch = payload[2] | (payload[3] << 8);
 
 		short variation;
-		variation = payload[5] | (payload[6] << 8);
+		variation = payload[4] | (payload[5] << 8);
 
 		variation = RADIANS_TO_DEGREES((float)variation / 10000);
 
@@ -2215,10 +2215,10 @@ bool TwoCanDevice::DecodePGN128275(const byte *payload, std::vector<wxString> *n
 	if (payload != NULL) {
 
 		unsigned short daysSinceEpoch;
-		daysSinceEpoch = payload[1] | (payload[2] << 8);
+		daysSinceEpoch = payload[0] | (payload[1] << 8);
 
 		unsigned int secondsSinceMidnight;
-		secondsSinceMidnight = payload[3] | (payload[4] << 8) | (payload[5] << 16) | (payload[6] << 24);
+		secondsSinceMidnight = payload[2] | (payload[3] << 8) | (payload[4] << 16) | (payload[5] << 24);
 
 		wxDateTime tm;
 		tm.ParseDateTime("00:00:00 01-01-1970");
@@ -2226,10 +2226,10 @@ bool TwoCanDevice::DecodePGN128275(const byte *payload, std::vector<wxString> *n
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
 		unsigned int cumulativeDistance;
-		cumulativeDistance = payload[7] | (payload[8] << 8) | (payload[9] << 16) | (payload[10] << 24);
+		cumulativeDistance = payload[6] | (payload[7] << 8) | (payload[8] << 16) | (payload[9] << 24);
 
 		unsigned int tripDistance;
-		tripDistance = payload[11] | (payload[12] << 8) | (payload[13] << 16) | (payload[14] << 24);
+		tripDistance = payload[10] | (payload[11] << 8) | (payload[12] << 16) | (payload[13] << 24);
 
 		if (TwoCanUtils::IsDataValid(cumulativeDistance)) {
 			if (TwoCanUtils::IsDataValid(tripDistance)) {
