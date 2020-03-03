@@ -1830,7 +1830,7 @@ bool TwoCanDevice::DecodePGN127257(const byte *payload, std::vector<wxString> *n
 		}
 
 		if (xdrString.length() > 0) {
-			xdrString.Prepend("IIXDR,");
+			xdrString.Prepend("$IIXDR,");
 			nmeaSentences->push_back(xdrString);
 			return TRUE;
 		}
