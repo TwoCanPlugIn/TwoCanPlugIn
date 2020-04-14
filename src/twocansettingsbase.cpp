@@ -297,6 +297,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	this->Connect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
 	cmbInterfaces->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoice ), NULL, this );
 	chkListPGN->Connect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
+	chkListPGN->Connect(wxEVT_RIGHT_UP, wxMouseEventHandler(TwoCanSettingsBase::OnRightClick), NULL, this);
 	chkEnableHeartbeat->Connect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(TwoCanSettingsBase::OnCheckHeartbeat), NULL, this);
 	chkDeviceMode->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );
 	cmbLogging->Connect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(TwoCanSettingsBase::OnLogging), NULL, this);
@@ -313,6 +314,7 @@ TwoCanSettingsBase::~TwoCanSettingsBase()
 	this->Disconnect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
 	cmbInterfaces->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoice ), NULL, this );
 	chkListPGN->Disconnect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
+	chkListPGN->Disconnect(wxEVT_RIGHT_UP, wxMouseEventHandler(TwoCanSettingsBase::OnRightClick), NULL, this);
 	chkDeviceMode->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );
 	chkEnableHeartbeat->Disconnect(wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler(TwoCanSettingsBase::OnCheckHeartbeat), NULL, this);
 	cmbLogging->Disconnect(wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler(TwoCanSettingsBase::OnLogging), NULL, this);

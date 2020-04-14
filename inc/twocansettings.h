@@ -227,12 +227,14 @@ protected:
 	void OnOK(wxCommandEvent &event);
 	void OnApply(wxCommandEvent &event);
 	void OnCancel(wxCommandEvent &event);
+	void OnRightClick(wxMouseEvent& event);
 
 private:
 	void SaveSettings(void);
 	bool settingsDirty;
 	void GetDriverInfo(wxString fileName);
 	bool EnumerateDrivers(void);
+	bool togglePGN;
 	
 	// To obtain the "friendly" name of Windows CAN driver
 	typedef wxChar *(*LPFNDLLDriverName)(void);

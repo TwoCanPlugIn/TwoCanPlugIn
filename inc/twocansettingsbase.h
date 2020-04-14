@@ -74,6 +74,7 @@ class TwoCanSettingsBase : public wxDialog
 		virtual void OnInit( wxInitDialogEvent& event ) { event.Skip(); }
 		virtual void OnChoice( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckPGN( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnRightClick(wxMouseEvent& event) { event.Skip(); }
 		virtual void OnCheckMode( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckHeartbeat(wxCommandEvent& event) { event.Skip(); }
 		virtual void OnLogging(wxCommandEvent& event) { event.Skip(); }

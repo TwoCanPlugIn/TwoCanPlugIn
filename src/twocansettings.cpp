@@ -46,6 +46,7 @@ TwoCanSettings::TwoCanSettings(wxWindow* parent, wxWindowID id, const wxString& 
 	wxIcon icon;
 	icon.CopyFromBitmap(twocan_16_icon);
 	TwoCanSettings::SetIcon(icon);
+	togglePGN = FALSE;
 }
 
 TwoCanSettings::~TwoCanSettings() {
@@ -231,6 +232,16 @@ void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
 void TwoCanSettings::OnCheckHeartbeat(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
+
+// Right mouse click to check/uncheck all parameter group numbers
+void TwoCanSettings::OnRightClick(wxMouseEvent& event) {
+	togglePGN = !togglePGN;
+	for (unsigned int i = 0; i < chkListPGN->GetCount(); i++) {
+		chkListPGN->Check(i, togglePGN);
+	}
+	this->settingsDirty = TRUE;
+}
+
 
 void TwoCanSettings::OnOK(wxCommandEvent &event) {
 	// Disable receiving of NMEA 2000 frames in the debug window, as we'll be closing
