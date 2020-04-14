@@ -2549,16 +2549,10 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
-		longitude = ((payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24))) * 1e-7;
-
-		int longitudeDegrees = (int)longitude;
-		double longitudeMinutes = fabs((longitude - longitudeDegrees) * 60);
-
+		longitude = (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24)) * 1e-7;
+		
 		double latitude;
-		latitude = ((payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24))) * 1e-7;
-
-		int latitudeDegrees = (int)latitude;
-		double latitudeMinutes = fabs((latitude - latitudeDegrees) * 60);
+		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
 
 		int positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
@@ -2578,7 +2572,7 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		int communicationState;
 		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16) & 0x7FFFF);
 
-		int transceiverInformation; // unused in NMEA183 conversion, BUG BUG Just guessing
+		int transceiverInformation; // unused in NMEA183 conversion
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
 
 		int trueHeading;
@@ -2590,11 +2584,11 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		int navigationalStatus;
 		navigationalStatus = payload[25] & 0x0F;
 
-		int reserved;
-		reserved = (payload[25] & 0x30) >> 4;
-
 		int manoeuverIndicator;
-		manoeuverIndicator = (payload[25] & 0xC0) >> 6;
+		manoeuverIndicator = payload[25] & 0x30 >> 4;
+
+		int reserved;
+		reserved = (payload[25] & 0xC0) >> 6;
 
 		int spare;
 		spare = (payload[26] & 0x07);
@@ -2636,8 +2630,8 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 42, 8, AISRateOfTurn);
 		AISInsertInteger(binaryData, 50, 10, CONVERT_MS_KNOTS * speedOverGround * 0.1f);
 		AISInsertInteger(binaryData, 60, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 61, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
-		AISInsertInteger(binaryData, 89, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 61, 28, (int)(longitude * 600000));
+		AISInsertInteger(binaryData, 89, 27, (int)(latitude * 600000));
 		AISInsertInteger(binaryData, 116, 12, RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f);
 		AISInsertInteger(binaryData, 128, 9, RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f);
 		AISInsertInteger(binaryData, 137, 6, timeStamp);
@@ -2674,16 +2668,10 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
-		longitude = ((payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24))) * 1e-7;
+		longitude = (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8])) * 1e-7;
 
-		int longitudeDegrees = (int)longitude;
-		double longitudeMinutes = fabs((longitude - longitudeDegrees) * 60);
-						
 		double latitude;
-		latitude = ((payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24))) * 1e-7;
-		
-		int latitudeDegrees = (int)latitude;
-		double latitudeMinutes = fabs((latitude - latitudeDegrees) * 60);
+		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
 		
 		int positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
@@ -2744,8 +2732,8 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 38, 8, 0xFF); // spare
 		AISInsertInteger(binaryData, 46, 10, CONVERT_MS_KNOTS * speedOverGround * 0.1f);
 		AISInsertInteger(binaryData, 56, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 57, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
-		AISInsertInteger(binaryData, 85, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 57, 28, (int)(longitude * 600000));
+		AISInsertInteger(binaryData, 85, 27, (int)(latitude * 600000));
 		AISInsertInteger(binaryData, 112, 12, RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f);
 		AISInsertInteger(binaryData, 124, 9, RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f);
 		AISInsertInteger(binaryData, 133, 6, timeStamp);
@@ -2788,16 +2776,10 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
-		longitude = ((payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24))) * 1e-7;
-
-		int longitudeDegrees = (int)longitude;
-		double longitudeMinutes = fabs((longitude - longitudeDegrees) * 60);
+		longitude = (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24)) * 1e-7;
 
 		double latitude;
-		latitude = ((payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24))) * 1e-7;
-
-		int latitudeDegrees = (int)latitude;
-		double latitudeMinutes = fabs((latitude - latitudeDegrees) * 60);
+		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
 
 		int positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
@@ -2872,8 +2854,8 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 38, 8, regionalReservedA);
 		AISInsertInteger(binaryData, 46, 10, CONVERT_MS_KNOTS * speedOverGround * 0.1f);
 		AISInsertInteger(binaryData, 56, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 57, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
-		AISInsertInteger(binaryData, 85, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 57, 28, (int)(longitude * 600000));
+		AISInsertInteger(binaryData, 85, 27, (int)(latitude * 600000));
 		AISInsertInteger(binaryData, 112, 12, RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f);
 		AISInsertInteger(binaryData, 124, 9, RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f);
 		AISInsertInteger(binaryData, 133, 6, timeStamp);
@@ -2936,17 +2918,11 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
-		longitude = ((payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24))) * 1e-7;
-
-		int longitudeDegrees = (int)longitude;
-		double longitudeMinutes = fabs((longitude - longitudeDegrees) * 60);
-
+		longitude = (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24)) * 1e-7;
+		
 		double latitude;
-		latitude = ((payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24))) * 1e-7;
-
-		int latitudeDegrees = (int)latitude;
-		double latitudeMinutes = fabs((latitude - latitudeDegrees) * 60);
-
+		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
+		
 		int positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
 
@@ -3015,8 +2991,8 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 38, 5, AToNType);
 		AISInsertString(binaryData, 43, 120, AToNNameLength <= 20 ? AToNName : AToNName.substr(0,20));
 		AISInsertInteger(binaryData, 163, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 164, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
-		AISInsertInteger(binaryData, 192, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 164, 28, (int)(longitude * 600000));
+		AISInsertInteger(binaryData, 192, 27, (int)(latitude * 600000));
 		AISInsertInteger(binaryData, 219, 9, refBow / 10);
 		AISInsertInteger(binaryData, 228, 9, (shipLength / 10) - (refBow / 10));
 		AISInsertInteger(binaryData, 237, 6, refStarboard / 10);
@@ -3323,17 +3299,11 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
-		longitude = ((payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24))) * 1e-7;
-
-		int longitudeDegrees = (int)longitude;
-		double longitudeMinutes = fabs((longitude - longitudeDegrees) * 60);
-
-		double latitude;
-		latitude = ((payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24))) * 1e-7;
-
-		int latitudeDegrees = (int)latitude;
-		double latitudeMinutes = fabs((latitude - latitudeDegrees) * 60);
+		longitude = (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24)) * 1e-7;
 		
+		double latitude;
+		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
+
 		int positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
 
@@ -3383,8 +3353,8 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 		AISInsertInteger(binaryData, 66, 6, tm.GetMinute());
 		AISInsertInteger(binaryData, 72, 6, tm.GetSecond());
 		AISInsertInteger(binaryData, 78, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 79, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
-		AISInsertInteger(binaryData, 107, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 79, 28, (int)(longitude * 600000));
+		AISInsertInteger(binaryData, 107, 27, (int)(latitude * 600000));
 		AISInsertInteger(binaryData, 134, 4, gnssType);
 		AISInsertInteger(binaryData, 138, 1, longRangeFlag); // Long Range flag doesn't appear to be set anywhere
 		AISInsertInteger(binaryData, 139, 9, spare);
@@ -3537,17 +3507,11 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
-		longitude = ((payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24))) * 1e-7;
-
-		int longitudeDegrees = (int)longitude;
-		double longitudeMinutes = fabs((longitude - longitudeDegrees) * 60);
-
+		longitude = (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24)) * 1e-7;
+		
 		double latitude;
-		latitude = ((payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24))) * 1e-7;
-
-		int latitudeDegrees = (int)latitude;
-		double latitudeMinutes = fabs((latitude - latitudeDegrees) * 60);
-
+		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
+		
 		int positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
 
@@ -3604,8 +3568,8 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 38, 12, altitude);
 		AISInsertInteger(binaryData, 50, 10, speedOverGround);
 		AISInsertInteger(binaryData, 60, 1, positionAccuracy);
-		AISInsertInteger(binaryData, 61, 28, ((longitudeDegrees * 60) + longitudeMinutes) * 10000);
-		AISInsertInteger(binaryData, 89, 27, ((latitudeDegrees * 60) + latitudeMinutes) * 10000);
+		AISInsertInteger(binaryData, 61, 28, (int)(longitude * 600000));
+		AISInsertInteger(binaryData, 89, 27, (int)(latitude * 600000));
 		AISInsertInteger(binaryData, 116, 12, courseOverGround);
 		AISInsertInteger(binaryData, 128, 6, timeStamp);
 		AISInsertInteger(binaryData, 134, 8, reservedForRegionalApplications); // 1 bit altitide sensor
@@ -3665,18 +3629,13 @@ bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *n
 		reservedC = (payload[10] & 0x80) >> 7;
 
 		std::string safetyMessage;
-		for (int i = 0; i < 156; i++) {
-			safetyMessage.append(1, (char)payload[11 + i]);
-		}
-		// BUG BUG Not sure if ths is encoded same as Addressed Safety Message
-		//std::string safetyMessage;
-		//int safetyMessageLength = payload[6];
-		//if (payload[7] == 1) {
+		int safetyMessageLength = payload[11];
+		if (payload[12] == 1) {
 			// first byte of safety message indicates encoding; 0 for Unicode, 1 for ASCII
-			//for (int i = 0; i < safetyMessageLength - 2; i++) {
-			//	safetyMessage += (static_cast<char>(payload[8 + i]));
-			//}
-		//}
+			for (int i = 0; i < safetyMessageLength - 2; i++) {
+				safetyMessage += (static_cast<char>(payload[13 + i]));
+			}
+		}
 
 		AISInsertInteger(binaryData, 0, 6, messageID);
 		AISInsertInteger(binaryData, 6, 2, repeatIndicator);
