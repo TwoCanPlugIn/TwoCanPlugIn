@@ -2695,7 +2695,7 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
 
 		int trueHeading;
-		trueHeading = RADIANS_TO_DEGREES((payload[21] | (payload[22] << 8)));
+		trueHeading = payload[21] | (payload[22] << 8);
 
 		int regionalReservedA;
 		regionalReservedA = payload[23];
