@@ -2570,7 +2570,7 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		speedOverGround = payload[16] | (payload[17] << 8);
 
 		int communicationState;
-		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16) & 0x7FFFF);
+		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
 
 		int transceiverInformation; // unused in NMEA183 conversion
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
@@ -2689,7 +2689,7 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		speedOverGround = payload[16] | (payload[17] << 8);
 
 		int communicationState;
-		communicationState = payload[18] | (payload[19] << 8) | ((payload[20] & 0x7) << 16);
+		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
 
 		int transceiverInformation; // unused in NMEA183 conversion, BUG BUG Just guessing
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
@@ -3317,7 +3317,7 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 		secondsSinceMidnight = payload[14] | (payload[15] << 8) | (payload[16] << 16) | (payload[17] << 24);
 
 		int communicationState;
-		communicationState = payload[18] | (payload[19] << 8) | ((payload[20] & 0x7) << 16);
+		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
 
 		int transceiverInformation; // unused in NMEA183 conversion, BUG BUG Just guessing
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
