@@ -13,11 +13,6 @@ SET(PACKAGE_NAME twocan_pi)
 SET(VERBOSE_NAME TWOCAN)
 SET(TITLE_NAME TWOCAN)
 SET(CPACK_PACKAGE_CONTACT "TwoCanPlugin@hotmail.com")
-# SET(PLUGIN_VERSION_MAJOR "1")
-# SET(PLUGIN_VERSION_MINOR "7")
-# SET(PLUGIN_VERSION_PATCH "0")
-# SET(NAME_SUFFIX "ov50")
-# SET(PLUGIN_VERSION_DATE "2019-12-10")
 SET(CMAKE_BUILD_TYPE Release)
 SET(CMAKE_CXX_STANDARD 11)
 
@@ -38,11 +33,9 @@ SET(SRC_TWOCAN
             inc/twocansettingsbase.h
             src/twocanutils.cpp
             inc/twocanutils.h
-            inc/version.h
-            img/twocan_16_icon.xpm
-            img/twocan_32.xpm
-            img/twocan_64.xpm
-            img/twocan_128.xpm
+            inc/twocanversion.h
+            inc/twocanicons.h
+            src/twocanicons.cpp
  	)
 
 IF(UNIX AND NOT APPLE)

@@ -60,6 +60,9 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 TwoCan::TwoCan(void *ppimgr) : opencpn_plugin_18(ppimgr), wxEvtHandler() {
 	// Wire up the event handler
 	Connect(wxEVT_SENTENCE_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnSentenceReceived));
+
+	// Load the plugin bitmaps/icons 
+	initialize_images();
 }
 
 TwoCan::~TwoCan(void) {
@@ -164,8 +167,7 @@ wxString TwoCan::GetLongDescription() {
 
 // 32x32 pixel PNG file is converted to XPM containing the variable declaration: char *[] twocan_32 ...
 wxBitmap* TwoCan::GetPlugInBitmap() {
-	pluginBitmap = wxBitmap(twocan_32);
-	return &pluginBitmap;
+	return _img_Toucan_32;
 }
 
 // BUG BUG for future versions

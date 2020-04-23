@@ -44,7 +44,7 @@ TwoCanSettings::TwoCanSettings(wxWindow* parent, wxWindowID id, const wxString& 
 
 	// Set the dialog's 16x16 icon
 	wxIcon icon;
-	icon.CopyFromBitmap(twocan_16_icon);
+	icon.CopyFromBitmap(*_img_Toucan_16);
 	TwoCanSettings::SetIcon(icon);
 	togglePGN = FALSE;
 }

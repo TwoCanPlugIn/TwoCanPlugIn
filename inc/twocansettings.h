@@ -207,6 +207,8 @@ extern unsigned long uniqueId;
 // The current NMEA 2000 network address of this device
 extern int networkAddress;
 
+extern wxBitmap *_img_Toucan_16;
+
 class TwoCanSettings : public TwoCanSettingsBase
 {
 	
