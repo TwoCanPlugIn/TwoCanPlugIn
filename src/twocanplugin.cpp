@@ -68,6 +68,12 @@ TwoCan::TwoCan(void *ppimgr) : opencpn_plugin_18(ppimgr), wxEvtHandler() {
 TwoCan::~TwoCan(void) {
 	// Disconnect the event handler
 	Disconnect(wxEVT_SENTENCE_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnSentenceReceived));
+
+	// Unload plugin bitmaps/icons
+	delete _img_Toucan_16;
+	delete _img_Toucan_32;
+	delete _img_Toucan_48;
+	delete _img_Toucan_64;
 }
 
 int TwoCan::Init(void) {
