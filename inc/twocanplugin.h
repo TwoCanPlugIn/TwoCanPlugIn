@@ -48,6 +48,7 @@
 #include "twocanicons.h"
 
 // BUG BUG check which wxWidget includes we really need
+// Arrays of Strings
 #include <wx/arrstr.h> 
 // Configuration
 #include <wx/fileconf.h>
@@ -58,6 +59,28 @@
 
 // Plugin receives FrameReceived events from the TwoCan device
 const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT = wxNewEventType();
+
+// Globally accessible variables used by the plugin, device and the settings dialog.
+// OpenCPN Configuration Settings
+wxFileConfig *configSettings;
+// The name of the TwoCan driver being used to access the CAN bus or the Log Files
+wxString canAdapter;
+// Bit mask determing what NMEA 2000 PGN's are to be converted to NMEA 183 sentences
+int supportedPGN;
+// Whether the TwoCan device is a passive device (just listens) or whether it fully participates on teh NMEA 2000 network
+bool deviceMode;
+// Indicate whether the TwoCan Preferences diaog displays real time NMEA sentences
+bool debugWindowActive;
+// If an Active Device, whether to periodically send heartbeats
+bool enableHeartbeat;
+// If any logging is to be performed and in what format (twocan raw, candump, canboat, yacht devices or csv)
+int logLevel;
+// A 29bit number that uniqiuely identifies the TwoCan device if it is an Active Device
+unsigned long uniqueId;
+// A 1 byte CAN bus network address for this device if it is an Active device (0-253)
+int networkAddress;
+// Maintain a map of the all of the NMEA 2000 devices on the network
+NetworkInformation networkMap[CONST_MAX_DEVICES];
 
 // The TwoCan plugin
 class TwoCan : public opencpn_plugin_18, public wxEvtHandler {

@@ -26,13 +26,13 @@
 
 #include "twocanerror.h"
 
-#ifdef __LINUX__
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
 #include <cerrno>
 #endif
 
 char *GetErrorMessage(int errorCode) {
 	
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 
 	// Retrieve the Windows system error message for the last-error code
 
@@ -51,9 +51,9 @@ char *GetErrorMessage(int errorCode) {
 	
 #endif
 
-#ifdef __LINUX__
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
 
-	// Retrieve the Linux system error message for the last-error code
+	// Retrieve the Linux/Mac OSX system error message for the last-error code
 	
 	return (char *)strerror(errorCode);
 	

@@ -36,6 +36,7 @@
 // 1.5 - 10/7/2019. Checks for valid data, flags for XTE, PGN Attitude, additional log formats
 // 1.6 - 10/10/2019 Added PGN 127245 (Rudder), 127488 (Engine, Rapid), 127489 (Engine, Dynamic), 127505 (Fluid Levels)
 // 1.7 - 10/12/2019 Aded PGN 127508 (Battery), AIS fixes
+// 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // Outstanding Features: 
 // 1. Bi-directional gateway ??
 // 2. Rewrite/Port Adapter drivers to C++
@@ -43,12 +44,13 @@
 
 #include "twocandevice.h"
 
-TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_DETACHED) {
+TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_JOINABLE) {
 	// Save a reference to our "parent", the plugin event handler so we can pass events to it
 	eventHandlerAddress = handler;
 	
-#ifdef __LINUX__
-	// initialise Message Queue to receive frames from either the Log reader or SockeTCAN interface
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	// Initialise Message Queue to receive frames from either the Linux SocketCAN interface, Mac serial interface or Linux/Mac Log Reader
+	// Note for Windows version we use a different mechanism, using Windows Events.
 	canQueue = new wxMessageQueue<std::vector<byte>>();
 #endif
 	
@@ -185,12 +187,12 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 }
 
 
-// Init, Load the CAN Adapter (either a Windows DLL or for Linux the baked-in drivers; Log File Reader or SocketCAN
+// Init, Load the CAN Adapter (either a Windows DLL or for Linux & Mac OSX the baked-in drivers; Log File Reader, SocketCAN or Mac OSX Serial USB Modem
 // and get ready to start reading from the CAN bus.
 int TwoCanDevice::Init(wxString driverPath) {
-	int returnCode;
+	int returnCode = TWOCAN_RESULT_SUCCESS;
 	
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 	// Load the CAN Adapter DLL
 	returnCode = LoadWindowsDriver(driverPath);
 	if (returnCode != TWOCAN_RESULT_SUCCESS) {
@@ -229,29 +231,44 @@ int TwoCanDevice::Init(wxString driverPath) {
 	}
 #endif
 
-#ifdef __LINUX__
-	// For Linux, using "baked in" classes instead of the plug-in model that the Window's version uses
-	// Save the driver name to pass to the Open, Close, Read functions
-	linuxDriverName = driverPath;
-	// Determine whether using logfile reader or CAN hardware interface
-	if (linuxDriverName.CmpNoCase("Log File Reader") == 0) {
-		// Load the logfile reader
-		linuxLogReader = new TwoCanLogReader(canQueue);
-		returnCode = linuxLogReader->Open(CONST_LOGFILE_NAME);
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	// Mac & Linux use "baked in" classes instead of the plug-in model that the Window's version uses
+	// Save the driver name to pass to the Open function
+	driverName = driverPath;
+	if (driverName.CmpNoCase("Log File Reader") == 0) {
+		// Load the Logfile reader
+		adapterInterface = new TwoCanLogReader(canQueue);
+		returnCode = adapterInterface->Open(CONST_LOGFILE_NAME);
 	}
+#if defined (__APPLE__) && defined (__MACH__)
+	else if (driverName.CmpNoCase("Cantact") == 0) {
+		// Load the MAC Serial USB interface for the Canable Cantact
+		adapterInterface = new TwoCanMacSerial(canQueue);
+		returnCode = adapterInterface->Open(canAdapter);
+	}
+#endif
+
+#if defined (__LINUX__)
+	else if (driverName.MakeUpper().Matches(_T("CAN?")) || driverName.MakeUpper().Matches(_T("SLCAN?")) || driverName.MakeUpper().Matches(_T("VCAN?")) ) {
+		// Load the SocketCAN interface (eg. Native Interface CAN0, Serial Interface SLCAN0, Virtual Interface VCAN0)
+		adapterInterface = new TwoCanSocket(canQueue);
+		returnCode = adapterInterface->Open(canAdapter);
+	}
+#endif 
 	else { 
-		// Load the SocketCAN interface
-		linuxSocket = new TwoCanSocket(canQueue);
-		returnCode = linuxSocket->Open(driverPath);
+		// An invalid driver name !!  Fail and exit
+		wxLogError(_T("TwoCan Device, Invalid driver %s"), driverName);
+		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_DRIVER_NOT_FOUND);
 	}
+
 	if (returnCode != TWOCAN_RESULT_SUCCESS) {
-		wxLogError(_T("TwoCan Device, Error loading CAN Interface %s: %lu"), driverPath, returnCode);
+		wxLogError(_T("TwoCan Device, Error loading driver %s: %lu"), driverName, returnCode);
 	}
 	else {
-		wxLogMessage(_T("TwoCan Device, Loaded CAN Interface %s"),driverPath);
+		wxLogMessage(_T("TwoCan Device, Loaded driver %s"),driverName);
 		// if we are an active device, claim an address
 		if (deviceMode == TRUE) {
-			if (TwoCanSocket::GetUniqueNumber(&uniqueId) == TWOCAN_RESULT_SUCCESS) {
+			if (adapterInterface->GetUniqueNumber(&uniqueId) == TWOCAN_RESULT_SUCCESS) {
 				wxLogMessage(_T("TwoCan Device, Unique Number: %lu"),uniqueId);
 				returnCode = SendAddressClaim(networkAddress);
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
@@ -278,7 +295,7 @@ int TwoCanDevice::Init(wxString driverPath) {
 			}
 			else {
 				// unable to generate unique number
-				// perhaps should just generate a random number
+				// BUG BUG GetUniqueNumber always returns a number.
 				wxLogError(_T("TwoCan Device, Unable to generate unique address: %lu"), returnCode);
 			}
 		}
@@ -301,49 +318,60 @@ int TwoCanDevice::DeInit() {
 // Merely loops continuously waiting for frames to be received by the CAN Adapter
 wxThread::ExitCode TwoCanDevice::Entry() {
 	
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 	return (wxThread::ExitCode)ReadWindowsDriver();
 #endif
 
-#ifdef __LINUX__
-	return (wxThread::ExitCode)ReadLinuxDriver();
+#if (defined (__APPLE__) && defined (__MACH__)) || defined  (__LINUX__)
+	return (wxThread::ExitCode)ReadLinuxOrMacDriver();
 #endif
 }
 
 // OnExit, called when thread->delete is invoked, and entry returns
 void TwoCanDevice::OnExit() {
-	// BUG BUG Should this be moved to DeInit ??
 	int returnCode;
 
-	// Terminate the heartbeat timer
-	// BUG BUG Do we need to delete it ??
-	if ((enableHeartbeat == TRUE) && (heartbeatTimer != nullptr)) {
-			heartbeatTimer->Stop();
-			heartbeatTimer->Unbind(wxEVT_TIMER, &TwoCanDevice::OnHeartbeat, this);
+#if (defined (__APPLE__) && defined (__MACH__)) || defined  (__LINUX__)
+	wxThread::ExitCode threadExitCode;
+	wxThreadError threadError;
+
+	wxLogMessage(_T("TwoCan Device, Terminating driver thread id (0x%x)\n"), adapterInterface->GetId());
+	threadError = adapterInterface->Delete(&threadExitCode, wxTHREAD_WAIT_BLOCK);
+	if (threadError == wxTHREAD_NO_ERROR) {
+		wxLogMessage(_T("TwoCan Device, Terminated driver thread (%lu)"), threadExitCode);
+	}
+	else {
+		wxLogMessage(_T("TwoCan Device, Error terminating driver thread (%lu)"), threadError);
+	}
+	// Wait for the interface thread to exit
+	adapterInterface->Wait(wxTHREAD_WAIT_BLOCK);
+
+	// Can only invoke close if it is a joinable thread as detached threads would have already deleted themselves
+	returnCode = adapterInterface->Close();
+	if (returnCode != TWOCAN_RESULT_SUCCESS) {
+		wxLogMessage(_T("TwoCan Device, Error closing driver (%lu)"), returnCode);
 	}
 
+	// Can only delete the interface class if it is a joinable thread.
+	delete adapterInterface;
 
-	
-#ifdef  __WXMSW__ 
-	// Unload the CAN Adapter DLL
-	returnCode = UnloadWindowsDriver();
 #endif
 
-#ifdef __LINUX__
-	wxThread::ExitCode threadExitCode;
-	if (linuxDriverName.CmpNoCase("Log File Reader") == 0) {
-		returnCode = linuxLogReader->Delete(&threadExitCode,wxTHREAD_WAIT_BLOCK);
-		returnCode = linuxLogReader->Close();
-	} 
-	else {
-		returnCode = linuxSocket->Delete(&threadExitCode,wxTHREAD_WAIT_BLOCK);
-		returnCode = linuxSocket->Close();
-	}
+#if defined (__WXMSW__) 
+	// Unload the CAN Adapter DLL
+	returnCode = UnloadWindowsDriver();
 #endif
 
 	wxLogMessage(_T("TwoCan Device, Unloaded driver: %lu"), returnCode);
 
 	eventHandlerAddress = NULL;
+
+	// Terminate the heartbeat timer
+	// BUG BUG Do we need to delete it ??
+	if ((enableHeartbeat == TRUE) && (heartbeatTimer != nullptr)) {
+		heartbeatTimer->Stop();
+		heartbeatTimer->Unbind(wxEVT_TIMER, &TwoCanDevice::OnHeartbeat, this);
+	}
 
 	// If logging, close log file
 	if (logLevel > FLAGS_LOG_NONE) {
@@ -355,20 +383,17 @@ void TwoCanDevice::OnExit() {
 	}
 }
 
-#ifdef __LINUX__
-int TwoCanDevice::ReadLinuxDriver(void) {
+
+#if (defined (__APPLE__) && defined (__MACH__) ) || defined (__LINUX__)
+
+int TwoCanDevice::ReadLinuxOrMacDriver(void) {
 	CanHeader header;
 	byte payload[CONST_PAYLOAD_LENGTH];
 	wxMessageQueueError queueError;
 	std::vector<byte> receivedFrame(CONST_FRAME_LENGTH);
 		
-	// Start the Linux Device's Read thread
-	if (linuxDriverName.CmpNoCase("Log File Reader") == 0) {
-		linuxLogReader->Run();
-	}
-	else {
-		linuxSocket->Run();
-	}
+	// Start the CAN Interface
+	adapterInterface->Run();
 	
 	while (!TestDestroy())	{
 		
@@ -380,6 +405,7 @@ int TwoCanDevice::ReadLinuxDriver(void) {
 		if (queueError == wxMSGQUEUE_NO_ERROR) {
 					
 			TwoCanUtils::DecodeCanHeader(&receivedFrame[0], &header);
+
 			memcpy(payload, &receivedFrame[CONST_HEADER_LENGTH], CONST_PAYLOAD_LENGTH);
 			
 			// Log received frames
@@ -399,7 +425,7 @@ int TwoCanDevice::ReadLinuxDriver(void) {
 }
 #endif
 
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 
 // Load CAN adapter DLL.
 int TwoCanDevice::LoadWindowsDriver(wxString driverPath) {
@@ -541,7 +567,7 @@ int TwoCanDevice::LoadWindowsDriver(wxString driverPath) {
 
 #endif
 
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 
 // Thread waits to receive CAN frames from the adapter
 int TwoCanDevice::ReadWindowsDriver() {
@@ -642,7 +668,7 @@ int TwoCanDevice::ReadWindowsDriver() {
 
 #endif
 
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 
 int TwoCanDevice::UnloadWindowsDriver() {
 	LPFNDLLClose close = NULL;
@@ -917,12 +943,12 @@ void TwoCanDevice::LogReceivedFrames(const CanHeader *header, const byte *frame)
 	// Candump format (1542794024.886119) can0 09F50303#030000FFFF00FFFF (use candump -l canx where x is 0,1 etc.)
 	if (logLevel == FLAGS_LOG_CANDUMP) {
 		if (rawLogFile.IsOpened()) {
-#ifdef __LINUX__
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
 			timeval currentTime;
 			gettimeofday(&currentTime, NULL);   
 			rawLogFile.Write(wxString::Format("(%010ld.%06ld)",currentTime.tv_sec,currentTime.tv_usec));
 #endif
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 			FILETIME currentTime;
 			GetSystemTimeAsFileTime(&currentTime);
 
@@ -1097,20 +1123,20 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 					wxLogMessage(_T("TwoCan Device, Reclaimed network address: %lu"), networkAddress);
 				}
 				else {
-					wxLogMessage("TwoCan Device, Error reclaming network address %lu: %lu", networkAddress, returnCode);
+					wxLogMessage("TwoCan Device, Error reclaiming network address %lu: %lu", networkAddress, returnCode);
 				}
 			}
-			// Our uniqueId is larger (or equal), so increment our network address and see if we can claim the new address
-			else {
+			// Our uniqueId is larger so increment our network address and see if we can claim the new address
+			else if (deviceName > deviceInformation.deviceName) {
+				if (networkAddress + 1 <= CONST_MAX_DEVICES) {
 				networkAddress += 1;
-				if (networkAddress <= CONST_MAX_DEVICES) {
 					int returnCode;
 					returnCode = SendAddressClaim(networkAddress);
 					if (returnCode == TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage(_T("TwoCan Device, Claimed network address: %lu"), networkAddress);
+						wxLogMessage(_T("TwoCan Device, Claimed new network address: %lu"), networkAddress);
 					}
 					else {
-						wxLogMessage("TwoCan Device, Error claiming network address %lu: %lu", networkAddress, returnCode);
+						wxLogMessage("TwoCan Device, Error claiming new network address %lu: %lu", networkAddress, returnCode);
 					}
 				}
 				else {
@@ -1122,10 +1148,10 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 					int returnCode;
 					returnCode = SendAddressClaim(CONST_NULL_ADDRESS);
 					if (returnCode == TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage(_T("TwoCan Device, Claimed network address: %lu"), networkAddress);
+						wxLogMessage(_T("TwoCan Device, Claimed NULL network address: %lu"), networkAddress);
 					}
 					else {
-						wxLogMessage("TwoCan Device, Error claiming network address %lu: %lu", networkAddress, returnCode);
+						wxLogMessage("TwoCan Device, Error claiming NULL network address %lu: %lu", networkAddress, returnCode);
 					}
 				}
 			}
@@ -1140,6 +1166,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		// If we are being commanded to use a specific address
 		// BUG BUG Not sure if an ISO Commanded Address frame is broadcast or if header.destination == networkAddress
 		if (deviceInformation.uniqueId == uniqueId) {
+			if (deviceInformation.networkAddress < CONST_MAX_DEVICES) {
 			// Update our network address to the commanded address and send an address claim
 			networkAddress = deviceInformation.networkAddress;
 			int returnCode;
@@ -1148,7 +1175,11 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 				wxLogMessage(_T("TwoCan Device, Claimed commanded network address: %lu"), networkAddress);
 			}
 			else {
-				wxLogMessage("TwoCan Device, Error claiming commanded network address %lu: %lu", networkAddress, returnCode);
+				wxLogMessage(_T("TwoCan Device, Error claiming commanded network address %lu: %lu"), networkAddress, returnCode);
+			}
+		}
+		else {
+				wxLogMessage(_T("TwoCan Device, Error, commanded to use invalid address %lu by %lu"), deviceInformation.networkAddress, header.source);
 			}
 		}
 		// No NMEA 0183 sentences to pass onto OpenCPN
@@ -2274,11 +2305,11 @@ bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *n
 		if (TwoCanUtils::IsDataValid(latitude) && TwoCanUtils::IsDataValid(longitude)) {
 
 			double latitudeDouble = ((double)latitude * 1e-7);
-			double latitudeDegrees = trunc(latitudeDouble);
+			int latitudeDegrees = trunc(latitudeDouble);
 			double latitudeMinutes = (latitudeDouble - latitudeDegrees) * 60;
 
 			double longitudeDouble = ((double)longitude * 1e-7);
-			double longitudeDegrees = trunc(longitudeDouble);
+			int longitudeDegrees = trunc(longitudeDouble);
 			double longitudeMinutes = (longitudeDouble - longitudeDegrees) * 60;
 
 			char gpsMode;
@@ -2291,7 +2322,7 @@ bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *n
 			wxDateTime tm;
 			tm = wxDateTime::Now();
 
-			nmeaSentences->push_back(wxString::Format("$IIGLL,%02.0f%07.4f,%c,%03.0f%07.4f,%c,%s,%c,%c", abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', \
+			nmeaSentences->push_back(wxString::Format("$IIGLL,%02d%07.4f,%c,%03d%07.4f,%c,%s,%c,%c", abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', \
 				abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', tm.Format("%H%M%S.00").ToAscii(), gpsMode, ((gpsMode == 'A') || (gpsMode == 'D')) ? 'A' : 'V'));
 			return TRUE;
 		}
@@ -2539,13 +2570,13 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 
 		std::vector<bool> binaryData(168);
 
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int userID; // aka sender's MMSI
+		unsigned int userID; // aka sender's MMSI
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
@@ -2554,49 +2585,49 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		double latitude;
 		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
 
-		int positionAccuracy;
+		byte positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
 
-		int raimFlag;
+		byte raimFlag;
 		raimFlag = (payload[13] & 0x02) >> 1;
 
-		int timeStamp;
+		byte timeStamp;
 		timeStamp = (payload[13] & 0xFC) >> 2;
 
-		int courseOverGround;
+		unsigned short courseOverGround;
 		courseOverGround = payload[14] | (payload[15] << 8);
 
-		int speedOverGround;
+		unsigned short speedOverGround;
 		speedOverGround = payload[16] | (payload[17] << 8);
 
-		int communicationState;
+		unsigned int communicationState;
 		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
 
-		int transceiverInformation; // unused in NMEA183 conversion
+		byte transceiverInformation; 
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
 
-		int trueHeading;
+		unsigned short trueHeading;
 		trueHeading = payload[21] | (payload[22] << 8);
 
-		int rateOfTurn;
+		short rateOfTurn;
 		rateOfTurn = payload[23] | (payload[24] << 8);
 
-		int navigationalStatus;
+		byte navigationalStatus;
 		navigationalStatus = payload[25] & 0x0F;
 
-		int manoeuverIndicator;
+		byte manoeuverIndicator;
 		manoeuverIndicator = payload[25] & 0x30 >> 4;
 
-		int reserved;
+		byte reserved;
 		reserved = (payload[25] & 0xC0) >> 6;
 
-		int spare;
+		byte spare;
 		spare = (payload[26] & 0x07);
 
-		int reservedForRegionalApplications;
+		byte reservedForRegionalApplications;
 		reservedForRegionalApplications = (payload[26] & 0xF8) >> 3;
 
-		int sequenceID;
+		byte sequenceID;
 		sequenceID = (payload[26] & 0xC0) >> 6;
 
 		// Encode correct AIS rate of turn from sensor data as per ITU M.1371 standard
@@ -2604,36 +2635,37 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		int AISRateOfTurn;
 
 		// Undefined/not available
-		if (rateOfTurn == 0xFFFF) {
+		if (!TwoCanUtils::IsDataValid(rateOfTurn)) {
 			AISRateOfTurn = -128;
 		}
-		// Greater or less than 708 degrees/min
-		else if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60) > 708) {
-			AISRateOfTurn = 127;
-		}
-
-		else if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60) < -708) {
-			AISRateOfTurn = -127;
-		}
-
 		else {
-			AISRateOfTurn = 4.733 * sqrt(RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60);
+			// Greater or less than 708 degrees/min
+			if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60) > 708) {
+				AISRateOfTurn = 127;
+			}
+
+			else if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60) < -708) {
+				AISRateOfTurn = -127;
+			}
+
+			else {
+				AISRateOfTurn = 4.733 * sqrt(RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60);
+			}
 		}
-
-
-		// Encode VDM message using 6 bit ASCII 
+			
+			// Encode VDM message using 6 bit ASCII 
 
 		AISInsertInteger(binaryData, 0, 6, messageID);
 		AISInsertInteger(binaryData, 6, 2, repeatIndicator);
 		AISInsertInteger(binaryData, 8, 30, userID);
 		AISInsertInteger(binaryData, 38, 4, navigationalStatus);
 		AISInsertInteger(binaryData, 42, 8, AISRateOfTurn);
-		AISInsertInteger(binaryData, 50, 10, CONVERT_MS_KNOTS * speedOverGround * 0.1f);
+		AISInsertInteger(binaryData, 50, 10, TwoCanUtils::IsDataValid(speedOverGround) ? CONVERT_MS_KNOTS * speedOverGround * 0.1f : 1023);
 		AISInsertInteger(binaryData, 60, 1, positionAccuracy);
 		AISInsertInteger(binaryData, 61, 28, (int)(longitude * 600000));
 		AISInsertInteger(binaryData, 89, 27, (int)(latitude * 600000));
-		AISInsertInteger(binaryData, 116, 12, RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f);
-		AISInsertInteger(binaryData, 128, 9, RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f);
+		AISInsertInteger(binaryData, 116, 12, TwoCanUtils::IsDataValid(courseOverGround) ? RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f : 3600);
+		AISInsertInteger(binaryData, 128, 9, TwoCanUtils::IsDataValid(trueHeading) ? RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f : 511);
 		AISInsertInteger(binaryData, 137, 6, timeStamp);
 		AISInsertInteger(binaryData, 143, 2, manoeuverIndicator);
 		AISInsertInteger(binaryData, 145, 3, spare);
@@ -2658,13 +2690,13 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 
 		std::vector<bool> binaryData(168);
 
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int userID; // aka sender's MMSI
+		unsigned int userID; // aka sender's MMSI
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
@@ -2673,55 +2705,55 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		double latitude;
 		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
 		
-		int positionAccuracy;
+		byte positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
 
-		int raimFlag;
+		byte raimFlag;
 		raimFlag = (payload[13] & 0x02) >> 1;
 
-		int timeStamp;
+		byte timeStamp;
 		timeStamp = (payload[13] & 0xFC) >> 2;
 
-		int courseOverGround;
+		unsigned short courseOverGround;
 		courseOverGround =payload[14] | (payload[15] << 8);
 
-		int  speedOverGround;
+		unsigned short  speedOverGround;
 		speedOverGround = payload[16] | (payload[17] << 8);
 
-		int communicationState;
+		unsigned int communicationState;
 		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
 
-		int transceiverInformation; // unused in NMEA183 conversion, BUG BUG Just guessing
+		byte transceiverInformation;
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
 
-		int trueHeading;
+		unsigned short trueHeading;
 		trueHeading = payload[21] | (payload[22] << 8);
 
-		int regionalReservedA;
+		byte regionalReservedA;
 		regionalReservedA = payload[23];
 
-		int regionalReservedB;
+		byte regionalReservedB;
 		regionalReservedB = payload[24] & 0x03;
 
-		int unitFlag;
+		byte unitFlag;
 		unitFlag = (payload[24] & 0x04) >> 2;
 
-		int displayFlag;
+		byte displayFlag;
 		displayFlag = (payload[24] & 0x08) >> 3;
 
-		int dscFlag;
+		byte dscFlag;
 		dscFlag = (payload[24] & 0x10) >> 4;
 
-		int bandFlag;
+		byte bandFlag;
 		bandFlag = (payload[24] & 0x20) >> 5;
 
-		int msg22Flag;
+		byte msg22Flag;
 		msg22Flag = (payload[24] & 0x40) >> 6;
 
-		int assignedModeFlag;
+		byte assignedModeFlag;
 		assignedModeFlag = (payload[24] & 0x80) >> 7;
 		
-		int	sotdmaFlag;
+		byte sotdmaFlag;
 		sotdmaFlag = payload[25] & 0x01;
 		
 		// Encode VDM Message using 6bit ASCII
@@ -2730,12 +2762,12 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 6, 2, repeatIndicator);
 		AISInsertInteger(binaryData, 8, 30, userID);
 		AISInsertInteger(binaryData, 38, 8, 0xFF); // spare
-		AISInsertInteger(binaryData, 46, 10, CONVERT_MS_KNOTS * speedOverGround * 0.1f);
+		AISInsertInteger(binaryData, 46, 10, TwoCanUtils::IsDataValid(speedOverGround) ? CONVERT_MS_KNOTS * speedOverGround * 0.1f : 1023);
 		AISInsertInteger(binaryData, 56, 1, positionAccuracy);
 		AISInsertInteger(binaryData, 57, 28, (int)(longitude * 600000));
 		AISInsertInteger(binaryData, 85, 27, (int)(latitude * 600000));
-		AISInsertInteger(binaryData, 112, 12, RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f);
-		AISInsertInteger(binaryData, 124, 9, RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f);
+		AISInsertInteger(binaryData, 112, 12, TwoCanUtils::IsDataValid(courseOverGround) ? RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f : 3600);
+		AISInsertInteger(binaryData, 124, 9, TwoCanUtils::IsDataValid(trueHeading) ? RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f : 511);
 		AISInsertInteger(binaryData, 133, 6, timeStamp);
 		AISInsertInteger(binaryData, 139, 2, regionalReservedB);
 		AISInsertInteger(binaryData, 141, 1, unitFlag);
@@ -2766,13 +2798,13 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 
 		std::vector<bool> binaryData(312);
 
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int userID; // aka sender's MMSI
+		unsigned int userID; // aka sender's MMSI
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
@@ -2781,52 +2813,52 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 		double latitude;
 		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
 
-		int positionAccuracy;
+		byte positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
 
-		int raimFlag;
+		byte raimFlag;
 		raimFlag = (payload[13] & 0x02) >> 1;
 
-		int timeStamp;
+		byte timeStamp;
 		timeStamp = (payload[13] & 0xFC) >> 2;
 
-		int courseOverGround;
+		unsigned short courseOverGround;
 		courseOverGround = payload[14] | (payload[15] << 8);
 
-		int speedOverGround;
+		unsigned short speedOverGround;
 		speedOverGround = payload[16] | (payload[17] << 8);
 
-		int regionalReservedA;
+		byte regionalReservedA;
 		regionalReservedA = payload[18];
 
-		int regionalReservedB;
+		byte regionalReservedB;
 		regionalReservedB = payload[19] & 0x0F;
 
-		int reservedA;
+		byte reservedA;
 		reservedA = (payload[19] & 0xF0) >> 4;
 
-		int shipType;
+		byte shipType;
 		shipType = payload[20];
 
-		int trueHeading;
+		unsigned short trueHeading;
 		trueHeading = payload[21] | (payload[22] << 8);
 
-		int reservedB;
+		byte reservedB;
 		reservedB = payload[23] & 0x0F;
 
-		int gnssType;
+		byte gnssType;
 		gnssType = (payload[23] & 0xF0) >> 4;
 
-		int shipLength;
+		unsigned short shipLength;
 		shipLength = payload[24] | (payload[25] << 8);
 		
-		int shipBeam;
+		unsigned short shipBeam;
 		shipBeam = payload[26] | (payload[27] << 8);
 
-		int refStarboard;
+		unsigned short refStarboard;
 		refStarboard = payload[28] | (payload[29] << 8);
 
-		int refBow;
+		unsigned short refBow;
 		refBow = payload[30] | (payload[31] << 8);
 		
 		std::string shipName;
@@ -2834,17 +2866,17 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 			shipName.append(1,(char)payload[32 + i]);
 		}
 		
-		int dteFlag;
+		byte dteFlag;
 		dteFlag = payload[52] & 0x01;
 
-		int assignedModeFlag;
+		byte assignedModeFlag;
 		assignedModeFlag = payload[52] & 0x02 >> 1;
 
-		int spare;
+		byte spare;
 		spare = (payload[52] & 0x0C) >> 2;
 
-		int AisTransceiverInformation;
-		AisTransceiverInformation = (payload[52] & 0xF0) >> 4;
+		byte transceiverInformation;
+		transceiverInformation = (payload[52] & 0xF0) >> 4;
 
 		// Encode VDM Message using 6bit ASCII
 			
@@ -2852,12 +2884,12 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 6, 2, repeatIndicator);
 		AISInsertInteger(binaryData, 8, 30, userID);
 		AISInsertInteger(binaryData, 38, 8, regionalReservedA);
-		AISInsertInteger(binaryData, 46, 10, CONVERT_MS_KNOTS * speedOverGround * 0.1f);
+		AISInsertInteger(binaryData, 46, 10, TwoCanUtils::IsDataValid(speedOverGround) ? CONVERT_MS_KNOTS * speedOverGround * 0.1f : 1023);
 		AISInsertInteger(binaryData, 56, 1, positionAccuracy);
 		AISInsertInteger(binaryData, 57, 28, (int)(longitude * 600000));
 		AISInsertInteger(binaryData, 85, 27, (int)(latitude * 600000));
-		AISInsertInteger(binaryData, 112, 12, RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f);
-		AISInsertInteger(binaryData, 124, 9, RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f);
+		AISInsertInteger(binaryData, 112, 12, TwoCanUtils::IsDataValid(courseOverGround) ? RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f : 3600);
+		AISInsertInteger(binaryData, 124, 9, TwoCanUtils::IsDataValid(trueHeading) ? RADIANS_TO_DEGREES((float)trueHeading) * 0.0001f : 511);
 		AISInsertInteger(binaryData, 133, 6, timeStamp);
 		AISInsertInteger(binaryData, 139, 4, regionalReservedB);
 		AISInsertString(binaryData, 143, 120, shipName);
@@ -2908,13 +2940,13 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 
 		std::vector<bool> binaryData(358);
 
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int userID; // aka sender's MMSI
+		unsigned int userID; // aka sender's MMSI
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
@@ -2923,55 +2955,55 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		double latitude;
 		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
 		
-		int positionAccuracy;
+		byte positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
 
-		int raimFlag;
+		byte raimFlag;
 		raimFlag = (payload[13] & 0x02) >> 1;
 
-		int timeStamp;
+		byte timeStamp;
 		timeStamp = (payload[13] & 0xFC) >> 2;
 
-		int shipLength;
+		unsigned short shipLength;
 		shipLength = payload[14] | (payload[15] << 8);
 
-		int shipBeam;
+		unsigned short shipBeam;
 		shipBeam = payload[16] | (payload[17] << 8);
 
-		int refStarboard;
+		unsigned short refStarboard;
 		refStarboard = payload[18] | (payload[19] << 8);
 
-		int refBow;
+		unsigned short refBow;
 		refBow = payload[20] | (payload[21] << 8);
 		
-		int AToNType;
+		byte AToNType;
 		AToNType = (payload[22] & 0xF8) >> 3;
 
-		int offPositionFlag;
+		byte offPositionFlag;
 		offPositionFlag = (payload[22]  & 0x04) >> 2;
 
-		int virtualAToN;
+		byte virtualAToN;
 		virtualAToN = (payload[22] & 0x02) >> 1;;
 
-		int assignedModeFlag;
+		byte assignedModeFlag;
 		assignedModeFlag = payload[22] & 0x01;
 
-		int spare;
+		byte spare;
 		spare = payload[23] & 0x01;
 
-		int gnssType;
+		byte gnssType;
 		gnssType = (payload[23] & 0x1E) >> 1;
 
-		int reserved;
+		byte reserved;
 		reserved = payload[23] & 0xE0 >> 5;
 
-		int AToNStatus;
+		byte AToNStatus;
 		AToNStatus = payload[24];
 
-		int transceiverInformation;
+		byte transceiverInformation;
 		transceiverInformation = (payload[25] & 0xF8) >> 3;
 
-		int reservedB;
+		byte reservedB;
 		reservedB = payload[25] & 0x07;
 
 		// BUG BUG This is variable up to 20 + 14 (34) characters
@@ -3071,7 +3103,7 @@ bool TwoCanDevice::DecodePGN129283(const byte *payload, std::vector<wxString> *n
 		
 		if (TwoCanUtils::IsDataValid(crossTrackError)) {
 
-			nmeaSentences->push_back(wxString::Format("$IIXTE,A,A,%.2f,%c,N", fabsf(CONVERT_METRES_NAUTICAL_MILES * crossTrackError * 0.01f), crossTrackError < 0 ? 'L' : 'R'));
+			nmeaSentences->push_back(wxString::Format("$IIXTE,A,A,%.2f,%c,N", fabs(CONVERT_METRES_NAUTICAL_MILES * crossTrackError * 0.01f), crossTrackError < 0 ? 'L' : 'R'));
 			return TRUE;
 		}
 		else {
@@ -3289,13 +3321,13 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 
 		// Should really check whether this is 4 (Base Station) or 
 		// 11 (mobile station, but only in response to a request using message 10)
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int userID; // aka sender's MMSI
+		unsigned int userID; // aka sender's MMSI
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
@@ -3304,37 +3336,37 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 		double latitude;
 		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
 
-		int positionAccuracy;
+		byte positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
 
-		int raimFlag;
+		byte raimFlag;
 		raimFlag = (payload[13] & 0x02) >> 1;
 
-		int reservedA;
+		byte reservedA;
 		reservedA = (payload[13] & 0xFC) >> 2;
 
-		int secondsSinceMidnight;
+		unsigned int secondsSinceMidnight;
 		secondsSinceMidnight = payload[14] | (payload[15] << 8) | (payload[16] << 16) | (payload[17] << 24);
 
-		int communicationState;
+		unsigned int communicationState;
 		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
 
-		int transceiverInformation; // unused in NMEA183 conversion, BUG BUG Just guessing
+		byte transceiverInformation;
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
 
-		int daysSinceEpoch;
+		unsigned short daysSinceEpoch;
 		daysSinceEpoch = payload[21] | (payload[22] << 8);
 
-		int reservedB;
+		byte reservedB;
 		reservedB = payload[23] & 0x0F;
 
-		int gnssType;
+		byte gnssType;
 		gnssType = (payload[23] & 0xF0) >> 4;
 
-		int spare;
+		byte spare;
 		spare = payload[24];
 
-		int longRangeFlag = 0;
+		byte longRangeFlag = 0;
 
 		wxDateTime tm;
 		tm.ParseDateTime("00:00:00 01-01-1970");
@@ -3379,10 +3411,10 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 
 		std::vector<bool> binaryData(426,0);
 	
-		unsigned int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		unsigned int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
 		unsigned int userID; // aka MMSI
@@ -3401,22 +3433,22 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 			shipName.append(1, (char)payload[16 + i]);
 		}
 
-		unsigned int shipType;
+		byte shipType;
 		shipType = payload[36];
 
-		unsigned int shipLength;
+		unsigned short shipLength;
 		shipLength = payload[37] | (payload[38] << 8);
 
-		unsigned int shipBeam;
+		unsigned short shipBeam;
 		shipBeam = payload[39] | (payload[40] << 8);
 
-		unsigned int refStarboard;
+		unsigned short refStarboard;
 		refStarboard = payload[41] | (payload[42] << 8);
 
-		unsigned int refBow;
+		unsigned short refBow;
 		refBow = payload[43] | (payload[44] << 8);
 
-		unsigned int daysSinceEpoch;
+		unsigned short daysSinceEpoch;
 		daysSinceEpoch = payload[45] | (payload[46] << 8);
 
 		unsigned int secondsSinceMidnight;
@@ -3427,7 +3459,7 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 		eta += wxDateSpan::Days(daysSinceEpoch);
 		eta += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
-		unsigned int draft;
+		unsigned short draft;
 		draft = payload[51] | (payload[52] << 8);
 
 		std::string destination;
@@ -3435,16 +3467,16 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 			destination.append(1, (char)payload[53 + i]);
 		}
 		
-		int aisVersion;
+		byte aisVersion;
 		aisVersion = (payload[73] & 0x03);
 
-		int gnssType;
+		byte gnssType;
 		gnssType = (payload[73] & 0x3C) >> 2;
 
-		int dteFlag;
+		byte dteFlag;
 		dteFlag = (payload[73] & 0x40) >> 6;
 
-		int transceiverInformation;
+		byte transceiverInformation;
 		transceiverInformation = payload[74] & 0x1F;
 
 		// Encode VDM Message using 6bit ASCII
@@ -3497,13 +3529,13 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 
 		std::vector<bool> binaryData(168);
 		
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int userID; // aka sender's MMSI
+		unsigned int userID; // aka sender's MMSI
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
@@ -3512,52 +3544,52 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 		double latitude;
 		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
 		
-		int positionAccuracy;
+		byte positionAccuracy;
 		positionAccuracy = payload[13] & 0x01;
 
-		int raimFlag;
+		byte raimFlag;
 		raimFlag = (payload[13] & 0x02) >> 1;
 
-		int timeStamp;
+		byte timeStamp;
 		timeStamp = (payload[13] & 0xFC) >> 2;
 
-		int courseOverGround;
+		unsigned short courseOverGround;
 		courseOverGround = payload[14] | (payload[15] << 8);
 
-		int speedOverGround;
+		unsigned short speedOverGround;
 		speedOverGround = payload[16] | (payload[17] << 8);
 
-		int communicationState;
+		unsigned int communicationState;
 		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
 
-		int transceiverInformation; 
+		byte transceiverInformation; 
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
 
 		double altitude;
 		altitude = 1e-6 * (((long long)payload[21] | ((long long)payload[22] << 8) | ((long long)payload[23] << 16) | ((long long)payload[24] << 24) \
 			| ((long long)payload[25] << 32) | ((long long)payload[26] << 40) | ((long long)payload[27] << 48) | ((long long)payload[28] << 56)));
 		
-		int reservedForRegionalApplications;
+		byte reservedForRegionalApplications;
 		reservedForRegionalApplications = payload[29];
 
-		int dteFlag; 
+		byte dteFlag; 
 		dteFlag = payload[30] & 0x01;
 
 		// BUG BUG Just guessing these to match NMEA2000 payload with ITU AIS fields
 
-		int assignedModeFlag;
+		byte assignedModeFlag;
 		assignedModeFlag = (payload[30] & 0x02) >> 1;
 
-		int sotdmaFlag;
+		byte sotdmaFlag;
 		sotdmaFlag = (payload[30] & 0x04) >> 2;
 
-		int altitudeSensor;
+		byte altitudeSensor;
 		altitudeSensor = (payload[30] & 0x08) >> 3;
 
-		int spare;
+		byte spare;
 		spare = (payload[30] & 0xF0) >> 4;
 
-		int reserved;
+		byte reserved;
 		reserved = payload[31];
 		
 		// Encode VDM Message using 6bit ASCII
@@ -3566,11 +3598,11 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 6, 2, repeatIndicator);
 		AISInsertInteger(binaryData, 8, 30, userID);
 		AISInsertInteger(binaryData, 38, 12, altitude);
-		AISInsertInteger(binaryData, 50, 10, speedOverGround);
+		AISInsertInteger(binaryData, 50, 10, TwoCanUtils::IsDataValid(speedOverGround) ? CONVERT_MS_KNOTS * speedOverGround * 0.1f : 1023);
 		AISInsertInteger(binaryData, 60, 1, positionAccuracy);
 		AISInsertInteger(binaryData, 61, 28, (int)(longitude * 600000));
 		AISInsertInteger(binaryData, 89, 27, (int)(latitude * 600000));
-		AISInsertInteger(binaryData, 116, 12, courseOverGround);
+		AISInsertInteger(binaryData, 116, 12, TwoCanUtils::IsDataValid(courseOverGround) ? RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f : 3600);
 		AISInsertInteger(binaryData, 128, 6, timeStamp);
 		AISInsertInteger(binaryData, 134, 8, reservedForRegionalApplications); // 1 bit altitide sensor
 		AISInsertInteger(binaryData, 142, 1, dteFlag);
@@ -3598,34 +3630,34 @@ bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *n
 
 		std::vector<bool> binaryData(1008);
 
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int sourceID;
+		unsigned int sourceID;
 		sourceID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
-		int reservedA;
+		byte reservedA;
 		reservedA = payload[4] & 0x01;
 
-		int transceiverInfo;
+		byte transceiverInfo;
 		transceiverInfo = (payload[5] & 0x3E) >> 1;
 
-		int sequenceNumber;
+		byte sequenceNumber;
 		sequenceNumber = (payload[5] & 0xC0) >> 6;
 
-		int destinationId;
+		unsigned int destinationId;
 		destinationId = payload[6] | (payload[7] << 8) | (payload[8] << 16) | (payload[9] << 24);
 
-		int reservedB;
+		byte reservedB;
 		reservedB = payload[10] & 0x3F;
 
-		int retransmitFlag;
+		byte retransmitFlag;
 		retransmitFlag = (payload[10] & 0x40) >> 6;
 
-		int reservedC;
+		byte reservedC;
 		reservedC = (payload[10] & 0x80) >> 7;
 
 		std::string safetyMessage;
@@ -3688,22 +3720,22 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 
 		std::vector<bool> binaryData(1008);
 
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int sourceID;
+		unsigned int sourceID;
 		sourceID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | ((payload[4] & 0x3F) << 24);
 
-		int reservedA;
+		byte reservedA;
 		reservedA = (payload[4] & 0xC0) >> 6;
 
-		int transceiverInfo;
+		byte transceiverInfo;
 		transceiverInfo = payload[5] & 0x1F;
 
-		int reservedB;
+		byte reservedB;
 		reservedB = (payload[5] & 0xE0) >> 5;
 
 		std::string safetyMessage;
@@ -3905,13 +3937,13 @@ bool TwoCanDevice::DecodePGN129809(const byte *payload, std::vector<wxString> *n
 		
 		std::vector<bool> binaryData(164);
 
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int userID; // aka sender's MMSI
+		unsigned int userID; // aka sender's MMSI
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		std::string shipName;
@@ -3951,16 +3983,16 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 
 		std::vector<bool> binaryData(168);
 
-		int messageID;
+		byte messageID;
 		messageID = payload[0] & 0x3F;
 
-		int repeatIndicator;
+		byte repeatIndicator;
 		repeatIndicator = (payload[0] & 0xC0) >> 6;
 
-		int userID; // aka sender's MMSI
+		unsigned int userID; // aka sender's MMSI
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
-		int shipType;
+		byte shipType;
 		shipType = payload[5];
 
 		std::string vendorId;
@@ -3973,25 +4005,25 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 			callSign.append(1, (char)payload[13 + i]);
 		}
 		
-		unsigned int shipLength;
+		unsigned short shipLength;
 		shipLength = payload[20] | (payload[21] << 8);
 
-		unsigned int shipBeam;
+		unsigned short shipBeam;
 		shipBeam = payload[22] | (payload[23] << 8);
 
-		unsigned int refStarboard;
+		unsigned short refStarboard;
 		refStarboard = payload[24] | (payload[25] << 8);
 
-		unsigned int refBow;
+		unsigned short refBow;
 		refBow = payload[26] | (payload[27] << 8);
 
 		unsigned int motherShipID; // aka mother ship MMSI
 		motherShipID = payload[28] | (payload[29] << 8) | (payload[30] << 16) | (payload[31] << 24);
 
-		int reserved;
+		byte reserved;
 		reserved = (payload[32] & 0x03);
 
-		int spare;
+		byte spare;
 		spare = (payload[32] & 0xFC) >> 2;
 
 		AISInsertInteger(binaryData, 0, 6, messageID);
@@ -4260,12 +4292,12 @@ int TwoCanDevice::SendISORequest(const byte destination, const unsigned int pgn)
 	payload[1] = (pgn >> 8) & 0xFF;
 	payload[2] = (pgn >> 16) & 0xFF;
 	
-#ifdef __WXMSW__
+#if defined (__WXMSW__)
 	return (writeFrame(id, 3, payload));
 #endif
 	
-#ifdef __LINUX__
-	return (linuxSocket->Write(id,3,payload));
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	return (adapterInterface->Write(id,3,payload));
 #endif
 }
 
@@ -4305,12 +4337,12 @@ int TwoCanDevice::SendAddressClaim(const unsigned int sourceAddress) {
 	// And while we're at it, calculate my deviceName (aka NMEA 'NAME')
 	deviceName = (unsigned long long)payload[0] | ((unsigned long long)payload[1] << 8) | ((unsigned long long)payload[2] << 16) | ((unsigned long long)payload[3] << 24) | ((unsigned long long)payload[4] << 32) | ((unsigned long long)payload[5] << 40) | ((unsigned long long)payload[6] << 48) | ((unsigned long long)payload[7] << 54);
 	
-#ifdef __WXMSW__
+#if defined (__WXMSW__)
 	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
 #endif
 	
-#ifdef __LINUX__
-	return (linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&payload[0]));
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	return (adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&payload[0]));
 #endif
 }
 
@@ -4344,12 +4376,12 @@ int TwoCanDevice::SendHeartbeat() {
 		heartbeatCounter = 0;
 	}
 	
-#ifdef __WXMSW__
+#if defined (__WXMSW__)
 	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
 #endif
 
-#ifdef __LINUX__
-	return (linuxSocket->Write(id, CONST_PAYLOAD_LENGTH, &payload[0]));
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	return (adapterInterface->Write(id, CONST_PAYLOAD_LENGTH, &payload[0]));
 #endif
 
 }
@@ -4373,13 +4405,13 @@ int TwoCanDevice::SendProductInformation() {
 	// Note all of the string values are stored without terminating NULL character
 	// Model ID Bytes [4] - [35]
 	memset(&payload[4],0,32);
-	char *hwVersion = CONST_MODEL_ID;
+	char const *hwVersion = CONST_MODEL_ID;
 	memcpy(&payload[4], hwVersion,strlen(hwVersion));
 	
 	// Software Version Bytes [36] - [67]
 	// BUG BUG Should derive from PLUGIN_VERSION_MAJOR and PLUGIN_VERSION_MINOR
 	memset(&payload[36],0,32);
-	char *swVersion = CONST_SOFTWARE_VERSION;  
+	char const *swVersion = CONST_SOFTWARE_VERSION;  
 	memcpy(&payload[36], swVersion,strlen(swVersion));
 		
 	// Model Version Bytes [68] - [99]
@@ -4396,10 +4428,14 @@ int TwoCanDevice::SendProductInformation() {
 	
 	payload[133] = CONST_LOAD_EQUIVALENCY;
 
+	// Update my own Model ID information in the network map
 	wxString *mid;
 	mid = new wxString(CONST_MODEL_ID);
 		
 	strcpy(networkMap[header.source].productInformation.modelId,mid->c_str());
+
+	delete mid;
+
 	return FragmentFastMessage(&header,sizeof(payload),&payload[0]);
 
 }
@@ -4476,12 +4512,12 @@ int TwoCanDevice::SendISOResponse(unsigned int sender, unsigned int pgn) {
 	payload[6] = (pgn >> 8) & 0xFF;
 	payload[7] = (pgn >> 16) & 0xFF;
 	
-#ifdef __WXMSW__
+#if defined (__WXMSW__)
 	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
 #endif
 	
-#ifdef __LINUX__
-	return (linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&payload[0]));
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	return (adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&payload[0]));
 #endif
  
 }
@@ -4520,12 +4556,12 @@ int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLen
 	data[1] = payloadLength;
 	memcpy(&data[2], &payload[0], 6);
 	
-#ifdef __WXMSW__
+#if defined (__WXMSW__)
 		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
 #endif
 	
-#ifdef __LINUX__
-	returnCode = linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	returnCode = adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
 #endif
 
 	if (returnCode != TWOCAN_RESULT_SUCCESS) {
@@ -4545,13 +4581,12 @@ int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLen
 		data[0] = sid;
 		memcpy(&data[1],&payload[6 + (i * 7)],7);
 		
-#ifdef __WXMSW__
+#if defined (__WXMSW__)
 		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
 #endif
-
 		
-#ifdef __LINUX__
-		returnCode = linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+		returnCode = adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
 #endif
 
 		if (returnCode != TWOCAN_RESULT_SUCCESS) {
@@ -4572,14 +4607,14 @@ int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLen
 		memset(&data[1],0xFF,7);
 		memcpy(&data[1], &payload[payloadLength - remainingBytes], remainingBytes );
 		
-#ifdef __WXMSW__
+#if defined (__WXMSW__)
 		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
 #endif
-
 		
-#ifdef __LINUX__
-		returnCode = linuxSocket->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+		returnCode = adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
 #endif
+
 		if (returnCode != TWOCAN_RESULT_SUCCESS) {
 			wxLogError(_T("TwoCan Device, Error sending fast message frame"));
 			// BUG BUG Should we log the frame ??

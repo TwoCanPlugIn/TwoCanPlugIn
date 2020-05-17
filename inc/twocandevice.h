@@ -33,7 +33,14 @@
 // Constants, typedefs and utility functions for bit twiddling and array manipulation for NMEA 2000 messages
 #include "twocanutils.h"
 
-#ifdef __LINUX__
+#if defined (__APPLE__) && defined (__MACH__)
+#include "twocanlogreader.h"
+#include "twocanmacserial.h"
+// For logging to get time values
+#include <sys/time.h>
+#endif
+
+#if defined (__LINUX__)
 // For Linux , "baked in" classes for the Log File reader and SocketCAN interface
 #include "twocanlogreader.h"
 #include "twocansocket.h"
@@ -66,12 +73,12 @@
 // User's paths/documents folder
 #include <wx/stdpaths.h>
 
-#ifdef __LINUX__
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
 	// redefine Windows safe snprintf function to an equivalent
 	#define _snprintf_s(a,b,c,...) snprintf(a,b,__VA_ARGS__)
 #endif
 
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 // Based on an old 'c' code base
 // Events and Mutexes that Windows DLL's use
 #define CONST_DATARX_EVENT L"Global\\DataReceived"
@@ -86,12 +93,12 @@ extern const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT;
 // NMEA 2000 Raw frame log file
 // BUG BUG Should enable user to select file location and name. File name is generated automatically.
 // Location is set to user's document folder (which is also used by Log File Readers)
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 // BUG BUG not used as input log file name as each is hardcoded in each of the Windows log file readers
 #define CONST_LOGFILE_NAME L"twocan.log"
 #endif
 
-#ifdef __LINUX__
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
 #define CONST_LOGFILE_NAME _T("twocan.log")
 #endif
 
@@ -124,7 +131,7 @@ extern unsigned long uniqueId;
 // The current NMEA 2000 network address of this device
 extern int networkAddress;
 
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 // NMEA 2000 imported driver function prototypes
 // Note to self, cast to wxChar for OpenCPN/wxWidgets wxString stuff
 // BUG BUG Add an IsInstalled function to the drivers so that they can be automagically detected
@@ -158,8 +165,8 @@ public:
 
 	// Reference to event handler address, ie. the TwoCan PlugIn
 	wxEvtHandler *eventHandlerAddress;
-#ifdef __LINUX__
-	// wxMessage Queue to receive CAN Frames from either the Linux LogFile Reader or SocketCAN interface
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	// wxMessage Queue to receive CAN Frames from either the Generic LogFile Reader, SocketCAN interface or Mac OSX Canable Cantact device
 	wxMessageQueue<std::vector<byte>> *canQueue;
 #endif
 	// Event raised when a NMEA 2000 message is received and converted to a NMEA 0183 sentence
@@ -177,7 +184,7 @@ protected:
 
 private:
 	byte canFrame[CONST_FRAME_LENGTH];
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 	// To reuse existing 'C' CAN Adapter exported functions
 	BOOL freeResult = FALSE;
 	HINSTANCE dllHandle = NULL;
@@ -187,26 +194,22 @@ private:
 	HANDLE mutexHandle = NULL;
 	LPDWORD threadId = NULL;
 	LPFNDLLWrite writeFrame = NULL;
-#endif
 
-#ifdef __LINUX__
-	// BUG BUG implement these as derived classes from an abstract class ??
-	TwoCanLogReader *linuxLogReader; 
-	TwoCanSocket *linuxSocket;
-	// Need to persist the name of the Linux Driver, either "Log File Reader" or can0/slcan0/vcan0
-	wxString linuxDriverName;
-#endif
-
-#ifdef  __WXMSW__ 
 	// Functions to control the Windows CAN Adapter
 	int LoadWindowsDriver(wxString driverPath);
 	int ReadWindowsDriver(void);
 	int UnloadWindowsDriver(void);
 #endif
 
-#ifdef __LINUX__	
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	// Derived class for the adapter interface
+	TwoCanInterface *adapterInterface;
+
+	// Need to persist the name of the adapter interface, either "Log File Reader",  can0/slcan0/vcan0 (on Linux SocketCAN) or "Canable" (on Mac OSX)
+	wxString driverName;
+
 	// Functions to control the Linux CAN interface
-	int ReadLinuxDriver(void);
+	int ReadLinuxOrMacDriver(void);
 #endif
 
 	// Heartbeat timer

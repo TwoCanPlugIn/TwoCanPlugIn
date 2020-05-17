@@ -19,20 +19,16 @@
 
 // Project: TwoCan Plugin
 // Description: NMEA 2000 plugin for OpenCPN
-// Unit: TwoCanLogReader - Reads log files on Linux 
+// Unit: TwoCanLogReader - Reads log files on Linux & Mac OSX
 // Owner: twocanplugin@hotmail.com
 // Date: 16/3/2019
 // Version History: 
 // 1.0 Initial Release
-//
+// 1.8 - 10/05/2020 Derived from abstract class, support for Mac OSX
 
 #include <twocanlogreader.h>
 
-TwoCanLogReader::TwoCanLogReader(wxMessageQueue<std::vector<byte>> *messageQueue) : wxThread(wxTHREAD_JOINABLE) {
-	// Save the TwoCAN Device message queue
-	// NMEA 2000 messages are 'posted' to the TwoCan device for subsequent parsing
-	deviceQueue = messageQueue;
-	
+TwoCanLogReader::TwoCanLogReader(wxMessageQueue<std::vector<byte>> *messageQueue) : TwoCanInterface(messageQueue) {
 	// Initialize the different log file format regular expressions
 	//KeesRegex.assign(CONST_KEES_REGEX);
 	//TwoCanRegex.assign(CONST_TWOCAN_REGEX);
@@ -44,11 +40,11 @@ TwoCanLogReader::~TwoCanLogReader() {
 // Nothing to do in the destructor ??
 }
 
-int TwoCanLogReader::Open(const wchar_t *fileName) {
+int TwoCanLogReader::Open(const wxString& fileName) {
 	// Open the log file
-	logFileName = wxString::Format("%s/%s", wxStandardPaths::Get().GetDocumentsDir(),fileName);
+	logFileName = wxStandardPaths::Get().GetDocumentsDir() + wxFileName::GetPathSeparator() + fileName;
 	
-	wxLogMessage(_T("TwoCanLogReader::Open, Opening log file: %s"),logFileName);
+	wxLogMessage(_T("TwoCan LogReader, Opening log file: %s"),logFileName);
 	
 	logFileStream.open(logFileName, std::ifstream::in);	
 
@@ -68,13 +64,14 @@ int TwoCanLogReader::Open(const wchar_t *fileName) {
 	logFileStream.clear();
 	logFileStream.seekg(0, std::ios::beg); 
 	
-	wxLogMessage(_T("TwoCanLogReader, File opened, Log File Format: %u"),logFileFormat);
+	wxLogMessage(_T("TwoCan LogReader, File opened, Log File Format: %u"),logFileFormat);
 	return TWOCAN_RESULT_SUCCESS;
 }
 
 int TwoCanLogReader::Close(void) {
 	if (logFileStream.is_open()) {
 		logFileStream.close();
+		wxLogMessage(_T("TwoCan LogReader, Log File closed"));
 	}
 	return TWOCAN_RESULT_SUCCESS;
 }
@@ -178,7 +175,7 @@ int TwoCanLogReader::TestFormat(std::string line) {
 
 void TwoCanLogReader::Read() {
 	std::string inputLine;
-	std::vector<byte> foobar(CONST_FRAME_LENGTH);
+	std::vector<byte> postedFrame(CONST_FRAME_LENGTH);
 	while (!logFileStream.eof()) {
 		getline(logFileStream, inputLine);
 		if (!TestDestroy()) {
@@ -203,8 +200,8 @@ void TwoCanLogReader::Read() {
 			
 			// Post frame to TwoCan device
 			// BUG BUG Do we need to protect access to the canFrame using a mutex
-			memcpy(&foobar[0],&canFrame[0],CONST_FRAME_LENGTH);
-			deviceQueue->Post(foobar);
+			std::vector<byte>postedFrame(canFrame, canFrame + (sizeof(canFrame) / sizeof(canFrame[0])));
+			deviceQueue->Post(postedFrame);
 			wxThread::Sleep(20);
 		} 
 		else {

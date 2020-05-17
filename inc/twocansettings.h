@@ -25,12 +25,9 @@
 #include "twocansettingsbase.h"
 
 #include "twocanutils.h"
-#ifdef __LINUX__
+#if defined (__LINUX__)
 #include "twocansocket.h"
 #endif
-
-#include "../img/twocan_64.xpm"
-#include "../img/twocan_16_icon.xpm"
 
 // wxWidgets includes 
 // For copy-n-paste from debug text control
@@ -169,13 +166,6 @@ static std::unordered_map<int, std::string> deviceManufacturers = {
 	{ 2019, "TwoCan" }
 };
 
-#ifdef __LINUX__
-// For enumerating CAN Adapters
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <linux/can.h>
-#include <linux/can/raw.h>
-#endif
 
 // Globally defined settings which the settings dialog reads and writes to directly
 // Alternative would be to add getter/setter functions to this class, but no real benefit
@@ -207,7 +197,9 @@ extern unsigned long uniqueId;
 // The current NMEA 2000 network address of this device
 extern int networkAddress;
 
+// The icons for the dialog
 extern wxBitmap *_img_Toucan_16;
+extern wxBitmap *_img_Toucan_64;
 
 class TwoCanSettings : public TwoCanSettingsBase
 {

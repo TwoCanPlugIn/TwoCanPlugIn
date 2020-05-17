@@ -29,6 +29,7 @@
 // 1.5 - 10/7/2019. Flags for XTE, Attitude, Additional log formats
 // 1.6 - 10/10/2019 Flags for Rudder, Engine and Fluid levels
 // 1.7 - 10/12/2019 Flags for Battery
+// 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -111,7 +112,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	}
 	
 	// About Tab
-	bmpAbout->SetBitmap(wxBitmap(twocan_64));
+	bmpAbout->SetBitmap(wxBitmap(*_img_Toucan_64));
   
 	// BUG BUG Localization & version numbers
 	txtAbout->SetLabel(_T("TwoCan PlugIn for OpenCPN\nEnables some NMEA2000\xae data to be directly integrated with OpenCPN.\nSend bug reports to twocanplugin@hotmail.com"));
@@ -325,7 +326,7 @@ void TwoCanSettings::SaveSettings(void) {
 // Lists the available CAN bus or Logfile interfaces 
 bool TwoCanSettings::EnumerateDrivers(void) {
 	
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__)
 
 	// Trying to be a good wxWidgets citizen but how unintuitive !!
 	wxFileName adapterDirectoryName(::wxStandardPaths::Get().GetDataDir(),wxEmptyString);
@@ -363,7 +364,7 @@ bool TwoCanSettings::EnumerateDrivers(void) {
 	
 #endif
 	
-#ifdef __LINUX__
+#if defined (__LINUX__)
 	// Add the built-in Log File Reader to the Adapter hashmap
 	// BUG BUG Should add a #define for this string constant
 	adapters["Log File Reader"] = "Log File Reader";
@@ -387,17 +388,26 @@ bool TwoCanSettings::EnumerateDrivers(void) {
 		//	adapters[interfaceRequest.ifr_name] = interfaceRequest.ifr_name;
 		for (auto it = canAdapters.begin(); it != canAdapters.end(); ++it) {
 			wxLogMessage(_T("TwoCan Settings, Found CAN adapter: %s"),*it);
-			this->adapters[*it] = *it;
+			adapters[*it] = *it;
 		}
 		
 	}
 	
 #endif
 
+#if defined (__APPLE__) && defined (__MACH__)
+	// Add the built-in Log File Reader to the Adapter hashmap
+	// BUG BUG Should add a #define for this string constant
+	// BUG BUG In future enumerate USB Modem device for Canable Cantact adapter
+	adapters["Log File Reader"] = "Log File Reader";
+	adapters["Cantact"] = "Cantact";
+#endif
+
+
 	return TRUE;
 }
 
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 
 // Retrieve the human friendly name for the different Windows drivers to populate the combo box
 void TwoCanSettings::GetDriverInfo(wxString fileName) {

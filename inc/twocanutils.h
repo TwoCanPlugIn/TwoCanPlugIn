@@ -24,7 +24,7 @@
 #include "twocanerror.h"
 
 // For specific Windows functions & typedefs such as LPDWORD etc.
-#ifdef __WXMSW__
+#if defined (__WXMSW__)
 #include <windows.h>
 
 // IP helper API for GetMacAddress
@@ -70,7 +70,7 @@
 #define CONST_CERTIFICATION_LEVEL 0 // We have not been certified, although I think we support the PGN's required for level 1
 #define CONST_LOAD_EQUIVALENCY 1 // PC is self powered, so assume little or no drain on NMEA 2000 network
 #define CONST_MODEL_ID "TwoCan plugin"
-#define CONST_SOFTWARE_VERSION  "1.7" // BUG BUG Should derive from PLUGIN_VERSION_MAJOR etc.
+#define CONST_SOFTWARE_VERSION  "1.8" // BUG BUG Should derive from PLUGIN_VERSION_MAJOR etc.
 
 // Maximum number of multi-frame Fast Messages we can support in the Fast Message Buffer, just an arbitary number
 #define CONST_MAX_MESSAGES 100
@@ -275,7 +275,7 @@ public:
 	// BUG BUG Any other conversion functions required ??
 
 	// Used to generate the unique id for Windows versions (Note the Linux version is defined in twocansocket
-#ifdef __WXMSW__
+#if defined (__WXMSW__)
 	static int GetUniqueNumber(unsigned long *uniqueNumber);
 #endif
 

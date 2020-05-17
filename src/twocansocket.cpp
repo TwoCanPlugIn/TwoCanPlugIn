@@ -24,14 +24,12 @@
 // Date: 16/3/2019
 // Version History: 
 // 1.0 Initial Release
+// 1.8 10/5/2020. Derived from abstract class
 //
 
 #include <twocansocket.h>
 
-TwoCanSocket::TwoCanSocket(wxMessageQueue<std::vector<byte>> *messageQueue) : wxThread(wxTHREAD_JOINABLE) {
-	// Save the TwoCAN Device message queue
-	// NMEA 2000 messages are 'posted' to the TwoCan device for subsequent parsing
-	deviceQueue = messageQueue;
+TwoCanSocket::TwoCanSocket(wxMessageQueue<std::vector<byte>> *messageQueue) : TwoCanInterface(messageQueue) {
 }
 
 
@@ -114,19 +112,17 @@ int TwoCanSocket::GetUniqueNumber(unsigned long *uniqueNumber) {
 }
 
 // Open a socket descriptor
-int TwoCanSocket::Open(const char *port) {
+int TwoCanSocket::Open(const wxString& portName) {
 	
 	canSocket = socket(PF_CAN, SOCK_RAW, CAN_RAW);
-	if (canSocket < 0)
-	{
+	if (canSocket < 0) {
 		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER,TWOCAN_ERROR_SOCKET_CREATE);
 	}
 
-	strcpy(canRequest.ifr_name, port);
+	strcpy(canRequest.ifr_name, portName.c_str());
 	
 	// Get the index of the interface
-	if (ioctl(canSocket, SIOCGIFINDEX, &canRequest) < 0)
-	{
+	if (ioctl(canSocket, SIOCGIFINDEX, &canRequest) < 0) {
 		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER,TWOCAN_ERROR_SOCKET_IOCTL);
 	}
 
@@ -134,16 +130,15 @@ int TwoCanSocket::Open(const char *port) {
 	canAddress.can_ifindex = canRequest.ifr_ifindex;
 	
 	// Check if the interface is UP
-	if (ioctl(canSocket, SIOCGIFFLAGS, &canRequest) < 0) 
-    {
+	if (ioctl(canSocket, SIOCGIFFLAGS, &canRequest) < 0) {
 		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER,TWOCAN_ERROR_SOCKET_IOCTL);
 	}
      
     if ((canRequest.ifr_flags & IFF_UP)) { 
-		wxLogMessage(_T("TwoCan Socket, %s interface is UP"), port); 
+		wxLogMessage(_T("TwoCan Socket, %s interface is UP"), portName); 
 	}
 	else {
-		wxLogMessage(_T("TwoCan Socket, %s interface is DOWN"), port); 
+		wxLogMessage(_T("TwoCan Socket, %s interface is DOWN"), portName); 
 		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER,TWOCAN_ERROR_SOCKET_DOWN);
 	}
 
@@ -169,26 +164,17 @@ void TwoCanSocket::Read() {
 	std::vector<byte> postedFrame(CONST_FRAME_LENGTH);
 	int recvbytes = 0;
 	
-	canThreadIsAlive = 1;
-	while (canThreadIsAlive)
-	{
+	while (!TestDestroy()) {
 		struct timeval socketTimeout = { 1, 0 };
 		fd_set readSet;
 		FD_ZERO(&readSet);
 		FD_SET(canSocket, &readSet);
 
-		if (select((canSocket + 1), &readSet, NULL, NULL, &socketTimeout) >= 0)
-		{
-			if (TestDestroy())
-			{
-				canThreadIsAlive = 0;
-				break;
-			}
-			if (FD_ISSET(canSocket, &readSet))
-			{
+		if (select((canSocket + 1), &readSet, NULL, NULL, &socketTimeout) >= 0)	{
+
+			if (FD_ISSET(canSocket, &readSet)) {
 				recvbytes = read(canSocket, &canSocketFrame, sizeof(struct can_frame));
-				if (recvbytes)
-				{
+				if (recvbytes > 0) {
 					// Copy the CAN Header										
 					TwoCanUtils::ConvertIntegerToByteArray(canSocketFrame.can_id,&postedFrame[0]);
 					
@@ -219,6 +205,7 @@ int TwoCanSocket::Write(const unsigned int canId, const unsigned char payloadLen
 	int returnCode;
 	returnCode = write(canSocket, &canSocketFrame, sizeof(struct can_frame));
 	if (returnCode != sizeof(struct can_frame)) {
+		wxLogMessage(_T("TwoCan Socket, Write Error %s"), strerror(errno));
 		return SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DRIVER,TWOCAN_ERROR_SOCKET_WRITE);
 	}
 	else {

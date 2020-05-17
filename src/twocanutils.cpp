@@ -122,7 +122,7 @@ int TwoCanUtils::EncodeCanHeader(unsigned int *id, const CanHeader *header) {
 	}
 }
 
-#ifdef  __WXMSW__
+#if defined (__WXMSW__)
 
 // Derive a unique number from a network interface MAC address
 // Windows only, corresponding Linux function call is defined in twocansocket

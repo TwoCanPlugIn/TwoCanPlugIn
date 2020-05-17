@@ -27,7 +27,7 @@
 #include <wx/wx.h>
 #endif
 
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 	#define WINDOWS_LEAN_AND_MEAN
 	#include <windows.h>
 #endif
@@ -39,11 +39,11 @@
 // Formatted debug output
 void DebugPrintf(wchar_t *fmt, ...);
 
-#ifdef  __WXMSW__ 
+#if defined (__WXMSW__) 
 	// Routine to retrieve human readable win32 error message
 	char *GetErrorMessage(int win32ErrorCode);
 #endif
-#ifdef __LINUX__
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LNUX__)
 	// Routine to retrieve human readable Linux error message
 	char *GetErrorMessage(int linuxErrorCode);
 #endif

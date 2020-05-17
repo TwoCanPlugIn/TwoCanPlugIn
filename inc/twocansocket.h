@@ -20,8 +20,7 @@
 #ifndef TWOCAN_SOCKET_H
 #define TWOCAN_SOCKET_H
 
-#include "twocanerror.h"
-#include "twocanutils.h"
+#include "twocaninterface.h"
 
 // SocketCAN
 #include <sys/ioctl.h>
@@ -53,24 +52,21 @@
 #include <wx/msgqueue.h>
 
 // Implements the SocketCAN interface on Linux devices
-class TwoCanSocket : public wxThread {
+class TwoCanSocket : public TwoCanInterface {
 
 public:
 	// Constructor and destructor
 	TwoCanSocket(wxMessageQueue<std::vector<byte>> *messageQueue);
 	~TwoCanSocket(void);
 
-	// Reference to TwoCan Device CAN Frame message queue
-	wxMessageQueue<std::vector<byte>> *deviceQueue;
-
 	// Open and Close the CAN interface
 	// As we don't throw errors in the ctor, invoke functions that may fail from these
-	int Open(const char *port);
+	int Open(const wxString& portName);
 	int Close(void);
 	int Write(const unsigned int canId, const unsigned char payloadLength, const unsigned char *payload);
 	void Read();
 	static std::vector<wxString> ListCanInterfaces();
-	static int GetUniqueNumber(unsigned long *uniqueNumber);
+	int GetUniqueNumber(unsigned long *uniqueNumber);
 
 
 protected:
@@ -86,9 +82,7 @@ private:
 	// Socket Descriptor
 	int canSocket;
 	int flags;
-	// Detect when thread is killed
-	int canThreadIsAlive;
-
+	
 };
 
 #endif

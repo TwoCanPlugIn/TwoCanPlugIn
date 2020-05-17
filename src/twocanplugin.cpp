@@ -26,25 +26,13 @@
 // Version History: 
 // 1.0 Initial Release
 // 1.4 - 25/4/2019. Active Mode implemented. 
+// 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // Outstanding Features: 
-// 1. Collect all images into single xpm file
 // 2. Localization ??
 //
 
 
 #include "twocanplugin.h"
-
-// Globally accessible variables used by the plugin, device and the settings dialog.
-wxFileConfig *configSettings;
-wxString canAdapter;
-int supportedPGN;
-bool deviceMode;
-bool debugWindowActive;
-bool enableHeartbeat;
-int logLevel;
-unsigned long uniqueId;
-int networkAddress;
-NetworkInformation networkMap[CONST_MAX_DEVICES];
 
 // The class factories, used to create and destroy instances of the PlugIn
 extern "C" DECL_EXP opencpn_plugin* create_pi(void *ppimgr) {
@@ -68,12 +56,12 @@ TwoCan::TwoCan(void *ppimgr) : opencpn_plugin_18(ppimgr), wxEvtHandler() {
 TwoCan::~TwoCan(void) {
 	// Disconnect the event handler
 	Disconnect(wxEVT_SENTENCE_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnSentenceReceived));
-
-	// Unload plugin bitmaps/icons
+// Unload plugin bitmaps/icons
 	delete _img_Toucan_16;
 	delete _img_Toucan_32;
 	delete _img_Toucan_48;
 	delete _img_Toucan_64;
+
 }
 
 int TwoCan::Init(void) {
@@ -293,9 +281,16 @@ void TwoCan::StopDevice(void) {
 	wxThreadError threadError;
 	if (twoCanDevice != nullptr) {
 		if (twoCanDevice->IsRunning()) {
-			threadError = twoCanDevice->Delete(&threadExitCode, wxTHREAD_WAIT_DEFAULT);
+			wxLogMessage(_T("TwoCan Plugin, Terminating device thread id (0x%x)\n"), twoCanDevice->GetId());
+			threadError = twoCanDevice->Delete(&threadExitCode, wxTHREAD_WAIT_BLOCK);
 			if (threadError == wxTHREAD_NO_ERROR) {
-				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Result: %d"), threadExitCode);
+				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Result: %lu"), threadExitCode);
+				// BUG BUG Following is to prevent wxLog message "Error: Can not wait for thread termination (error 6: the handle is invalid.)"
+				// when runing on Windows, due to some bug in wxWidgets
+				if (twoCanDevice->IsRunning()) {
+					twoCanDevice->Wait(wxTHREAD_WAIT_BLOCK);
+				}
+				delete twoCanDevice;
 			}
 			else {
 				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Error: %d"), threadError);

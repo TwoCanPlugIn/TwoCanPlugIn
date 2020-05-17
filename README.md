@@ -3,7 +3,7 @@
 
 Inspired by Canboat and Openskipper, frustrated by those who claim "OpenCPN is not a hardware experimenter's platform", and desiring to give back something to the OpenCPN community.
 
-TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000® networks. It enables some NMEA2000® data to be directly integrated with OpenCPN by converting some NMEA2000® messages to NMEA 183 sentences and inserting them into the OpenCPN data stream.
+TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000® networks. It enables some NMEA2000® data to be directly integrated with OpenCPN by converting some NMEA2000® messages to NMEA 183 sentences and inserting them into the OpenCPN data stream. TwoCan supports Windows, Linux and Mac OSX.
 
 For Windows it uses a "plug-in" driver model to support different CAN bus adapters and different log file formats. 
 Four hardware adapters are currently supported:
@@ -24,7 +24,7 @@ Four log file formats are currently supported (with examples of their file forma
 |Kees Verruijt's Canboat|2014-08-14T19:00:00.042,3,128267,1,255,8,0B,F5,0D,8D,24,01,00,00|
 |Yacht Devices|19:07:47.607 R 0DF80503 00 2B 2D 9E 44 5A A0 A1|
 
-For Linux it does not use a "plug-in" driver model, rather it uses two "baked in" classes that support the SocketCAN interface and the log file reader. Any CAN bus adapter that supports the SocketCAN interface "should" work. It has been tested with native interfaces (eg. can0), serial interfaces (eg. slcan0) and virtual interfaces (eg. vcan0). 
+For Linux it does not use a "plug-in" driver model, rather it uses two "baked in" classes that support the SocketCAN interface and a generic Log File reader. Any CAN bus adapter that supports the SocketCAN interface "should" work. It has been tested with native interfaces (eg. can0), serial interfaces (eg. slcan0) and virtual interfaces (eg. vcan0). 
 
 I have successfully used three hardware adapters under Linux:
 
@@ -38,7 +38,7 @@ Another user is succesfully using the following adapter:
 
 USBtin - https://www.fischl.de/usbtin/
 
-For Linux, the Rusoku Toucan Marine device requires an installable kernel module. The source code and make files can be downloaded from github, a link is provided from http://www.rusoku.com. 
+On Linux, the Rusoku Toucan Marine device requires an installable kernel module. The source code and make files can be downloaded from github, a link is provided from http://www.rusoku.com. 
 
 For example if using the Raspberry Pi with the Rusoku Toucan Marine device, instructions for building an installable kernel module can be found at https://raspberrypi.stackexchange.com/questions/39845/how-compile-a-loadable-kernel-module-without-recompiling-kernel. In addition I found that I also needed to install bison & flex (eg. sudo apt-get install bison, sudo apt-get flex) to compile the installable kernel module. 
 
@@ -57,13 +57,15 @@ sudo slcand -o -s5 -t hw -S 1000000 /dev/ttyACM0
 
 sudo ip link set up slcan0
 
-The Linux Log File Reader automagically™ detects the four supported log file formats.
+The generic Log File Reader automagically™ detects the four supported log file formats.
 
-In addition, NMEA 2000 frames may be logged by the plugin. Prior to Version 1.5 only the raw TwoCan log format was supported. With Version 1.5 the following formats are supported: TwoCan Raw, Canboat, Candump, Yacht Devices and Comma Separated Variable (CSV). All log files fils are written to the user's home directory and named using the following convention: twocan-YYYY-MM-DD_HHmmSS.log.
+Similarly For Mac OSX it does not use a "plug-in" driver model, rather it also uses two "baked in" classes that support the generic Log File reader and a serial USB CAN interface such as the Canable Cantact adapter (see above). It was only developed with the Canable Cantact device in mind, however it should work with any serial USB CAN bus adapter that supports the SLCAN command set such the USBTin adapter (see above) and the Lawicell adapters. The TwoCan plugin automagic port detection includes the USB VendorId's and Product Id's for these three adapters.
+
+In addition, NMEA 2000 frames may be logged by the plugin. Prior to Version 1.5 only the raw TwoCan log format was supported. With Version 1.5 onwards the following formats are supported: TwoCan Raw, Canboat, Candump, Yacht Devices and Comma Separated Variable (CSV). All log files fils are written to the user's home directory and named using the following convention: twocan-YYYY-MM-DD_HHmmSS.log.
 
 From version 1.4 onwards, the TwoCan plugin may be configured to actively participate on the NMEA 2000 network, claiming an address, sending heartbeats and responding to a few requests (such as product information). Please note that this is not fully tested and may interfere with the correct functioning of the NMEA 2000 network. If any problems occur, disable the Active Mode functionality and if possible, file a bug report.
 
-If using the Active Mode feature in versions 1.4, 1.5, 1.6 or 1.7, please be aware of the following:
+If using the Active Mode feature, please be aware of the following:
 
 For Windows, updated plugin drivers for the hardware adapters are required if you wish to use Active Mode. The only hardware adapters that have been updated and tested are the Kvaser Leaflight and Rusoku Toucan Marine. I have yet to update the plugin drivers for the Canable Cantact and Axiomtek AX92903 adapters to support Active Mode.
 
@@ -72,6 +74,8 @@ For Linux (or I should more correctly say for Raspbian), the WaveShare CAN hat f
 sudo ifconfig can* txqueuelen 1000 (replace * with 0, 1 or whatever number your can interface is configured to use) 
 
 For the Canable Cantact using the slcan firmware device it appears to drop frames (I may never have noticed this in previous TwoCan releases as the plugin never requested or received some of these NMEA 2000 fast message frames). The workaround is to reflash the Canable Cantact device with the candlelight firmware, which then enables the device to use the Native CAN interface rather than serial line CAN (slcan). It also requires the same command described above to increase the transmission queue length.
+
+For Mac OSX, the supported CAN adapters "should" support Active Mode.
 
 List of supported NMEA 2000 Parameter Group Numbers (PGN)
 ---------------------------------------------------------
@@ -132,11 +136,11 @@ git clone https://github.com/twocanplugin/twocanplugin.git
 Build Environment
 -----------------
 
-Both Windows and Linux are currently supported.
+Windows, Linux and Mac OSX are currently supported.
 
 This plugin builds outside of the OpenCPN source tree
 
-For both Windows and Linux, refer to the OpenCPN developer manual for details regarding other requirements such as git, cmake and wxWidgets.
+Refer to the OpenCPN developer manual for details regarding other requirements such as git, cmake and wxWidgets.
 
 For Windows you must place opencpn.lib into the twocan_pi/build directory to be able to link the plugin DLL. opencpn.lib can be obtained from your local OpenCPN build, or alternatively downloaded from http://sourceforge.net/projects/opencpnplugins/files/opencpn_lib/
 
@@ -161,16 +165,22 @@ Creating an installation package
   or
 
  cpack
+ 
+  or (for OSX)
+
+ make create-pkg
 
 Installation
 ------------
 Run the resulting setup package created above for your platform.
 
-Eg. For Windows run twocan\_pi\_1.7.0-ov50.exe
+Eg. For Windows run twocan\_pi\_1.8.0-ov50.exe
 
-Eg. For Ubuntu (on PC's) run sudo dpkg -i twocan\_pi\_1.7.0-1_amd64.deb
+Eg. For Ubuntu (on PC's) run sudo dpkg -i twocan\_pi\_1.8.0-1_amd64.deb
 
-Eg. For Raspberry Pi run sudo dpkg -i twocan\_pi\_1.7.0-1_armhf.deb
+Eg. For Raspberry Pi run sudo dpkg -i twocan\_pi\_1.8.0-1_armhf.deb
+
+Eg. For Mac OSX, double click on the resulting package
 
 Problems
 --------

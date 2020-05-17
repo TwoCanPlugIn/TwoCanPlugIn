@@ -20,39 +20,8 @@
 #ifndef TWOCAN_LOGREADER_H
 #define TWOCAN_LOGREADER_H
 
-#include "twocanerror.h"
-#include "twocanutils.h"
+#include "twocaninterface.h"
 
-// wxWidgets
-// BUG BUG work out which ones we really need
-#include <wx/defs.h>
-// String Format, Comparisons etc.
-#include <wx/string.h>
-// For converting NMEA 2000 date & time data
-#include <wx/datetime.h>
-// Raise events to the plugin
-#include <wx/event.h>
-// Perform read operations in their own thread
-#include <wx/thread.h>
-// Logging (Info & Errors)
-#include <wx/log.h>
-// Logging (raw NMEA 2000 frames)
-#include <wx/file.h>
-// User's paths/documents folder
-#include <wx/stdpaths.h>
-// Message Queue
-#include <wx/msgqueue.h>
-// Regular Expressions
-#include <wx/regex.h>
-
-
-// STL
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <iomanip>
-#include <initializer_list>
-#include <iostream>
 
 #define CONST_TWOCAN_REGEX "^0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2})"
 #define CONST_CANDUMP_REGEX "^\\([0-9]+.[0-9]+\\)\\scan[0-9]\\s([0-9A-F]{8})#([0-9A-F]{16})"
@@ -60,26 +29,22 @@
 #define CONST_YACHTDEVICES_REGEX "^[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}\\sR\\s([0-9A-F]{8})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})"
 enum LogFileFormat { Undefined, TwoCanRaw, CanDump, Kees, YachtDevices};
 
-// Implements the log file reader on Linux devices
-class TwoCanLogReader : public wxThread {
+// Implements the generic log file reader on Linux & Mac OSX devices
+class TwoCanLogReader : public TwoCanInterface {
 
 public:
 	// Constructor and destructor
 	TwoCanLogReader(wxMessageQueue<std::vector<byte>> *messageQueue);
 	~TwoCanLogReader(void);
 
-	// Reference to TwoCan Device CAN Frame message queue
-	wxMessageQueue<std::vector<byte>> *deviceQueue;
-	
 	// Raw CAN Frames
 	byte canFrame[CONST_FRAME_LENGTH];
 
-	// Open and Close the log file
-	// As we don't throw errors in the constructor, invoke functions that may fail from these
-	int Open(const wchar_t *fileName);
+	// TwoCan Interface overridden functions
+	int Open(const wxString& fileName);
 	int Close(void);
-	// Read from the file in a detached thread
 	void Read();
+
 	// Detect which log file format is used
 	int TestFormat(std::string line);
 	// Parse each of the different log file formats
@@ -89,14 +54,18 @@ public:
 	void ParseYachtDevices(std::string str);
 	
 protected:
-	// wxThread overridden functions
+	// TwoCan Interface overridden functions
 	virtual wxThread::ExitCode Entry();
 	virtual void OnExit();
 
 private:
+	// Enum indicating whether the log format is twocan, canboatm candum, yachtdevices
 	int logFileFormat;
+	// Full path of the log file, fileName appended to the user's documents directory
 	wxString logFileName;
+	// File stream used to read lines from the log file
 	std::ifstream logFileStream;
+	// Regular expression to parse the log file format
 	wxRegEx twoCanRegEx;
 };
 

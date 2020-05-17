@@ -44,8 +44,21 @@ IF(UNIX AND NOT APPLE)
             inc/twocansocket.h
             src/twocanlogreader.cpp
             inc/twocanlogreader.h
+            src/twocaninterface.cpp
+            inc/twocaninterface.h
     )
 ENDIF(UNIX AND NOT APPLE)
+
+IF(APPLE)
+    LIST(APPEND SRC_TWOCAN 
+            src/twocanlogreader.cpp
+            inc/twocanlogreader.h
+            src/twocanmacserial.cpp
+            inc/twocanmacserial.h
+            src/twocaninterface.cpp
+            inc/twocaninterface.h
+    )
+ENDIF(APPLE)
 
 ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SRC_TWOCAN} )
 
