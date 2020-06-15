@@ -32,7 +32,7 @@ Canable Cantact - (see above)
 
 Rusoku Toucan Marine - (see above)
 
-Waveshare CAN Hat for Raspberry PI - https://www.waveshare.com/product/modules/communication/rs232-rs485-can/rs485-can-hat.htm
+Waveshare CAN Hat for Raspberry PI - https://www.waveshare.com/rs485-can-hat.htm
 
 Another user is succesfully using the following adapter:
 
