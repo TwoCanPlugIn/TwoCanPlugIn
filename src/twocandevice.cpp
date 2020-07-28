@@ -1676,11 +1676,11 @@ bool TwoCanDevice::DecodePGN127245(const byte *payload, std::vector<wxString> *n
 		byte directionOrder;
 		directionOrder = payload[1] & 0x03;
 
-		short angleOrder; // 0001 radians
-		angleOrder = payload[3] | (payload[4] << 8);
+		short angleOrder; // 0.0001 radians
+		angleOrder = payload[2] | (payload[3] << 8);
 
-		short position; // 0001 radians
-		position = payload[5] | (payload[6] << 8);
+		short position; // 0.0001 radians
+		position = payload[4] | (payload[5] << 8);
 
 		if (TwoCanUtils::IsDataValid(position)) {
 			// Main (or Starboard Rudder
@@ -1731,7 +1731,7 @@ bool TwoCanDevice::DecodePGN127250(const byte *payload, std::vector<wxString> *n
 		
 			if (TwoCanUtils::IsDataValid(heading)) {
 				
-				nmeaSentences->push_back(wxString::Format("$IIHDM,%.2f", RADIANS_TO_DEGREES((float)heading / 10000)));
+				nmeaSentences->push_back(wxString::Format("$IIHDM,%.2f,M", RADIANS_TO_DEGREES((float)heading / 10000)));
 			
 				if (TwoCanUtils::IsDataValid(deviation)) {
 				
@@ -2502,7 +2502,7 @@ bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *n
 			}
 
 			nmeaSentences->push_back(wxString::Format("$IIGGA,%s,%02.0f%07.4f,%c,%03.0f%07.4f,%c,%d,%d,%.2f,%.1f,M,%.1f,M,,", \
-				tm.Format("%H%M%S").ToAscii(), fabs(latitudeDegrees), fabs(latitudeMinutes), latitudeDegrees >= 0 ? 'N' : 'S', \
+				tm.Format("%H%M%S",wxDateTime::UTC).ToAscii(), fabs(latitudeDegrees), fabs(latitudeMinutes), latitudeDegrees >= 0 ? 'N' : 'S', \
 				fabs(longitudeDegrees), fabs(longitudeMinutes), longitudeDegrees >= 0 ? 'E' : 'W', \
 				fixType, numberOfSatellites, (double)hDOP * 0.01f, (double)altitude * 1e-6, \
 				(double)geoidalSeparation * 0.01f));
@@ -2700,7 +2700,7 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		userID = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		double longitude;
-		longitude = (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8])) * 1e-7;
+		longitude = (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24)) * 1e-7;
 
 		double latitude;
 		latitude = (payload[9] | (payload[10] << 8) | (payload[11] << 16) | (payload[12] << 24)) * 1e-7;
