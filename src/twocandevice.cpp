@@ -2323,7 +2323,7 @@ bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *n
 			tm = wxDateTime::Now();
 
 			nmeaSentences->push_back(wxString::Format("$IIGLL,%02d%07.4f,%c,%03d%07.4f,%c,%s,%c,%c", abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', \
-				abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', tm.Format("%H%M%S.00").ToAscii(), gpsMode, ((gpsMode == 'A') || (gpsMode == 'D')) ? 'A' : 'V'));
+				abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', tm.Format("%H%M%S.00",wxDateTime::UTC).ToAscii(), gpsMode, ((gpsMode == 'A') || (gpsMode == 'D')) ? 'A' : 'V'));
 			return TRUE;
 		}
 		else {
@@ -2502,7 +2502,7 @@ bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *n
 			}
 
 			nmeaSentences->push_back(wxString::Format("$IIGGA,%s,%02.0f%07.4f,%c,%03.0f%07.4f,%c,%d,%d,%.2f,%.1f,M,%.1f,M,,", \
-				tm.Format("%H%M%S",wxDateTime::UTC).ToAscii(), fabs(latitudeDegrees), fabs(latitudeMinutes), latitudeDegrees >= 0 ? 'N' : 'S', \
+				tm.Format("%H%M%S").ToAscii(), fabs(latitudeDegrees), fabs(latitudeMinutes), latitudeDegrees >= 0 ? 'N' : 'S', \
 				fabs(longitudeDegrees), fabs(longitudeMinutes), longitudeDegrees >= 0 ? 'E' : 'W', \
 				fixType, numberOfSatellites, (double)hDOP * 0.01f, (double)altitude * 1e-6, \
 				(double)geoidalSeparation * 0.01f));
