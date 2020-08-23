@@ -331,9 +331,9 @@ void TwoCanSettings::SaveSettings(void) {
 bool TwoCanSettings::EnumerateDrivers(void) {
 	
 #if defined (__WXMSW__)
-wxString driversFolder = pluginDataFolder +  T("drivers") + wxFileName::GetPathSeparator();
+wxString driversFolder = pluginDataFolder +  _T("drivers") + wxFileName::GetPathSeparator();
 
-		// BUG BUG Should we log this ?
+	// BUG BUG Should we log this ?
 	wxLogMessage(_T("TwoCan Settings, Driver Path: %s"), driversFolder);
 
 	wxDir adapterDirectory;
@@ -348,7 +348,7 @@ wxString driversFolder = pluginDataFolder +  T("drivers") + wxFileName::GetPathS
 		while (foundFile){
 
 			// Construct full path to selected driver and fetch driver information
-			GetDriverInfo(wxString::Format("%s%s", adapterDirectoryName.GetFullPath(), fileName));
+			GetDriverInfo(wxString::Format("%s%s", adapterDirectory.GetFullPath(), fileName));
 
 			foundFile = adapterDirectory.GetNext(&fileName);
 		} 
