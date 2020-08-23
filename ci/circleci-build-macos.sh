@@ -19,12 +19,14 @@ brew list python@2 2>&1 >/dev/null && brew unlink python@2
 brew reinstall python3
 
 # Build the Toucan Library
+pwd
 git clone https://github.com/rusoku/RusokuCAN
 cd RusokuCAN/Sources
 ./build_no.sh
 cd ..
 make all
 sudo make install
+cd ..
 
 wget -q http://opencpn.navnux.org/build_deps/wx312_opencpn50_macos109.tar.xz
 tar xJf wx312_opencpn50_macos109.tar.xz -C /tmp
