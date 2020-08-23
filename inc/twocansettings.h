@@ -25,6 +25,7 @@
 #include "twocansettingsbase.h"
 
 #include "twocanutils.h"
+
 #if defined (__LINUX__)
 #include "twocansocket.h"
 #endif
@@ -172,6 +173,9 @@ static std::unordered_map<int, std::string> deviceManufacturers = {
 
 // Name of currently selected CAN Interface
 extern wxString canAdapter;
+
+// The plugin's data folder
+extern wxString pluginDataFolder;
 
 // Flag of bit values indicating what PGN's the plug-in converts
 extern int supportedPGN;

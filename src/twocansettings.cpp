@@ -30,6 +30,7 @@
 // 1.6 - 10/10/2019 Flags for Rudder, Engine and Fluid levels
 // 1.7 - 10/12/2019 Flags for Battery
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
+// 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -168,9 +169,9 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	}
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
-	labelModelId->SetLabel(wxString::Format("Model ID: TwoCan plugin"));
+	labelModelId->SetLabel(wxString::Format("Model ID: %s", PLUGIN_COMMON_NAME));
 	labelManufacturer->SetLabel("Manufacturer: TwoCan");
-	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %s", CONST_SOFTWARE_VERSION));
+	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %d.%d", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR));
 
 	// Logging Options
 	// Add Logging Options to the hashmap
@@ -327,23 +328,15 @@ void TwoCanSettings::SaveSettings(void) {
 bool TwoCanSettings::EnumerateDrivers(void) {
 	
 #if defined (__WXMSW__)
+wxString driversFolder = pluginDataFolder +  T("drivers") + wxFileName::GetPathSeparator();
 
-	// Trying to be a good wxWidgets citizen but how unintuitive !!
-	wxFileName adapterDirectoryName(::wxStandardPaths::Get().GetDataDir(),wxEmptyString);
-
-	adapterDirectoryName.AppendDir(_T("plugins"));
-	adapterDirectoryName.AppendDir(_T("twocan_pi"));
-	adapterDirectoryName.AppendDir(_T("data"));
-	adapterDirectoryName.AppendDir(_T("drivers"));
-	adapterDirectoryName.Normalize();
-
-	// BUG BUG Should we log this ?
-	wxLogMessage(_T("TwoCan Settings, Driver Path: %s"),adapterDirectoryName.GetFullPath());
+		// BUG BUG Should we log this ?
+	wxLogMessage(_T("TwoCan Settings, Driver Path: %s"), driversFolder);
 
 	wxDir adapterDirectory;
 
-	if (adapterDirectory.Exists(adapterDirectoryName.GetFullPath())) {
-		adapterDirectory.Open(adapterDirectoryName.GetFullPath());
+	if (adapterDirectory.Exists(driversFolder)) {
+		adapterDirectory.Open(driversFolder);
 	
 		wxString fileName;
 		wxString fileSpec = wxT("*.dll");
@@ -396,11 +389,10 @@ bool TwoCanSettings::EnumerateDrivers(void) {
 #endif
 
 #if defined (__APPLE__) && defined (__MACH__)
-	// Add the built-in Log File Reader to the Adapter hashmap
-	// BUG BUG Should add a #define for this string constant
-	// BUG BUG In future enumerate USB Modem device for Canable Cantact adapter
+	// Add the built-in Log File Reader, Cantact and Rusoku interfaces to the Adapter hashmap
 	adapters["Log File Reader"] = "Log File Reader";
 	adapters["Cantact"] = "Cantact";
+	adapters["Rusoku"] = "Rusoku";
 #endif
 
 

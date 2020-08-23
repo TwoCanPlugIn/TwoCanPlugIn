@@ -27,6 +27,7 @@
 // 1.0 Initial Release
 // 1.4 - 25/4/2019. Active Mode implemented. 
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
+// 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // Outstanding Features: 
 // 2. Localization ??
 //
@@ -45,7 +46,7 @@ extern "C" DECL_EXP void destroy_pi(opencpn_plugin* p) {
 
 // TwoCan plugin constructor. Note it inherits from wxEvtHandler so that we can receive events
 // from the NMEA 2000 device when a NMEA 2000 frame is received
-TwoCan::TwoCan(void *ppimgr) : opencpn_plugin_18(ppimgr), wxEvtHandler() {
+TwoCan::TwoCan(void *ppimgr) : opencpn_plugin_116(ppimgr), wxEvtHandler() {
 	// Wire up the event handler
 	Connect(wxEVT_SENTENCE_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnSentenceReceived));
 
@@ -56,7 +57,11 @@ TwoCan::TwoCan(void *ppimgr) : opencpn_plugin_18(ppimgr), wxEvtHandler() {
 TwoCan::~TwoCan(void) {
 	// Disconnect the event handler
 	Disconnect(wxEVT_SENTENCE_RECEIVED_EVENT, wxCommandEventHandler(TwoCan::OnSentenceReceived));
-// Unload plugin bitmaps/icons
+
+	// Flush the log. Seems to crash OpenCPN upon exit if we don't
+	wxLog::FlushActive();
+
+	// Unload plugin bitmaps/icons
 	delete _img_Toucan_16;
 	delete _img_Toucan_32;
 	delete _img_Toucan_48;
@@ -73,6 +78,9 @@ int TwoCan::Init(void) {
 
 	// Maintain a reference to the OpenCPN configuration object 
 	configSettings = GetOCPNConfigObject();
+
+	// Save the location for this plugins data folder
+	pluginDataFolder = GetPluginDataDir(PLUGIN_PACKAGE_NAME) + wxFileName::GetPathSeparator() + _T("data") + wxFileName::GetPathSeparator();
 
 	// TwoCan preferences dialog
 	settingsDialog = NULL;
@@ -127,11 +135,11 @@ bool TwoCan::DeInit(void) {
 
 // Indicate what version of the OpenCPN Plugin API we support
 int TwoCan::GetAPIVersionMajor() {
-	return OPENCPN_API_VERSION_MAJOR;
+	return OCPN_API_VERSION_MAJOR;
 }
 
 int TwoCan::GetAPIVersionMinor() {
-	return OPENCPN_API_VERSION_MINOR;
+	return OCPN_API_VERSION_MINOR;
 }
 
 // The TwoCan plugin version numbers. 
@@ -146,17 +154,17 @@ int TwoCan::GetPlugInVersionMinor() {
 
 // Return descriptions for the TwoCan Plugin
 wxString TwoCan::GetCommonName() {
-	return _T("TwoCan Plugin");
+	return _T(PLUGIN_COMMON_NAME);
 }
 
 wxString TwoCan::GetShortDescription() {
 	//Trademark character ® code is \xae
-	return _T("TwoCan Plugin integrates OpenCPN with NMEA2000\xae networks");
+	return _T(PLUGIN_SHORT_DESCRIPTION);
 }
 
 wxString TwoCan::GetLongDescription() {
 	// Localization ??
-    return _T("TwoCan PlugIn integrates OpenCPN with NMEA2000\xae networks\nEnables some NMEA2000\xae data to be directly integrated with OpenCPN.\n\nThe following NMEA2000\xae Parameter Group Numbers (with corresponding\nNMEA 0183 sentences indicated in braces) are supported:\n- 128259 Speed (VHW)\n- 128267 Depth (DPT)\n- 129026 COG & SOG (RMC)\n- 129029 Navigation (GLL & ZDA)\n- 130306 Wind (MWV)\n- 130310 Water Temperature (MWT)");
+    return _T(PLUGIN_LONG_DESCRIPTION);
 }
 
 // 32x32 pixel PNG file is converted to XPM containing the variable declaration: char *[] twocan_32 ...

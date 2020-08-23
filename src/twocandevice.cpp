@@ -37,6 +37,7 @@
 // 1.6 - 10/10/2019 Added PGN 127245 (Rudder), 127488 (Engine, Rapid), 127489 (Engine, Dynamic), 127505 (Fluid Levels)
 // 1.7 - 10/12/2019 Aded PGN 127508 (Battery), AIS fixes
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
+// 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // Outstanding Features: 
 // 1. Bi-directional gateway ??
 // 2. Rewrite/Port Adapter drivers to C++
@@ -381,6 +382,7 @@ void TwoCanDevice::OnExit() {
 			wxLogMessage(_T("TwoCan Device, Closed Log File"));
 		}
 	}
+	wxLog::FlushActive();
 }
 
 
@@ -4405,13 +4407,13 @@ int TwoCanDevice::SendProductInformation() {
 	// Note all of the string values are stored without terminating NULL character
 	// Model ID Bytes [4] - [35]
 	memset(&payload[4],0,32);
-	char const *hwVersion = CONST_MODEL_ID;
+	char const *hwVersion = PLUGIN_COMMON_NAME;
 	memcpy(&payload[4], hwVersion,strlen(hwVersion));
 	
 	// Software Version Bytes [36] - [67]
 	// BUG BUG Should derive from PLUGIN_VERSION_MAJOR and PLUGIN_VERSION_MINOR
 	memset(&payload[36],0,32);
-	char const *swVersion = CONST_SOFTWARE_VERSION;  
+	char const *swVersion = wxString::Format("%d.%d",PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR).c_str();  
 	memcpy(&payload[36], swVersion,strlen(swVersion));
 		
 	// Model Version Bytes [68] - [99]
