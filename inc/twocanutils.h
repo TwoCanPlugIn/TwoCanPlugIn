@@ -202,6 +202,9 @@
 #define FLAGS_TNK 65536
 #define FLAGS_RDR 131072
 #define FLAGS_BAT 262144
+#define FLAGS_NAV 524288
+#define FLAGS_LOG 1048576
+#define FLAGS_MET 2097152
 
 // Bit values to determine in which format the log file is written
 #define FLAGS_LOG_NONE 0

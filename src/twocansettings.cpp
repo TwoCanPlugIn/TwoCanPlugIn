@@ -91,7 +91,10 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("127505 ") + _("Fluid Levels") + _T(" (XDR) "));
 	pgn->Add(_T("127245 ") + _("Rudder Angle") + _T(" (RSA)"));
 	pgn->Add(_T("127508 ") + _("Battery Status") + _T(" (XDR)"));
-		
+	pgn->Add(_T("129284 ") + _("Navigation Data") + _T(" (BWC/BWR/BOD/WCV)"));
+	pgn->Add(_T("128275 ") + _("Vessel Trip Details") +_T(" (VLW)"));
+	pgn->Add(_T("130323 ") + _("Meteorological Details") +_T(" (MDA)"));
+	
 	// Populate the listbox and check/uncheck as appropriate
 	for (size_t i = 0; i < pgn->Count(); i++) {
 		chkListPGN->Append(pgn->Item(i));
