@@ -36,6 +36,7 @@
 #if defined (__APPLE__) && defined (__MACH__)
 #include "twocanlogreader.h"
 #include "twocanmacserial.h"
+#include "twocanmactoucan.h"
 // For logging to get time values
 #include <sys/time.h>
 #endif
@@ -406,6 +407,9 @@ private:
 	
 	// Decode PGN 130316 NMEA Temperature Extended Range
 	bool DecodePGN130316(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 130323 NMEA Meteorological Station Data
+	bool DecodePGN130323(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 130577 NMEA Direction Data
 	bool DecodePGN130577(const byte *payload, std::vector<wxString> *nmeaSentences);
