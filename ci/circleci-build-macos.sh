@@ -18,6 +18,14 @@ done
 brew list python@2 2>&1 >/dev/null && brew unlink python@2
 brew reinstall python3
 
+# Build the Toucan Library
+git clone https://github.com/rusoku/RusokuCAN
+cd RusokuCAN/Sources
+./build_no.sh
+cd ..
+make all
+sudo make install
+
 wget -q http://opencpn.navnux.org/build_deps/wx312_opencpn50_macos109.tar.xz
 tar xJf wx312_opencpn50_macos109.tar.xz -C /tmp
 export PATH="/usr/local/opt/gettext/bin:$PATH"
@@ -39,10 +47,4 @@ hdiutil attach Packages.dmg
 sudo installer -pkg "/Volumes/Packages 1.2.5/Install Packages.pkg" -target "/"
 make create-pkg
 
-# Build the Toucan Library
-git clone https://github.com/rusoku/RusokuCAN
-cd RusokuCAN/Sources
-./build_no.sh
-cd ..
-make all
-sudo make install
+
