@@ -348,7 +348,7 @@ wxString driversFolder = pluginDataFolder +  _T("drivers") + wxFileName::GetPath
 		while (foundFile){
 
 			// Construct full path to selected driver and fetch driver information
-			GetDriverInfo(wxString::Format("%s%s", adapterDirectory.GetFullPath(), fileName));
+			GetDriverInfo(wxString::Format("%s%s", driversFolder, fileName));
 
 			foundFile = adapterDirectory.GetNext(&fileName);
 		} 
