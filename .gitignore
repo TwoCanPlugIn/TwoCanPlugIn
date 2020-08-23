@@ -1,4 +1,4 @@
-build*
+build
 img
 inc/twocanversion.h
 .DS_Store
