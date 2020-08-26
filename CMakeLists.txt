@@ -198,16 +198,10 @@ IF(APPLE)
     # So that is the location where will link, but will also need to specify the rpath
 
     FIND_LIBRARY(RUSOKU_LIBRARY
-    NAMES 
-    libTouCAN.dylib
-    PATHS 
-    ${CMAKE_SOURCE_DIR}/data/drivers
-    NO_DEFAULT_PATH
+    NAMES libTouCAN.dylib
+    PATHS usr/local/lib
     )
 
-    #set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-    
     TARGET_LINK_LIBRARIES(${PACKAGE_NAME} ${RUSOKU_LIBRARY})
 
     # As we install the Rusoku library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
