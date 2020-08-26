@@ -26,6 +26,7 @@ cd RusokuCAN/Sources
 # back to the rusokucan directory
 cd ..
 make all
+# perhaps unnecessary
 sudo make install
 # back to the project build directory
 cd ..
@@ -34,11 +35,12 @@ cd ..
 # the dylibs themselves.
 # It also allows the rpath to be correctly generated in the plugin dylib linker
 for f in $(find ../RusokuCAN/Library/TouCAN  -name '*.dylib')
-   cp $f data/drivers 
+do
+  cp $f data/drivers 
    # create a symbolic link to the library file
    ln -s "data/drivers/${f##*/}" data/drivers/libTouCAN.dylib
    # there should only be one file, but in anycase exit after the first
-   break
+  break
 done
 
 wget -q http://opencpn.navnux.org/build_deps/wx312_opencpn50_macos109.tar.xz

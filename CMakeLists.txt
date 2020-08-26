@@ -206,10 +206,7 @@ IF(APPLE)
     )
 
     #set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-    
-    #set(CMAKE_INSTALL_RPATH "@executable_path/./../SharedSupport/plugins/twocan_plugin_pi/data/drivers;@loader_path/./../SharedSupport/plugins/twocan_plugin_pi/data/drivers")
-    #set(CMAKE_INSTALL_RPATH "@executable_path/./../SharedSupport/plugins/twocan_plugin_pi/data/drivers")
-    #set(CMAKE_INSTALL_RPATH "@loader_path/./../SharedSupport/plugins/twocan_plugin_pi/data/drivers")
+
     
     TARGET_LINK_LIBRARIES(${PACKAGE_NAME} ${RUSOKU_LIBRARY})
 
