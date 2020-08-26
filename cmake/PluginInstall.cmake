@@ -94,7 +94,9 @@ if(WIN32)
     endif(CMAKE_CROSSCOMPILING)
 
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
-        install(DIRECTORY data DESTINATION "${INSTALL_DIRECTORY}")
+        install(DIRECTORY data DESTINATION "${INSTALL_DIRECTORY}"
+        PATTERN "drivers" EXCLUDE
+        PATTERN "*.dylib" EXCLUDE)
         message(STATUS "${CMLOC}Install Data: ${INSTALL_DIRECTORY}")
     endif(EXISTS ${PROJECT_SOURCE_DIR}/data)
 
@@ -115,7 +117,8 @@ if(UNIX AND NOT APPLE)
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
         install(DIRECTORY data DESTINATION ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME}
         PATTERN "drivers" EXCLUDE
-        PATTERN "*.dll" EXCLUDE)
+        PATTERN "*.dll" EXCLUDE
+        PATTERN "*.dylib" EXCLUDE)
         message(STATUS "${CMLOC}Install data: ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME}")
     endif()
     if(EXISTS ${PROJECT_SOURCE_DIR}/UserIcons)

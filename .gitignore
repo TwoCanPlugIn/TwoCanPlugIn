@@ -1,4 +1,5 @@
 build
 img
+data/drivers/*.dylib
 inc/twocanversion.h
 .DS_Store

@@ -12,6 +12,7 @@
 ## ----- Modify section below to include all the details for your plugin ----- ##
 ##
 
+
 set(CMLOC "CMakeLists: ")
 
 # define minimum cmake version
@@ -131,13 +132,6 @@ add_definitions(-DPLUGIN_USE_SVG)
 ## Need api-16 for ocpn_plugin.h
 include_directories(BEFORE ${PROJECT_SOURCE_DIR}/api-16)
 
-IF(APPLE)
-    set(CMAKE_MACOSX_RPATH 1)
-    #for Rusoku Toucan, Assumes the MacCan Rusoku headers & libraries have been installed in the default location
-    SET(LOCAL_HEADER "/usr/local/include")
-    INCLUDE_DIRECTORIES(AFTER ${LOCAL_HEADER})
-ENDIF(APPLE)
-
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/inc ${CMAKE_SOURCE_DIR}/src)
 
 SET(SOURCES src/twocanerror.cpp
@@ -159,7 +153,7 @@ SET(HEADERS inc/twocanerror.h
 IF(UNIX AND NOT APPLE)
 
     LIST(APPEND SOURCES 
-	    src/twocansocket.cpp
+	src/twocansocket.cpp
         src/twocanlogreader.cpp
         src/twocaninterface.cpp)
 
@@ -184,6 +178,10 @@ IF(APPLE)
         inc/twocanmactoucan.h
         inc/twocaninterface.h)
 
+    # For Rusoku Toucan, Assumes the MacCan Rusoku headers have been installed in the default location
+    SET(RUSOKU_HEADER "/usr/local/include")
+    INCLUDE_DIRECTORIES(AFTER ${RUSOKU_HEADER})
+
 ENDIF(APPLE)
 
 ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SOURCES} ${HEADERS} )
@@ -193,14 +191,35 @@ IF(WIN32)
 ENDIF(WIN32)
 
 IF(APPLE)
+    # use runtime paths
+    set(CMAKE_MACOSX_RPATH TRUE)
+    
+    # Refer to circleci_build-macos as we build the Toucan library and copy the dylib to data/drivers
+    # So that is the location where will link, but will also need to specify the rpath
+
     FIND_LIBRARY(RUSOKU_LIBRARY
-    NAMES
+    NAMES 
     libTouCAN.dylib
-    PATHS
-    /usr/local/lib
+    PATHS 
+    ${CMAKE_SOURCE_DIR}/data/drivers
+    NO_DEFAULT_PATH
     )
-    SET(RUSOKU_LIBRARIES ${RUSOKU_LIBRARY})
-    TARGET_LINK_LIBRARIES(${PACKAGE_NAME} ${RUSOKU_LIBRARIES})
+
+    #set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    
+    #set(CMAKE_INSTALL_RPATH "@executable_path/./../SharedSupport/plugins/twocan_plugin_pi/data/drivers;@loader_path/./../SharedSupport/plugins/twocan_plugin_pi/data/drivers")
+    #set(CMAKE_INSTALL_RPATH "@executable_path/./../SharedSupport/plugins/twocan_plugin_pi/data/drivers")
+    #set(CMAKE_INSTALL_RPATH "@loader_path/./../SharedSupport/plugins/twocan_plugin_pi/data/drivers")
+    
+    TARGET_LINK_LIBRARIES(${PACKAGE_NAME} ${RUSOKU_LIBRARY})
+
+    # As we install the Rusoku library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
+    ADD_CUSTOM_COMMAND( POST_BUILD
+      TARGET ${PACKAGE_NAME} 
+      COMMAND install_name_tool -add_rpath "@loader_path/./../SharedSupport/plugins/${PACKAGE_NAME}/data/drivers" "lib${PACKAGE_NAME}.dylib"
+      COMMAND install_name_tool -change libTouCAN.0.1.dylib @rpath/libTouCAN.0.1.dylib lib${PACKAGE_NAME}.dylib
+    )
+    
 ENDIF(APPLE)
 
 ##
