@@ -2349,10 +2349,10 @@ bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *n
 	if (payload != NULL) {
 		
 		int latitude;
-		latitude = payload[0] | (payload[1] << 8) | (payload[2] << 16) | (payload[3] << 24);
+		latitude = (int)payload[0] | ((int)payload[1] << 8) | ((int)payload[2] << 16) | ((int)payload[3] << 24);
 
 		int longitude;
-		longitude = payload[4] | (payload[5] << 8) | (payload[6] << 16) | (payload[7] << 24);
+		longitude = (int)payload[4] | ((int)payload[5] << 8) | ((int)payload[6] << 16) | ((int)payload[7] << 24);
 
 		if (TwoCanUtils::IsDataValid(latitude) && TwoCanUtils::IsDataValid(longitude)) {
 
