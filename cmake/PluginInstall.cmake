@@ -52,7 +52,6 @@ if(APPLE)
         LIBRARY DESTINATION OpenCPN.app/Contents/PlugIns)
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
         install(DIRECTORY data DESTINATION OpenCPN.app/Contents/SharedSupport/plugins/${PACKAGE_NAME}
-        PATTERN "drivers" EXCLUDE
         PATTERN "*.dll" EXCLUDE)
     endif()
 
@@ -95,7 +94,6 @@ if(WIN32)
 
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
         install(DIRECTORY data DESTINATION "${INSTALL_DIRECTORY}"
-        PATTERN "drivers" EXCLUDE
         PATTERN "*.dylib" EXCLUDE)
         message(STATUS "${CMLOC}Install Data: ${INSTALL_DIRECTORY}")
     endif(EXISTS ${PROJECT_SOURCE_DIR}/data)
