@@ -82,6 +82,8 @@ private:
 	// Socket Descriptor
 	int canSocket;
 	int flags;
+	// Socket Timeouts
+	struct timeval socketTimeout;
 	
 };
 

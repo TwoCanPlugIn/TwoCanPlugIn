@@ -360,6 +360,9 @@ private:
 	// Decode PGN 129285 Navigation Route/WP Information
 	bool DecodePGN129285(const byte * payload, std::vector<wxString> *nmeaSentences);
 
+	// Decode PGN 1296540 GNSS Satellites in view
+	bool DecodePGN129540(const byte * payload, std::vector<wxString> *nmeaSentences);
+
 	// Decode PGN 129793 AIS Date and Time report
 	bool DecodePGN129793(const byte * payload, std::vector<wxString> *nmeaSentences);
 

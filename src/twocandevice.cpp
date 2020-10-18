@@ -38,6 +38,7 @@
 // 1.7 - 10/12/2019 Aded PGN 127508 (Battery), AIS fixes
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
+// 1.91 - 20-10-2020 Add PGN 129540, Bug Fixes (random position - missing break, socket & queue timeouts)
 // Outstanding Features: 
 // 1. Bi-directional gateway ??
 // 2. Rewrite/Port Adapter drivers to C++
@@ -404,10 +405,8 @@ int TwoCanDevice::ReadLinuxOrMacDriver(void) {
 	
 	while (!TestDestroy())	{
 		
-		// Wait for a CAN Frame
-		// BUG BUG, If on an empty network, will never check TestDestroy, so use ReceiveWait
-		
-		queueError = canQueue->Receive(receivedFrame);
+		// Wait for a CAN Frame. timeout if on an idle netowork
+		queueError = canQueue->ReceiveTimeout(CONST_TEN_MILLIS, receivedFrame);
 		
 		if (queueError == wxMSGQUEUE_NO_ERROR) {
 					
@@ -422,7 +421,7 @@ int TwoCanDevice::ReadLinuxOrMacDriver(void) {
 			
 			AssembleFastMessage(header, payload);
 		
-		} // end if Queue Error
+		}
 
 	} // end while
 
@@ -1313,6 +1312,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		if (supportedPGN & FLAGS_LOG) {
 			result = DecodePGN128275(payload, &nmeaSentences);
 		}
+		break;
 
 	case 129025: // Position - Rapid Update
 		if (supportedPGN & FLAGS_GLL) {
@@ -1377,6 +1377,12 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 	case 129285: // Route & Waypoint Information
 		if (supportedPGN & FLAGS_RTE) {
 			result = DecodePGN129285(payload, &nmeaSentences);
+		}
+		break;
+
+	case 129540: // GNSS Satellites in view
+		if (supportedPGN & FLAGS_GGA) {
+			result = DecodePGN129540(payload, &nmeaSentences);
 		}
 		break;
 
@@ -3433,6 +3439,96 @@ bool TwoCanDevice::DecodePGN129285(const byte * payload, std::vector<wxString> *
 	else {
 		return FALSE;
 	}
+}
+
+// Decode PGN 129540 NMEA Satellites in View
+// $--GSV,x,x,x,x,x,x,x,...*hh<CR><LF>
+//        | | | | | | snr
+//        | | | | | azimuth
+//        | | | | elevation
+//        | | | satellite id
+//    total | satellites in view
+//          sentence number
+bool TwoCanDevice::DecodePGN129540(const byte * payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte sid;
+		sid = payload[0];
+
+		byte mode;
+		mode = payload[1] & 0x03;
+
+		byte reserved;
+		reserved = (payload[1] & 0xFC) >> 2;
+
+		byte satsInView;
+		satsInView = payload[2];
+
+		unsigned int index;
+		index = 3;
+
+		wxString gsvSentence;
+		int totalSentences;
+		totalSentences = trunc(satsInView / 4) + ((satsInView % 4) == 0 ? 0 : 1);
+		int sentenceNumber;
+		sentenceNumber = 1;
+
+		for (size_t i = 0;i < satsInView; i++) {
+			
+			byte prn;
+			prn = payload[index];
+			index += 1;
+
+			unsigned short elevation; // radians * 0.0001
+			elevation = payload[index] | (payload[index+1] << 8);
+			index += 2;
+
+			unsigned short azimuth; // radians * 0.0001
+			azimuth = payload[index] | (payload[index+1] << 8);
+			index += 2;
+
+			unsigned short snr; //db * 0.01
+			snr = payload[index] | (payload[index+1] << 8);
+			index += 2;
+
+			int rangeResiduals;
+			rangeResiduals = payload[index] | (payload[index+1] << 8) | (payload[index+2] << 16) | (payload[index+3] << 24);
+			index += 4;
+
+			// From canboat,
+			// 0 Not tracked
+			// 1 Tracked
+			// 2 Used
+			// 3 Not tracked+Diff
+			// 4 Tracked+Diff
+			// 5 Used+Diff
+			byte status; 
+			status = payload[index] & 0x0F;
+			index += 1;
+
+			// BUG BUG Leading zeroes ??
+			// BUG BUG Only generate GSV sentence for satellites used for the position fix
+			if ((status == 2) || (status == 5)) {
+				gsvSentence += wxString::Format(",%02d,%02d,%03d,%02d", prn, 
+				(unsigned int)RADIANS_TO_DEGREES((float)elevation / 10000),
+				(unsigned int)RADIANS_TO_DEGREES((float)azimuth/10000),(unsigned int)snr/100);
+			}
+
+			// Send one NMEA sentence for each quadruple (4) of satellites
+			// and another for the remainder (if the number of satellites is not a multipe of 4)
+			if ((((i+1)%4) == 0) || (((((i+1)%4) != 0)) && ( i == (satsInView - 1)))) {
+				gsvSentence.Prepend(wxString::Format("$GPGSV,%d,%d,%d", totalSentences, sentenceNumber, satsInView));
+				nmeaSentences->push_back(gsvSentence);
+				gsvSentence.Empty();
+				sentenceNumber++;
+			}
+		}
+	return TRUE;
+	}
+	else {
+		return FALSE;
+	}
+              
 }
 
 // Decode PGN 129793 AIS Date and Time report

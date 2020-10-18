@@ -25,6 +25,7 @@
 // Version History: 
 // 1.0 Initial Release
 // 1.8 10/5/2020. Derived from abstract class
+// 1.91 20/10/2020. Set to non blocking with tmeouts
 //
 
 #include <twocansocket.h>
@@ -143,11 +144,17 @@ int TwoCanSocket::Open(const wxString& portName) {
 	}
 
 	// Set to non blocking
-	// fcntl(canSocket, F_SETFL, O_NONBLOCK);
+	fcntl(canSocket, F_SETFL, O_NONBLOCK);
 
-	// and if so, then bind
-	if (bind(canSocket, (struct sockaddr *)&canAddress, sizeof(canAddress)) < 0)
-	{
+	// set the timeout values
+	socketTimeout.tv_sec = 0;
+	socketTimeout.tv_usec = 100;
+
+	// set the socket timeout
+	setsockopt (canSocket, SOL_SOCKET, SO_RCVTIMEO, &socketTimeout, sizeof(socketTimeout));
+
+	// and then bind
+	if (bind(canSocket, (struct sockaddr *)&canAddress, sizeof(canAddress)) < 0) {
 		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER,TWOCAN_ERROR_SOCKET_BIND);
 	}
 
@@ -165,7 +172,11 @@ void TwoCanSocket::Read() {
 	int recvbytes = 0;
 	
 	while (!TestDestroy()) {
-		struct timeval socketTimeout = { 1, 0 };
+		
+		// Reset the timeout values
+		socketTimeout.tv_sec = 0;
+		socketTimeout.tv_usec = 100;
+
 		fd_set readSet;
 		FD_ZERO(&readSet);
 		FD_SET(canSocket, &readSet);
