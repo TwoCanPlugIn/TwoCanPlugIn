@@ -189,6 +189,9 @@ extern bool deviceMode;
 // If we are in active mode, whether to periodically send PGN 126993 heartbeats
 extern bool enableHeartbeat;
 
+// If we are in active mode, whether we act as a bi-directional gateway NMEA183 -> NMEA 2000
+extern bool enableGateway;
+
 // Whether to Log raw NMEA 2000 messages
 extern int logLevel;
 
@@ -220,6 +223,7 @@ protected:
 	void OnLogging(wxCommandEvent &event);
 	void OnCheckMode(wxCommandEvent &event);
 	void OnCheckHeartbeat(wxCommandEvent &event);
+	void OnCheckGateway(wxCommandEvent &event);
 	void OnPause(wxCommandEvent &event);
 	void OnCopy(wxCommandEvent &event);
 	void OnOK(wxCommandEvent &event);

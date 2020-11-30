@@ -86,7 +86,7 @@ int TwoCanMacSerial::Open(const wxString& portName) {
 
 	// Special character flags
 	serialPortSettings.c_cc[VMIN] = 32;
-	serialPortSettings.c_cc[VTIME] = 0;
+	serialPortSettings.c_cc[VTIME] = 10;
 
 	// Set baud rate
 	if ((cfsetispeed(&serialPortSettings, B115200) == -1) || (cfsetospeed(&serialPortSettings, B115200) == -1))	{

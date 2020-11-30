@@ -36,11 +36,11 @@ set(PACKAGE_CONTACT "twocanplugin@hotmail.com")
 set(PACKAGE "twocan_plugin")
 set(SHORT_DESCRIPTION "TwoCan Plugin, integrates OpenCPN with NMEA 2000 networks")
 set(LONG_DESCRIPTION "TwoCan Plugin, integrates OpenCPN with NMEA 2000 networks by converting NMEA 2000 messages to NMEA 183 sentences for use by OpenCPN") 
-set(VERSION_MAJOR "1")
-set(VERSION_MINOR "9")
-set(VERSION_PATCH "1")
+set(VERSION_MAJOR "2")
+set(VERSION_MINOR "0")
+set(VERSION_PATCH "0")
 set(VERSION_TWEAK "0")
-set(VERSION_DATE "20/10/2020")
+set(VERSION_DATE "20/11/2020")
 set(OCPN_MIN_VERSION "ov50")
 set(OCPN_API_VERSION_MAJOR "1")
 set(OCPN_API_VERSION_MINOR "16")
@@ -130,9 +130,9 @@ add_definitions(-DPLUGIN_USE_SVG)
 ##endif(APPLE)
 
 ## Need api-16 for ocpn_plugin.h
-include_directories(BEFORE ${PROJECT_SOURCE_DIR}/api-16)
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/api-16)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/inc ${CMAKE_SOURCE_DIR}/src)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/inc ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/nmea183/src ${CMAKE_SOURCE_DIR}/nmea183/inc)
 
 SET(SOURCES src/twocanerror.cpp
             src/twocandevice.cpp
@@ -140,7 +140,11 @@ SET(SOURCES src/twocanerror.cpp
             src/twocansettings.cpp
             src/twocansettingsbase.cpp
             src/twocanutils.cpp
-            src/twocanicons.cpp)
+            src/twocanicons.cpp
+            src/twocanencoder.cpp
+            src/twocanautopilot.cpp
+            src/twocanautopilotdialog.cpp
+            src/twocanautopilotdialogbase.cpp)
 
 SET(HEADERS inc/twocanerror.h
             inc/twocandevice.h
@@ -148,7 +152,82 @@ SET(HEADERS inc/twocanerror.h
             inc/twocansettings.h
             inc/twocansettingsbase.h
             inc/twocanutils.h
-            inc/twocanicons.h)
+            inc/twocanicons.h
+            inc/twocanencoder.h
+            inc/twocanautopilot.h
+            inc/twocanautopilotdialog.h
+            inc/twocanautopilotdialogbase.h)
+
+SET(NMEA183_SRC nmea183/src/apb.cpp
+                nmea183/src/dbt.cpp
+                nmea183/src/dpt.cpp
+                nmea183/src/expid.cpp
+                nmea183/src/gga.cpp
+                nmea183/src/gll.cpp
+                nmea183/src/gpwpl.cpp
+                nmea183/src/gsv.cpp
+                nmea183/src/hdg.cpp
+                nmea183/src/hdm.cpp
+                nmea183/src/hdt.cpp
+                nmea183/src/hexvalue.cpp
+                nmea183/src/lat.cpp
+                nmea183/src/latlong.cpp
+                nmea183/src/long.cpp
+                nmea183/src/mtw.cpp
+                nmea183/src/mwv.cpp
+                nmea183/src/nmea0183.cpp
+                nmea183/src/response.cpp
+                nmea183/src/rmb.cpp
+                nmea183/src/rmc.cpp
+                nmea183/src/rot.cpp
+                nmea183/src/rpm.cpp
+                nmea183/src/rsa.cpp
+                nmea183/src/rte.cpp
+                nmea183/src/sentence.cpp
+                nmea183/src/talkerid.cpp
+                nmea183/src/vdm.cpp
+                nmea183/src/vdr.cpp
+                nmea183/src/vhw.cpp
+                nmea183/src/vlw.cpp
+                nmea183/src/vtg.cpp
+                nmea183/src/wpl.cpp
+                nmea183/src/xdr.cpp
+                nmea183/src/xte.cpp
+                nmea183/src/zda.cpp)
+
+SET(NMEA183_INC nmea183/inc/apb.hpp
+                nmea183/inc/dbt.hpp
+                nmea183/inc/dpt.hpp
+                nmea183/inc/gga.hpp
+                nmea183/inc/gll.hpp
+                nmea183/inc/gpwpl.hpp
+                nmea183/inc/gsv.hpp
+                nmea183/inc/hdg.hpp
+                nmea183/inc/hdm.hpp
+                nmea183/inc/hdt.hpp
+                nmea183/inc/latlong.hpp
+                nmea183/inc/mtw.hpp
+                nmea183/inc/mwv.hpp
+                nmea183/inc/nmea0183.h
+                nmea183/inc/nmea0183.hpp
+                nmea183/inc/response.hpp
+                nmea183/inc/rmb.hpp
+                nmea183/inc/rmc.hpp
+                nmea183/inc/rot.hpp
+                nmea183/inc/rpm.hpp
+                nmea183/inc/rsa.hpp
+                nmea183/inc/rte.hpp
+                nmea183/inc/satinfo.h
+                nmea183/inc/sentence.hpp
+                nmea183/inc/vdm.hpp
+                nmea183/inc/vdr.hpp
+                nmea183/inc/vhw.hpp
+                nmea183/inc/vlw.hpp
+                nmea183/inc/vtg.hpp
+                nmea183/inc/wpl.hpp
+                nmea183/inc/xdr.hpp
+                nmea183/inc/xte.hpp
+                nmea183/inc/zda.hpp)
 
 IF(UNIX AND NOT APPLE)
 
@@ -184,7 +263,7 @@ IF(APPLE)
 
 ENDIF(APPLE)
 
-ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SOURCES} ${HEADERS} )
+ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SOURCES} ${HEADERS} ${NMEA183_INC} ${NMEA183_SRC})
 
 IF(WIN32)
 	TARGET_LINK_LIBRARIES(${PACKAGE_NAME} iphlpapi)

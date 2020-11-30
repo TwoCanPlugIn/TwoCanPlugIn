@@ -5,6 +5,10 @@ src/twocansettings.cpp
 src/twocansettingsbase.cpp
 src/twocanutils.cpp
 src/twocanicons.cpp
+src/twocanencoder.cpp
+src/twocanautopilot.cpp
+src/twocanautopilotdialog.cpp
+src/twocanautopilotdialogbase.cpp
 src/twocanlogreader.cpp
 src/twocanmacserial.cpp
 src/twocanmactoucan.cpp
@@ -16,6 +20,10 @@ inc/twocansettings.h
 inc/twocansettingsbase.h
 inc/twocanutils.h
 inc/twocanicons.h
+inc/twocanencoder.h
+inc/twocanautopilot.h
+inc/twocanautopilotdialog.h
+inc/twocanautopilotdialogbase.h
 inc/twocanlogreader.h
 inc/twocanmacserial.h
 inc/twocanmactoucan.h

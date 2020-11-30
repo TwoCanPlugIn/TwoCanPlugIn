@@ -27,17 +27,20 @@
       #include <wx/wx.h>
 #endif
 
-// Defines all of the OpenCPN plugin virtual methods we need to override
-#include "ocpn_plugin.h"
-
 // Preferences Dialog (Note this header also includes twocanversion.h which is automatically generated)
 #include "twocansettings.h"
 
-// TwoCan device, which is our implementation of a NMEA 2000 device
+// TwoCan device, which is our implementation of a NMEA 2000 device (Note also includes ocpnplugin.h)
 #include "twocandevice.h"
+
+// TwoCan Autopilot (Note also includes the autopilot dialog)
+#include "twocanautopilot.h"
 
 // Icons Use png2wx.pl perl script to convert png images to wxWidgets memory streams
 #include "twocanicons.h"
+
+// NMEA 183 to NMEA 2000 Encoding
+#include "twocanencoder.h"
 
 // BUG BUG check which wxWidget includes we really need
 // Arrays of Strings
@@ -51,6 +54,9 @@
 
 // Plugin receives FrameReceived events from the TwoCan device
 const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT = wxNewEventType();
+
+// Plugin receives Autopilot Command events from the TwoCan Autopilot dialog
+const wxEventType wxEVT_AUTOPILOT_COMMAND_EVENT = wxNewEventType();
 
 // Globally accessible variables used by the plugin, device and the settings dialog.
 // OpenCPN Configuration Settings
@@ -67,6 +73,16 @@ bool deviceMode;
 bool debugWindowActive;
 // If an Active Device, whether to periodically send heartbeats
 bool enableHeartbeat;
+// If we can insert routes & waypoints into the OpenCPN database
+bool enableWaypoint;
+// If we are in active mode whether we act as a bidirectional gateway, converting NMEA183 to NMEA2000
+bool enableGateway;
+// If we act as a SignalK server
+bool enableSignalK;
+// If we act as a Media Server
+bool enableMusic;
+// If we are in Active Mode, whether we can control an Autpilot. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine
+int autopilotMode; 
 // If any logging is to be performed and in what format (twocan raw, candump, canboat, yacht devices or csv)
 int logLevel;
 // A 29bit number that uniqiuely identifies the TwoCan device if it is an Active Device
@@ -99,7 +115,12 @@ public:
 	wxString GetLongDescription();
 	void SetNMEASentence(wxString &sentence); // Not used yet...
 	wxBitmap *GetPlugInBitmap();
-	
+	int GetToolbarToolCount(void);
+	int GetToolbarItemId();
+	void OnToolbarToolCallback(int id);
+	void SetPluginMessage(wxString& message_id, wxString& message_body);
+	void SetPositionFix(PlugIn_Position_Fix &pfix);
+		
 private: 
 	// NMEA 2000 device
 	TwoCanDevice *twoCanDevice;
@@ -117,13 +138,25 @@ private:
 	// Reference to the OpenCPN window handle
 	wxWindow *parentWindow;
 
-	// NMEA 0183 sentence received events
+	// Handles NMEA 0183 sentence received events
 	void OnSentenceReceived(wxCommandEvent &event);
 
 	// TwoCanDevice
 	void StartDevice(void);
 	void StopDevice(void);
 
+	// Autopilot Toolbar
+	int autopilotToolbar;
+	wxString normalIcon;
+	wxString toggledIcon;
+	wxString rolloverIcon;
+	TwoCanAutopilot *twoCanAutopilot;
+	
+	// Handles Autopilot dialog commands, eg. On, Off, Left, Right 
+	void OnAutopilotCommand(wxCommandEvent &event);
+
+	// TwoCanEncoder is used to convert NMEA 183 sentences to NMEA 2000 messages 
+	TwoCanEncoder *twoCanEncoder;
 };
 
 #endif 

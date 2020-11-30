@@ -31,6 +31,7 @@
 // 1.7 - 10/12/2019 Flags for Battery
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
+// 2.0 - 20-11-2020 Bi directional Gateway
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -163,12 +164,12 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	
 	// Device tab
 	chkDeviceMode->SetValue(deviceMode);
-	chkEnableHeartbeat->Enable(chkDeviceMode->IsChecked());
+	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
 	if (deviceMode == TRUE) {
-		chkEnableHeartbeat->SetValue(enableHeartbeat);
+		chkHeartbeat->SetValue(enableHeartbeat);
 	}
 	else {
-		chkEnableHeartbeat->SetValue(FALSE);
+		chkHeartbeat->SetValue(FALSE);
 	}
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
@@ -228,13 +229,20 @@ void TwoCanSettings::OnCopy(wxCommandEvent &event) {
 
 // Set whether the device is an actve or passive node on the NMEA 2000 network
 void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
-	chkEnableHeartbeat->Enable(chkDeviceMode->IsChecked());
-	chkEnableHeartbeat->SetValue(FALSE);
+	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
+	chkHeartbeat->SetValue(FALSE);
+	chkGateway->Enable(chkDeviceMode->IsChecked());
+	chkGateway->SetValue(FALSE);
 	this->settingsDirty = TRUE;
 }
 
 // Set whether the device sends heartbeats onto the network
 void TwoCanSettings::OnCheckHeartbeat(wxCommandEvent &event) {
+	this->settingsDirty = TRUE;
+}
+
+// Set whether the device acts as a bi-directional gateway, NMEA 183 -> NMEA 2000
+void TwoCanSettings::OnCheckGateway(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
 
@@ -302,8 +310,13 @@ void TwoCanSettings::SaveSettings(void) {
 	}
 
 	enableHeartbeat = FALSE;
-	if (chkEnableHeartbeat->IsChecked()) {
+	if (chkHeartbeat->IsChecked()) {
 		enableHeartbeat = TRUE;
+	}
+
+	enableGateway = FALSE;
+	if (chkGateway->IsChecked()) {
+		enableGateway = TRUE;
 	}
 		
 	deviceMode = FALSE;

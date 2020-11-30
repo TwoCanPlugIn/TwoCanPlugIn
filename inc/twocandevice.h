@@ -27,6 +27,9 @@
 #include <wx/wx.h>
 #endif
 
+// Defines all of the OpenCPN plugin virtual methods we need to override
+#include "ocpn_plugin.h"
+
 // Error constants and macros
 #include "twocanerror.h"
 
@@ -55,6 +58,7 @@
 #include <algorithm>
 #include <bitset>
 #include <iostream>
+#include <mutex>
 
 // wxWidgets
 // BUG BUG work out which ones we really need
@@ -120,6 +124,21 @@ extern bool deviceMode;
 // If we are in active mode, whether to periodically send PGN 126993 heartbeats
 extern bool enableHeartbeat;
 
+// If we can insert routes & waypoints into the OpenCPN database
+extern bool enableWaypoint;
+
+// If we are in active mode whether we act as a bidirectional gateway, converting NMEA183 to NMEA2000
+extern bool enableGateway;
+
+// If we act as a SignalK server
+extern bool enableSignalK;
+
+// If we act as a Media Server
+extern bool enableMusic;
+
+// If we are in Active Mode, whether we can control an Autpilot. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine
+extern int autopilotMode; 
+
 // Whether to Log raw NMEA 2000 messages
 extern int logLevel;
 
@@ -177,6 +196,7 @@ public:
 	// As we don't throw errors in the constructor, invoke functions that may fail from these functions
 	int Init(wxString driverPath);
 	int DeInit(void);
+	int TransmitFrame(unsigned int id, byte *data);
 
 protected:
 	// wxThread overridden functions
@@ -231,6 +251,9 @@ private:
 	// Used to format the MAIN, PORT or STBD XDR & RPM NMEA 0183 sentences depending on NMEA 2000 Engine Instance.
 	bool IsMultiEngineVessel;
 
+	// Protect simultaneous write operations 
+	std::mutex writeMutex;
+
 	// All the NMEA 2000 goodness
 
 	// the 8 byte NAME of this device derived from the 8 bytes used in PGN 60928
@@ -252,7 +275,7 @@ private:
 	// Assemble sequence of Fast Messages int a payload
 	void AssembleFastMessage(const CanHeader header, const byte *message);
 	
-	// And its companion
+	// And its companion, fragment a fast message into 8 byte messages
 	int FragmentFastMessage(CanHeader *header, unsigned int payloadLength, byte *payload);
 
 	// Add, Append and Find entries in the FastMessage buffer
@@ -290,6 +313,9 @@ private:
 
 	// Decode PGN 126996 NMEA Product Information
 	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
+
+	// Decode PGN 127237 NMEA Heading Track control 
+	bool DecodePGN127237(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 127245 NMEA Rudder
 	bool DecodePGN127245(const byte *payload, std::vector<wxString> *nmeaSentences);
@@ -360,8 +386,8 @@ private:
 	// Decode PGN 129285 Navigation Route/WP Information
 	bool DecodePGN129285(const byte * payload, std::vector<wxString> *nmeaSentences);
 
-	// Decode PGN 1296540 GNSS Satellites in view
-	bool DecodePGN129540(const byte * payload, std::vector<wxString> *nmeaSentences);
+	// Decode PGN 129540 NMEA GNSS Satellites in view
+	bool DecodePGN129540(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129793 AIS Date and Time report
 	bool DecodePGN129793(const byte * payload, std::vector<wxString> *nmeaSentences);
@@ -396,6 +422,12 @@ private:
 	// Decode PGN 129810 AIS Class B Static Data Report, Part B 
 	bool DecodePGN129810(const byte *payload, std::vector<wxString> *nmeaSentences);
 
+	// Decode PGN 130065 Route & Waypoint Service - Route List
+	bool DecodePGN130065(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 130074 Route & Waypoint Service - Waypoint List
+	bool DecodePGN130074(const byte *payload, std::vector<wxString> *nmeaSentences);
+
 	// Decode PGN 130306 NMEA Wind
 	bool DecodePGN130306(const byte *payload, std::vector<wxString> *nmeaSentences);
 
@@ -426,6 +458,9 @@ private:
 	// Transmit NMEA 2000 Product Information
 	int SendProductInformation();
 	
+	// Transmit NMEA 2000 Configuration Information
+	int SendConfigurationInformation();
+
 	// Transmit NMEA 2000 Supported Parameter Groups
 	int SendSupportedPGN(void);
 
