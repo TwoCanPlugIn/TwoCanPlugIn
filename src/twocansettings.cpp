@@ -165,12 +165,16 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	// Device tab
 	chkDeviceMode->SetValue(deviceMode);
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
+	chkGateway->Enable(chkDeviceMode->IsChecked());
 	if (deviceMode == TRUE) {
 		chkHeartbeat->SetValue(enableHeartbeat);
+		chkGateway->SetValue(enableGateway);
 	}
 	else {
 		chkHeartbeat->SetValue(FALSE);
+		chkGateway->SetValue(FALSE);
 	}
+
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
 	labelModelId->SetLabel(wxString::Format("Model ID: %s", PLUGIN_COMMON_NAME));

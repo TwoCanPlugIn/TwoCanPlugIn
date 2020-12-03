@@ -1056,6 +1056,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		
 			case 60928: // Address Claim
 				// BUG BUG The bastards are using an address claim as a heartbeat !!
+				wxLogMessage("TwoCan Device, ISO Request for Address Claim");
 				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
 					int returnCode;
 					returnCode = SendAddressClaim(networkAddress);
@@ -1080,6 +1081,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 				break;
 		
 			case 126996: // Product Information 
+				wxLogMessage("TwoCan Device, ISO Request for Product Info");
 				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
 					int returnCode;
 					returnCode = SendProductInformation();
@@ -5281,7 +5283,7 @@ int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLen
 	data[1] = payloadLength;
 	memcpy(&data[2], &payload[0], 6);
 	
-returnCode = TransmitFrame(id, &data[0]);
+	returnCode = TransmitFrame(id, &data[0]);
 
 	if (returnCode != TWOCAN_RESULT_SUCCESS) {
 		wxLogError(_T("TwoCan Device, Error sending fast message frame"));
@@ -5300,7 +5302,7 @@ returnCode = TransmitFrame(id, &data[0]);
 		data[0] = sid;
 		memcpy(&data[1],&payload[6 + (i * 7)],7);
 		
-returnCode = TransmitFrame(id, &data[0]);
+		returnCode = TransmitFrame(id, &data[0]);
 
 		if (returnCode != TWOCAN_RESULT_SUCCESS) {
 			wxLogError(_T("TwoCan Device, Error sending fast message frame"));
