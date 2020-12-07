@@ -1,4 +1,4 @@
-// Copyright(C) 2018-2019 by Steven Adler
+// Copyright(C) 2018-2020 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -22,9 +22,9 @@
 // Description: NMEA 2000 plugin for OpenCPN
 // Unit: Autoplot Control
 // Owner: twocanplugin@hotmail.com
-// Date: 6/8/2018
+// Date: 01/12/2020
 // Version History: 
-// 1.0 Initial Release
+// 1.0 Initial Release of Autopilot Control
 
 #include "twocanautopilot.h"
 

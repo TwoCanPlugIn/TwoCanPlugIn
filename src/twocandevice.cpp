@@ -1,4 +1,4 @@
-// Copyright(C) 2018-2019 by Steven Adler
+// Copyright(C) 2018-2020 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -37,9 +37,9 @@
 // 1.6 - 10/10/2019 Added PGN 127245 (Rudder), 127488 (Engine, Rapid), 127489 (Engine, Dynamic), 127505 (Fluid Levels)
 // 1.7 - 10/12/2019 Aded PGN 127508 (Battery), AIS fixes
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
-// 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
-// 1.91 - 20-10-2020 Add PGN 129540, Bug Fixes (random position - missing break, socket & queue timeouts)
-// 2.0 - 20-11-2020 Bi-directional gateway, Autopilot control
+// 1.9 - 20/08/2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
+// 1.91 - 20/10/2020 Add PGN 129540, Bug Fixes (random position - missing break, socket & queue timeouts)
+// 2.0 - 01/12/2020 Bi-directional gateway, Autopilot control
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //

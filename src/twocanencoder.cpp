@@ -15,17 +15,17 @@
 // You should have received a copy of the GNU General Public License
 // along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
 //
-// NMEA2000 is a registered Trademark of the National Marine Electronics Association
+// NMEA2000® is a registered Trademark of the National Marine Electronics Association
 
 //
 // Project: TwoCan Plugin
 // Description: NMEA 2000 plugin for OpenCPN
-// Unit: TwoCan NMEA 2000 Parameter Group Number (PGN) Encoding functions
-// Encodes NMEA 2000 Message from decoded NMEA 183 Sentences
+// Unit: TwoCanEncoder - converts NMEA 183 sentences to NMEA 2000 messages
 // Owner: twocanplugin@hotmail.com
-// Date: 20 - 11- 2020
-// Version: 1.0 Initial release of NMEA 183 to NMEA 2000 encoding
-// 
+// Date: 01/12/2020
+// Version History: 
+// 1.0 Initial Release of Bi-directional Gateway
+ 
 
 #include "twocanencoder.h"
 
@@ -39,11 +39,16 @@ TwoCanEncoder::~TwoCanEncoder(void) {
 // Used to validate XDR Transducer Names and retrieve the instance number (as per NMEA 0183 v4.11 XDR standard)
 // Eg. BATTERY#n, ENGINE#n, FUEL#n etc. where n is a digit from 0-9
 int TwoCanEncoder::GetInstanceNumber(wxString transducerName) {
+	int instanceNumber;
     // Check if second last character is '#'
     if (transducerName.Mid(transducerName.size() - 2,1).Cmp(_T("#")) == 0) {
-        // Check if last character is a digit
+        // Check if last character is a digit and between 0 - 9.
         if (transducerName.Mid(transducerName.size() - 1,1).IsNumber()) {
-            return wxAtoi(transducerName.Mid(transducerName.size() - 1,1));
+            instanceNumber = wxAtoi(transducerName.Mid(transducerName.size() - 1,1));
+			if ((instanceNumber > -1) && (instanceNumber < 10)) {
+				return instanceNumber;
+			}
+
         }
     }
     return -1;
@@ -104,7 +109,7 @@ void TwoCanEncoder::FragmentFastMessage(CanHeader *header, std::vector<byte> *pa
     		}
 
 			// fill any unused bytes with 0xFF
-	    	for (size_t i = 0; i < (7-remainingBytes); i++) {
+	    	for (int i = 0; i < (7-remainingBytes); i++) {
         		data.push_back(0xFF);
     		}
 	
@@ -126,25 +131,21 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 	std::vector<byte> payload;
 	
 	// BUG BUG REMOVE
-	wxLogMessage(_T("TwoCanEncoder, sentence received: %s"), sentence);
-
+	wxLogMessage(_T("TwoCan Encoder, Debug Info. Sentence received: %s"), sentence);
 
 	// Parse the NMEA 183 sentence
 	nmeaParser << sentence;
 
-	//Still to do these if ever......
-	//#define FLAGS_DSC 512
-	//#define FLAGS_AIS 1024
-
+	// BUG BUG ToDo (if ever......)
+	// DSC and AIS
 	if (nmeaParser.PreParse()) {
 
 		// BUG BUG Should use a different priority based on the PGN
-		// PGN is completed later in the switch statement
+		// PGN is initialized further in the switch statement
 		header.source = networkAddress;
 		header.destination = CONST_GLOBAL_ADDRESS;
 		header.priority = CONST_PRIORITY_MEDIUM;
 		
-
 		// BUG BUG Sequence Id is a monotonically increasing number
 		// however it should indicate related readings from sensors 
 		// Eg. each successive depth value should have successive SID's
@@ -158,7 +159,10 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		if (nmeaParser.LastSentenceIDReceived == _T("APB")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_RTE)) {
-					// EncodePGN127237(&nmeaParser, &payload); Heading/Track Control
+					// if (EncodePGN127237(&nmeaParser, &payload)) { // Heading/Track Control
+					//	header.pgn = 127237;
+					//	FragmentFastMessage(&header, &payload, canMessages);
+					// }
 					if (EncodePGN129283(&nmeaParser, &payload)) {
 						header.pgn = 129283;
 						FragmentFastMessage(&header, &payload, canMessages);
@@ -309,6 +313,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			return FALSE;
 		}
 
+		// BUG BUG ToDo, Not actually implemented
 		// DSC Digital Selective Calling Information
 		else if (nmeaParser.LastSentenceIDReceived == _T("DSC")) {
 			if (nmeaParser.Parse()) {
@@ -326,6 +331,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			return FALSE;
 		}
 
+		// BUG BUG ToDo, Not actully implemented
 		// DSE Expanded Digital Selective Calling
 		else if (nmeaParser.LastSentenceIDReceived == _T("DSE")) {
 			if (nmeaParser.Parse()) {
@@ -719,7 +725,6 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("ROT")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_ROT)) {
-				
 					if (EncodePGN127251(&nmeaParser, &payload)) {
 						header.pgn = 127251;
 						FragmentFastMessage(&header, &payload, canMessages);
@@ -793,7 +798,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			return FALSE;
 		}
 
-		// VDM AIS VHF Data - link Message
+		// VDM AIS VHF Data Link Message
 		else if (nmeaParser.LastSentenceIDReceived == _T("VDM")) {
 			if (!(supportedPGN & FLAGS_AIS)) {
 				if (nmeaParser.Parse()) {
@@ -806,7 +811,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			return FALSE;
 		}
 
-		// VDO AIS VHF Data - Link Own - Vessel Report
+		// VDO AIS VHF Data Link Own Vessel Report
 		else if (nmeaParser.LastSentenceIDReceived == _T("VDO")) {
 			if (nmeaParser.Parse()) {
 				// IGNORE
@@ -936,7 +941,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			if (nmeaParser.Parse()) {
 				// Each XDR sentence may have up to four measurement values
 				for (int i = 0; i < nmeaParser.Xdr.TransducerCnt; i++) {
-
+					payload.clear();
 					// "A" Angular Displacement in "D" Degrees
 					if (nmeaParser.Xdr.TransducerInfo[i].TransducerType == _T("A")) {
 						if (!(supportedPGN & FLAGS_XDR)) {
@@ -988,7 +993,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 									payload.push_back((oilTemperature >> 8) & 0xFF);
 
 									// BUG BUG REMOVE
-									wxLogMessage(_T("*** Temp: %f "), nmeaParser.Xdr.TransducerInfo[i].MeasurementData);
+									wxLogMessage(_T("TwoCan Encoder, Debug Info, Temperature: %f "), nmeaParser.Xdr.TransducerInfo[i].MeasurementData);
 
 									unsigned short engineTemperature = static_cast<unsigned short>((nmeaParser.Xdr.TransducerInfo[i].MeasurementData + CONST_KELVIN) * 100.0f);
 									payload.push_back(engineTemperature & 0xFF);
@@ -1055,7 +1060,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 									payload.push_back(engineInstance);
 
 									// BUG BUG REMOVE
-									wxLogMessage(_T("RPM: %d"), 4 * nmeaParser.Xdr.TransducerInfo[i].MeasurementData);
+									wxLogMessage(_T("TwoCan Encoder, Debug Info, RPM: %d"), static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 4.0f));
 
 									unsigned short engineSpeed = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 4.0f);
 									payload.push_back(engineSpeed & 0xFF);
@@ -1218,7 +1223,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 									payload.push_back(batteryInstance & 0xF);
 
 									// BUG BUG REMOVE
-									wxLogMessage(_T("*** Volts: %lu"), static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100.0f));
+									wxLogMessage(_T("TwoCan Encoder, Debug Info, Volts: %d"), static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100.0f));
 
 									unsigned short batteryVoltage = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100.0f);
 									payload.push_back(batteryVoltage & 0xFF);
@@ -1238,7 +1243,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 									FragmentFastMessage(&header, &payload, canMessages);
 								}
 
-/*
+
 								if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ALTERNATOR#"), &remainingString)) && (batteryInstance != -1)) {
 
 									payload.push_back(batteryInstance);
@@ -1297,8 +1302,6 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 									header.pgn = 127489;
 									FragmentFastMessage(&header, &payload, canMessages);
 								}
-								*/
-							
 							}
 						}
 					}	
@@ -1346,7 +1349,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 									payload.push_back((tankInstance & 0x0F) | ((tankType << 4) & 0xF0));
 
 									// BUG BUG REMOVE
-									wxLogMessage(_T("*** Tank: %d %lu"), tankInstance, (unsigned int)nmeaParser.Xdr.TransducerInfo[i].MeasurementData);
+									wxLogMessage(_T("TwoCan Encoer, debg Info, Tank: %d %d"), tankInstance, static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 40.0f));
 
 									unsigned short tankLevel = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 40.0f); // percentage in 0.025 increments
 									payload.push_back(tankLevel & 0xFF);
@@ -2925,9 +2928,7 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 			else { // BUG BUG Data not available??
 				xteMode = 0x0F;
 			}
-			// BUG BUG REMOVE
-			wxLogMessage(_T("XTE: %d"), xteMode);
-		
+			
 			byte navigationTerminated = 0; //0 = No
 
 			n2kMessage->push_back( (xteMode & 0x0F) | ((navigationTerminated << 6) & 0xC0));
@@ -2953,7 +2954,7 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((crossTrackError >> 24) & 0xFF);
 
 			// BUG BUG REMOVE
-			wxLogMessage(_T("*** XTE: %d"), crossTrackError);
+			wxLogMessage(_T("TwoCan Encoder, Debig nfo,  XTE: %d"), crossTrackError);
 
 			return TRUE;
 		}
@@ -2994,7 +2995,7 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((crossTrackError >> 24) & 0xFF);
 
 			// BUG BUG REMOVE
-			wxLogMessage(_T("*** APB %d"), crossTrackError);
+			wxLogMessage(_T("TwoCan Encoder,Debug Info, APB %d"), crossTrackError);
 
 			return TRUE;
 		}
@@ -3024,9 +3025,7 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 			else { // BUG BUG Data not available??
 				xteMode = 0x0F;
 			}
-			// BUG BUG REMOVE
-			wxLogMessage(_T("RMB: %d"), xteMode);
-		
+			
 			byte navigationTerminated = 0; //0 = No
 			if (parser->Rmb.IsArrivalCircleEntered == NTrue) {
 				navigationTerminated = 1; 
@@ -3044,9 +3043,6 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((crossTrackError >> 8) & 0xFF);
 			n2kMessage->push_back((crossTrackError >> 16) & 0xFF);
 			n2kMessage->push_back((crossTrackError >> 24) & 0xFF);
-
-			// BUG BUG REMOVE
-			wxLogMessage(_T("*** RMB: %d"), crossTrackError);
 
 			return TRUE;
 		}
@@ -3229,7 +3225,7 @@ bool TwoCanEncoder::EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n
 			gpsSatelites->SignalToNoiseRatio = 0;
 		}
 		// Save the data
-		for (int i = 0; i < (parser->Gsv.SatsInView > 4) ? 4 : parser->Gsv.SatsInView; i++ ) {
+		for (int i = 0; i < ((parser->Gsv.SatsInView > 4) ? 4 : parser->Gsv.SatsInView); i++ ) {
 			gpsSatelites[i].AzimuthDegreesTrue = parser->Gsv.SatInfo->AzimuthDegreesTrue;
 			gpsSatelites[i].ElevationDegrees = parser->Gsv.SatInfo->ElevationDegrees;
 			gpsSatelites[i].SatNumber = parser->Gsv.SatInfo->SatNumber;
@@ -3238,7 +3234,7 @@ bool TwoCanEncoder::EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n
 
 	}
 	if (parser->Gsv.MessageNumber == 2) {
-		for (int i = 4; i < (parser->Gsv.SatsInView > 8) ? 8 : parser->Gsv.SatsInView - 4; i++ ) {
+		for (int i = 4; i < ((parser->Gsv.SatsInView > 8) ? 8 : parser->Gsv.SatsInView - 4); i++ ) {
 			gpsSatelites[i].AzimuthDegreesTrue = parser->Gsv.SatInfo->AzimuthDegreesTrue;
 			gpsSatelites[i].ElevationDegrees = parser->Gsv.SatInfo->ElevationDegrees;
 			gpsSatelites[i].SatNumber = parser->Gsv.SatInfo->SatNumber;
@@ -3247,7 +3243,7 @@ bool TwoCanEncoder::EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n
 	}
 
 	if (parser->Gsv.MessageNumber == 3) {
-		for (int i = 8; i < (parser->Gsv.SatsInView >= 12) ? 12 : parser->Gsv.SatsInView - 8; i++ ) {
+		for (int i = 8; i < ((parser->Gsv.SatsInView >= 12) ? 12 : parser->Gsv.SatsInView - 8); i++ ) {
 			gpsSatelites[i].AzimuthDegreesTrue = parser->Gsv.SatInfo->AzimuthDegreesTrue;
 			gpsSatelites[i].ElevationDegrees = parser->Gsv.SatInfo->ElevationDegrees;
 			gpsSatelites[i].SatNumber = parser->Gsv.SatInfo->SatNumber;
@@ -4047,7 +4043,9 @@ bool TwoCanEncoder::EncodePGN130310(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(sequenceId);
 
-		short waterTemperature = 100 * (parser->Mtw.Temperature + CONST_KELVIN);
+		unsigned short waterTemperature = static_cast<unsigned short>(100 * (parser->Mtw.Temperature + CONST_KELVIN));
+
+		wxLogMessage(_T("TwoCan Encoder, debug Info, Temperature: %d"), waterTemperature);
 
 		n2kMessage->push_back(waterTemperature & 0xFF);
 		n2kMessage->push_back((waterTemperature >> 8) & 0xFF);
@@ -4076,7 +4074,7 @@ bool TwoCanEncoder::EncodePGN130311(const NMEA0183 *parser, std::vector<byte> *n
 		byte humiditySource = UCHAR_MAX;
 		n2kMessage->push_back((temperatureSource & 0x3F) | ((humiditySource << 6) & 0xC0));
 
-		unsigned short temperature = 100 * (parser->Mtw.Temperature + CONST_KELVIN);
+		unsigned short temperature = static_cast<unsigned short>(100 * (parser->Mtw.Temperature + CONST_KELVIN));
 		n2kMessage->push_back(temperature & 0xFF);
 		n2kMessage->push_back((temperature >> 8) & 0xFF);
 
@@ -4109,7 +4107,7 @@ bool TwoCanEncoder::EncodePGN130312(const NMEA0183 *parser, std::vector<byte> *n
 		n2kMessage->push_back(source);
 
 		// FIND OUT parser->Mtw.TemperatureUnits
-		unsigned short actualTemperature = (100 * parser->Mtw.Temperature) - CONST_KELVIN;
+		unsigned short actualTemperature = static_cast<unsigned short>(100 * (parser->Mtw.Temperature + CONST_KELVIN));
 		n2kMessage->push_back(actualTemperature & 0xFF);
 		n2kMessage->push_back((actualTemperature >> 8) & 0xFF);
 
@@ -4135,7 +4133,7 @@ bool TwoCanEncoder::EncodePGN130316(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(TEMPERATURE_SEA);
 
-		unsigned int actualTemperature = 100 * (parser->Mtw.Temperature - CONST_KELVIN);
+		unsigned int actualTemperature = static_cast<unsigned short>(100 * (parser->Mtw.Temperature + CONST_KELVIN));
 		n2kMessage->push_back(actualTemperature & 0xFF);
 		n2kMessage->push_back((actualTemperature >> 8) & 0xFF);
 		n2kMessage->push_back((actualTemperature >> 16) & 0xFF);
@@ -4163,11 +4161,11 @@ bool TwoCanEncoder::EncodePGN130577(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(sequenceId);
 
-		unsigned short courseOverGround = 10000 * DEGREES_TO_RADIANS(parser->Vdr.DegreesTrue);
+		unsigned short courseOverGround = static_cast<unsigned short>(10000 * DEGREES_TO_RADIANS(parser->Vdr.DegreesTrue));
 		n2kMessage->push_back(courseOverGround & 0xFF);
 		n2kMessage->push_back((courseOverGround >> 8) & 0xFF);
 
-		unsigned short speedOverGround = 100 *(  parser->Vdr.Knots/ CONVERT_MS_KNOTS);
+		unsigned short speedOverGround = static_cast<unsigned short>(100 * (parser->Vdr.Knots/ CONVERT_MS_KNOTS));
 		n2kMessage->push_back(speedOverGround & 0xFF);
 		n2kMessage->push_back((speedOverGround >> 8) & 0xFF);
 

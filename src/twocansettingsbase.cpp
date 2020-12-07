@@ -40,7 +40,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 
 	wxArrayString chkListPGNChoices;
 	chkListPGN = new wxCheckListBox( sizerPGN->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, chkListPGNChoices, 0 );
-	sizerPGN->Add( chkListPGN, 1, wxALL, 5 );
+	sizerPGN->Add( chkListPGN, 1, wxALL | wxEXPAND, 5 );
 
 
 	sizerPanelSettings->Add( sizerPGN, 1, wxEXPAND, 5 );
@@ -97,7 +97,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 
 	// Cell Defaults
 	dataGridNetwork->SetDefaultCellAlignment( wxALIGN_LEFT, wxALIGN_TOP );
-	sizerGridDevices->Add( dataGridNetwork, 0, wxALL, 5 );
+	sizerGridDevices->Add( dataGridNetwork, 0, wxALL | wxEXPAND, 5 );
 
 
 	sizerPanelNetwork->Add( sizerGridDevices, 1, wxEXPAND, 5 );

@@ -1,17 +1,31 @@
 // Copyright(C) 2018-2020 by Steven Adler
 //
-// This file is part of Actisense plugin for OpenCPN.
+// This file is part of TwoCan, a plugin for OpenCPN.
 //
+// TwoCan is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// TwoCan is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with TwoCan. If not, see <https://www.gnu.org/licenses/>.
+//
+// NMEA2000® is a registered Trademark of the National Marine Electronics Association
 
-
+//
 // Project: TwoCan Plugin
-// Description: TwoCan plugin for OpenCPN
-// Unit: Autopilot Dialog
+// Description: NMEA 2000 plugin for OpenCPN
+// Unit: Autoplot Control user dialog
 // Owner: twocanplugin@hotmail.com
-// Date: 6/1/2020
+// Date: 01/12/2020
 // Version History: 
-// 1.0 Initial Release
-//
+// 1.0 Initial Release of Autopilot Control
+
 
 
 #include "twocanautopilotdialog.h"

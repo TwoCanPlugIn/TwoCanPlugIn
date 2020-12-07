@@ -25,7 +25,7 @@
 // Version History: 
 // 1.0 Initial Release
 // 1.8 10/5/2020. Derived from abstract class
-// 1.91 20/10/2020. Set to non blocking with tmeouts
+// 1.91 20/10/2020. Set to non blocking with timeouts
 //
 
 #include <twocansocket.h>

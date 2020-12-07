@@ -1,5 +1,3 @@
-// Refer to https://github.com/mac-can/RusokuCAN/blob/master/Examples/can_test/Sources/main.cpp
-
 // Copyright(C) 2020 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
@@ -27,6 +25,7 @@
 // Version History:
 // 1.8 - Initial Release, Mac OSX support
 //
+// Refer to https://github.com/mac-can/RusokuCAN/blob/master/Examples/can_test/Sources/main.cpp
 
 #include <twocanmactoucan.h>
 

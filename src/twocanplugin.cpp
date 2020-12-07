@@ -1,4 +1,4 @@
-// Copyright(C) 2018-2019 by Steven Adler
+// Copyright(C) 2018-2020 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -28,7 +28,7 @@
 // 1.4 - 25/4/2019. Active Mode implemented. 
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
-// 2.0 - 20-11-2020 Autopilot, Bi-Directional Gateway
+// 2.0 - 01-12-2020 Autopilot Control, Bi-Directional Gateway
 // Outstanding Features: 
 // 1. Localization ??
 //
@@ -87,9 +87,9 @@ int TwoCan::Init(void) {
 	pluginDataFolder = GetPluginDataDir(PLUGIN_PACKAGE_NAME) + wxFileName::GetPathSeparator() + _T("data") + wxFileName::GetPathSeparator();
 
 	// Load the Autopilot toolbar icons
-	normalIcon = pluginDataFolder + _T("images") + wxFileName::GetPathSeparator() +_T("autopilot.svg");
-	toggledIcon =  pluginDataFolder + _T("images") + wxFileName::GetPathSeparator() + _T("autopilot-bw.svg");
-	rolloverIcon = pluginDataFolder + _T("images") + wxFileName::GetPathSeparator() + _T("autopilot-bw-rollover.svg");
+	normalIcon = pluginDataFolder + _T("images") + wxFileName::GetPathSeparator() +_T("autopilot-normal.svg");
+	toggledIcon =  pluginDataFolder + _T("images") + wxFileName::GetPathSeparator() + _T("autopilot-toggled.svg");
+	rolloverIcon = pluginDataFolder + _T("images") + wxFileName::GetPathSeparator() + _T("autopilot-rollover.svg");
 	autopilotToolbar = 0;
 
 	// TwoCan preferences dialog
@@ -271,11 +271,8 @@ void TwoCan::SetNMEASentence(wxString &sentence) {
 				TwoCanUtils::EncodeCanHeader(&id,&i.header);
 				int returnCode;
 				returnCode = twoCanDevice->TransmitFrame(id, i.payload.data());
-				if (returnCode == TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("Successfully Tx message"));
-				}
-				else {
-					wxLogMessage(_T("Error Tx message %ul"), returnCode);
+				if (returnCode != TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage(_T("TwoCan Plugin, Error sending converted NMEA 183 sentence %ul"), returnCode);
 				}
 				
 			}
@@ -323,9 +320,10 @@ void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 
 // Autopilot event handler
 // Autopilot commands are issued from the Autopilot dialog
-// BUG BUG To Do Route & Waypoint import/export, commands are issued from the preferences dialog
+// BUG BUG To Do 
+// Route & Waypoint import/export, commands are issued from the preferences dialog
 void TwoCan::OnAutopilotCommand(wxCommandEvent &event) {
-	// Used for transmitting autopilot commands onto the network
+	// Transmit autopilot commands onto the network
 	std::vector<CanMessage> nmeaMessages;
 	unsigned int id;
 	// Process commands (events) raised from the autopilot dialog
@@ -348,6 +346,7 @@ void TwoCan::OnAutopilotCommand(wxCommandEvent &event) {
 
 	}
 
+	// BUG BUG superfluous....
 	switch (event.GetId()) {
 		// BUG BUG TODO For autopilots we need to retrieve the pgn from twocanautopilot 
 		// and then transmit via the twoCanDevice 
