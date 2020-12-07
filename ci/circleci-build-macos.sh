@@ -12,9 +12,15 @@ fi
 set -xe
 
 set -o pipefail
-for pkg in cairo cmake libarchive libexif wget; do
-    brew list $pkg 2>&1 >/dev/null || brew install $pkg 2>&1 >/dev/null || brew upgrade $pkg
+# Check if the cache is with us. If not, re-install brew.
+brew list --versions libexif || brew update-reset
+
+for pkg in cairo cmake gettext libarchive libexif python wget; do
+    brew list --versions $pkg || brew install $pkg || brew install $pkg || :
+    brew link --overwrite $pkg || brew install $pkg
 done
+
+
 brew list python@2 2>&1 >/dev/null && brew unlink python@2
 brew reinstall python3
 

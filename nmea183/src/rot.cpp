@@ -54,7 +54,7 @@ bool ROT::Parse( const SENTENCE& sentence )
    ** First we check the checksum...
    */
 
-   if ( sentence.IsChecksumBad( 3 ) == true )
+   if ( sentence.IsChecksumBad( 3 ) == NTrue)
    {
       SetErrorMessage( "Invalid Checksum" );
       return( FALSE );

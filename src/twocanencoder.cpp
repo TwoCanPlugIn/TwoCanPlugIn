@@ -3263,7 +3263,7 @@ bool TwoCanEncoder::EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n
 
 		int index = 3;
 
-		for (size_t i = 0;i < parser->Gsv.SatsInView; i++) {
+		for (int i = 0;i < parser->Gsv.SatsInView; i++) {
 			
 			n2kMessage->push_back(gpsSatelites[i].SatNumber);
 			index += 1;
@@ -4232,7 +4232,7 @@ char TwoCanEncoder::AISDecodeCharacter(char value) {
 // so that we can gnaw through the bits to retrieve each AIS data field 
 std::vector<bool> TwoCanEncoder::AISDecoden2kMessage(wxString SixBitData) {
 	std::vector<bool> decodedData(168);
-	for (int i = 0; i < SixBitData.length(); i++) {
+	for (size_t i = 0; i < SixBitData.length(); i++) {
 		char testByte = AISDecodeCharacter((char)SixBitData[i]);
 		// Perform in reverse order so that we store in LSB order
 		for (int j = 5; j >= 0; j--) {

@@ -5139,7 +5139,7 @@ int TwoCanDevice::SendConfigurationInformation() {
 	payload.at(index) = 1; // ASCII Encoded String
 	index +=1;
 	
-	for (int i = 0; i < message.length(); i++) {
+	for (size_t i = 0; i < message.length(); i++) {
 		payload.at(index + i) = message.at(i);
 	}
 	index +=32;
@@ -5152,7 +5152,7 @@ int TwoCanDevice::SendConfigurationInformation() {
 	payload.at(index) = 1; // ASCII Encoded String
 	index +=1;
 	
-	for (int i = 0; i < message.length(); i++) {
+	for (size_t i = 0; i < message.length(); i++) {
 		payload.at(index + i) = message.at(i);
 	}
 	index +=32;
@@ -5165,7 +5165,7 @@ int TwoCanDevice::SendConfigurationInformation() {
 	payload.at(index) = 1; // ASCII Encoded String
 	index +=1;
 	
-	for (int i = 0; i < message.length(); i++) {
+	for (size_t i = 0; i < message.length(); i++) {
 		payload.at(index + i) = message.at(i);
 	}
 	
