@@ -1349,9 +1349,9 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 									payload.push_back((tankInstance & 0x0F) | ((tankType << 4) & 0xF0));
 
 									// BUG BUG REMOVE
-									wxLogMessage(_T("TwoCan Encoer, debg Info, Tank: %d %d"), tankInstance, static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 40.0f));
+									wxLogMessage(_T("TwoCan Encoder, debg Info, Tank: %d %d"), tankInstance, static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 40.0f));
 
-									unsigned short tankLevel = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 40.0f); // percentage in 0.025 increments
+									unsigned short tankLevel = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 400.0f); // percentage in 0.025 increments
 									payload.push_back(tankLevel & 0xFF);
 									payload.push_back((tankLevel >> 8) & 0xFF);
 
