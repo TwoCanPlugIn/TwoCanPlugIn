@@ -75,7 +75,7 @@ bool VDR::Parse( SENTENCE const& sentence )
    ** First we check the checksum...
    */
 
-   if ( sentence.IsChecksumBad( 7 ) == true )
+   if ( sentence.IsChecksumBad( 7 ) == NTrue )
    {
        SetErrorMessage(_T("Invalid Checksum"));
        return( false );

@@ -86,7 +86,7 @@ bool DPT::Parse( const SENTENCE& sentence )
    ** First we check the checksum...
    */
 
-   if ( sentence.IsChecksumBad( 3 ) == TRUE )
+   if ( sentence.IsChecksumBad( 3 ) == NTrue )
    {
             /*
             * * This may be an NMEA Version 3 sentence, with "Max depth range" field

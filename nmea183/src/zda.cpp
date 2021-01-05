@@ -87,7 +87,7 @@ bool ZDA::Parse( const SENTENCE& sentence )
    ** First we check the checksum...
    */
 
-   if ( sentence.IsChecksumBad( 7 ) == TRUE )
+   if ( sentence.IsChecksumBad( 7 ) == NTrue )
    {
       SetErrorMessage( _T("Invalid Checksum") );
       return( FALSE );

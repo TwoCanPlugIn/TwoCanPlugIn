@@ -85,7 +85,7 @@ bool RPM::Parse(const SENTENCE& sentence)
 {
 	//   ASSERT_VALID( this);
 
-	if (sentence.IsChecksumBad(6) == TRUE)
+	if (sentence.IsChecksumBad(6) == NTrue)
 	{
 		SetErrorMessage(_T("Invalid Checksum"));
 		return(FALSE);

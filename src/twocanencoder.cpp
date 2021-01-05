@@ -45,7 +45,7 @@ int TwoCanEncoder::GetInstanceNumber(wxString transducerName) {
         // Check if last character is a digit and between 0 - 9.
         if (transducerName.Mid(transducerName.size() - 1,1).IsNumber()) {
             instanceNumber = wxAtoi(transducerName.Mid(transducerName.size() - 1,1));
-			if ((instanceNumber > -1) && (instanceNumber < 10)) {
+			if ((instanceNumber >= 0) && (instanceNumber <= 9)) {
 				return instanceNumber;
 			}
 
@@ -130,9 +130,6 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 	CanHeader header;
 	std::vector<byte> payload;
 	
-	// BUG BUG REMOVE
-	wxLogMessage(_T("TwoCan Encoder, Debug Info. Sentence received: %s"), sentence);
-
 	// Parse the NMEA 183 sentence
 	nmeaParser << sentence;
 
@@ -141,7 +138,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 	if (nmeaParser.PreParse()) {
 
 		// BUG BUG Should use a different priority based on the PGN
-		// PGN is initialized further in the switch statement
+		// The actual PGN is initialized later in the switch statement
 		header.source = networkAddress;
 		header.destination = CONST_GLOBAL_ADDRESS;
 		header.priority = CONST_PRIORITY_MEDIUM;
@@ -185,8 +182,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("BOD")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_RTE)) {
-				// IGNORE
-				return FALSE;
+				// BUG BUG ToDo
 				}
 			}
 			else {
@@ -271,7 +267,8 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		// BWW Bearing Waypoint to Waypoint
 		else if (nmeaParser.LastSentenceIDReceived == _T("BWW")) {
 			if (nmeaParser.Parse()) {
-				//IGNORE
+				// IGNORE
+
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -353,6 +350,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("DTM")) {
 			if (nmeaParser.Parse()) {
 				// IGNORE
+
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -387,7 +385,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 					}
 				}
 
-				//EncodePGN129539(&nmeaParser, &payload); GNS DOP
+				// EncodePGN129539(&nmeaParser, &payload); GNS DOP
 					
 				return TRUE;
 			}
@@ -434,6 +432,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		// GNS GNSS Fix Data
 		else if (nmeaParser.LastSentenceIDReceived == _T("GNS")) {
 			if (nmeaParser.Parse()) {
+				// Date and Time
 				if (!(supportedPGN & FLAGS_ZDA)) {
 				
 					if (EncodePGN126992(&nmeaParser, &payload)) {
@@ -447,6 +446,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 					}
 				}
 
+				// Position
 				if (!(supportedPGN & FLAGS_GGA)) {
 					
 					if (EncodePGN129025(&nmeaParser, &payload)) {
@@ -778,8 +778,8 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_RTE)) {
 				// IGNORE
+
 				}
-				return FALSE;
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -791,6 +791,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("VBW")) {
 			if (nmeaParser.Parse()) {
 				// IGNORE
+
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -803,6 +804,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			if (!(supportedPGN & FLAGS_AIS)) {
 				if (nmeaParser.Parse()) {
 					// IGNORE
+
 				}
 				else {
 					wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -815,6 +817,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("VDO")) {
 			if (nmeaParser.Parse()) {
 				// IGNORE
+
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -904,6 +907,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("WCV")) {
 			if (nmeaParser.Parse()) {
 				// IGNORE
+
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -914,7 +918,8 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		// WNC Distance Waypoint to Waypoint
 		else if (nmeaParser.LastSentenceIDReceived == _T("WNC")) {
 			if (nmeaParser.Parse()) {
-				//IGNORE
+				// IGNORE
+
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -926,7 +931,8 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("WPL")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_RTE)) {
-					//IGNORE
+					// IGNORE
+
 				}
 			}
 			else {
@@ -980,66 +986,66 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 								int engineInstance = GetInstanceNumber(nmeaParser.Xdr.TransducerInfo[i].TransducerName);
 								wxString remainingString;
 
-								if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ENGINE#"), &remainingString)) && (engineInstance != -1)) {
+								if (engineInstance != -1) {
 
-									payload.push_back(engineInstance);
+									if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ENGINE#"), &remainingString)) && (engineInstance != -1)) {
 
-									unsigned short oilPressure = USHRT_MAX;
-									payload.push_back(oilPressure & 0xFF);
-									payload.push_back((oilPressure >> 8) & 0xFF);
+										payload.push_back(engineInstance);
 
-									unsigned short oilTemperature = USHRT_MAX;
-									payload.push_back(oilTemperature & 0xFF);
-									payload.push_back((oilTemperature >> 8) & 0xFF);
+										unsigned short oilPressure = USHRT_MAX;
+										payload.push_back(oilPressure & 0xFF);
+										payload.push_back((oilPressure >> 8) & 0xFF);
 
-									// BUG BUG REMOVE
-									wxLogMessage(_T("TwoCan Encoder, Debug Info, Temperature: %f "), nmeaParser.Xdr.TransducerInfo[i].MeasurementData);
+										unsigned short oilTemperature = USHRT_MAX;
+										payload.push_back(oilTemperature & 0xFF);
+										payload.push_back((oilTemperature >> 8) & 0xFF);
 
-									unsigned short engineTemperature = static_cast<unsigned short>((nmeaParser.Xdr.TransducerInfo[i].MeasurementData + CONST_KELVIN) * 100.0f);
-									payload.push_back(engineTemperature & 0xFF);
-									payload.push_back((engineTemperature >> 8) & 0xFF);
+										unsigned short engineTemperature = static_cast<unsigned short>((nmeaParser.Xdr.TransducerInfo[i].MeasurementData + CONST_KELVIN) * 100.0f);
+										payload.push_back(engineTemperature & 0xFF);
+										payload.push_back((engineTemperature >> 8) & 0xFF);
 
-									unsigned short alternatorPotential = USHRT_MAX;
-									payload.push_back(alternatorPotential & 0xFF);
-									payload.push_back((alternatorPotential >> 8) & 0xFF);
+										unsigned short alternatorPotential = USHRT_MAX;
+										payload.push_back(alternatorPotential & 0xFF);
+										payload.push_back((alternatorPotential >> 8) & 0xFF);
 
-									unsigned short fuelRate = USHRT_MAX; // 0.1 Litres/hour
-									payload.push_back(fuelRate & 0xFF);
-									payload.push_back((fuelRate >> 8) &0xFF);
+										unsigned short fuelRate = USHRT_MAX; // 0.1 Litres/hour
+										payload.push_back(fuelRate & 0xFF);
+										payload.push_back((fuelRate >> 8) &0xFF);
 
-									unsigned int totalEngineHours = UINT_MAX;  // seconds
-									payload.push_back(totalEngineHours & 0xFF);
-									payload.push_back((totalEngineHours >> 8) & 0xFF);
-									payload.push_back((totalEngineHours >> 16) & 0xFF);
-									payload.push_back((totalEngineHours >> 24) & 0xFF);
+										unsigned int totalEngineHours = UINT_MAX;  // seconds
+										payload.push_back(totalEngineHours & 0xFF);
+										payload.push_back((totalEngineHours >> 8) & 0xFF);
+										payload.push_back((totalEngineHours >> 16) & 0xFF);
+										payload.push_back((totalEngineHours >> 24) & 0xFF);
 
-									unsigned short coolantPressure = USHRT_MAX; // hPA
-									payload.push_back(coolantPressure & 0xFF);
-									payload.push_back((coolantPressure >> 8) & 0xFF);
+										unsigned short coolantPressure = USHRT_MAX; // hPA
+										payload.push_back(coolantPressure & 0xFF);
+										payload.push_back((coolantPressure >> 8) & 0xFF);
 
-									unsigned short fuelPressure = USHRT_MAX; // hPa
-									payload.push_back(fuelPressure & 0xFF);
-									payload.push_back((fuelPressure >> 8) & 0xFF);
+										unsigned short fuelPressure = USHRT_MAX; // hPa
+										payload.push_back(fuelPressure & 0xFF);
+										payload.push_back((fuelPressure >> 8) & 0xFF);
 
-									byte reserved = UCHAR_MAX;
-									payload.push_back(reserved & 0xFF);
+										byte reserved = UCHAR_MAX;
+										payload.push_back(reserved & 0xFF);
 
-									unsigned short statusOne = USHRT_MAX;
-									payload.push_back(statusOne & 0xFF);
-									payload.push_back((statusOne >> 8) & 0xFF);
-		
-									unsigned short statusTwo = USHRT_MAX;
-									payload.push_back(statusTwo & 0xFF);
-									payload.push_back((statusTwo >>8) & 0xFF);
+										unsigned short statusOne = USHRT_MAX;
+										payload.push_back(statusOne & 0xFF);
+										payload.push_back((statusOne >> 8) & 0xFF);
+			
+										unsigned short statusTwo = USHRT_MAX;
+										payload.push_back(statusTwo & 0xFF);
+										payload.push_back((statusTwo >>8) & 0xFF);
 
-									byte engineLoad = UCHAR_MAX;  // percentage
-									payload.push_back(engineLoad & 0xFF);
+										byte engineLoad = UCHAR_MAX;  // percentage
+										payload.push_back(engineLoad & 0xFF);
 
-									byte engineTorque = UCHAR_MAX; // percentage
-									payload.push_back(engineTorque & 0xFF);
+										byte engineTorque = UCHAR_MAX; // percentage
+										payload.push_back(engineTorque & 0xFF);
 
-									header.pgn = 127489;
-									FragmentFastMessage(&header, &payload, canMessages);
+										header.pgn = 127489;
+										FragmentFastMessage(&header, &payload, canMessages);
+									}
 								}
 							
 							}
@@ -1053,31 +1059,30 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 
 								int engineInstance = GetInstanceNumber(nmeaParser.Xdr.TransducerInfo[i].TransducerName);
 								wxString remainingString;
+
+								if (engineInstance != -1) {
 								
-								if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ENGINE#"), &remainingString)) && (engineInstance != -1)) {
-									
-									// BUG BUG duplicating code for PGN 127488
-									payload.push_back(engineInstance);
+									if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ENGINE#"), &remainingString)) && (engineInstance != -1)) {
+										
+										// BUG BUG duplicating code for PGN 127488
+										payload.push_back(engineInstance);
 
-									// BUG BUG REMOVE
-									wxLogMessage(_T("TwoCan Encoder, Debug Info, RPM: %d"), static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 4.0f));
+										unsigned short engineSpeed = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 4.0f);
+										payload.push_back(engineSpeed & 0xFF);
+										payload.push_back((engineSpeed >> 8) & 0xFF);
+			
+										unsigned short engineBoostPressure = USHRT_MAX;
+										payload.push_back(engineBoostPressure & 0xFF);
+										payload.push_back((engineBoostPressure >> 8) & 0xFF);
 
-									unsigned short engineSpeed = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 4.0f);
-									payload.push_back(engineSpeed & 0xFF);
-									payload.push_back((engineSpeed >> 8) & 0xFF);
-		
-									unsigned short engineBoostPressure = USHRT_MAX;
-									payload.push_back(engineBoostPressure & 0xFF);
-									payload.push_back((engineBoostPressure >> 8) & 0xFF);
+										short engineTrim = SHRT_MAX;
+										payload.push_back(engineTrim & 0xFF);
+										payload.push_back((engineTrim >> 8) & 0xFF);
 
-									short engineTrim = SHRT_MAX;
-									payload.push_back(engineTrim & 0xFF);
-									payload.push_back((engineTrim >> 8) & 0xFF);
-
-									header.pgn = 127488;
-									FragmentFastMessage(&header, &payload, canMessages);
-								}
-															
+										header.pgn = 127488;
+										FragmentFastMessage(&header, &payload, canMessages);
+									}
+								}						
 							}
 						}
 					}
@@ -1091,87 +1096,89 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 								int engineInstance = GetInstanceNumber(nmeaParser.Xdr.TransducerInfo[i].TransducerName);
 								wxString remainingString;
 
-								if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ENGINE#"), &remainingString)) && (engineInstance != -1)) {
-									
-									// BUG BUG duplicating code for PGN 127488
-									payload.push_back(engineInstance);
+								if (engineInstance != -1) {
 
-									unsigned short engineSpeed = USHRT_MAX ;
-									payload.push_back(engineSpeed & 0xFF);
-									payload.push_back((engineSpeed >> 8) & 0xFF);
-		
-									// BUG BUG Unsure of units & range
-									unsigned short engineBoostPressure = nmeaParser.Xdr.TransducerInfo[i].MeasurementData / 100;
-									payload.push_back(engineBoostPressure & 0xFF);
-									payload.push_back((engineBoostPressure >> 8) & 0xFF);
+									if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ENGINE#"), &remainingString)) && (engineInstance != -1)) {
+										
+										// BUG BUG duplicating code for PGN 127488
+										payload.push_back(engineInstance);
 
-									short engineTrim = SHRT_MAX;
-									payload.push_back(engineTrim & 0xFF);
-									payload.push_back((engineTrim >> 8) & 0xFF);
+										unsigned short engineSpeed = USHRT_MAX ;
+										payload.push_back(engineSpeed & 0xFF);
+										payload.push_back((engineSpeed >> 8) & 0xFF);
+			
+										// BUG BUG Unsure of units & range
+										unsigned short engineBoostPressure = nmeaParser.Xdr.TransducerInfo[i].MeasurementData / 100;
+										payload.push_back(engineBoostPressure & 0xFF);
+										payload.push_back((engineBoostPressure >> 8) & 0xFF);
 
-									header.pgn = 127488;
-									FragmentFastMessage(&header, &payload, canMessages);
-								}
+										short engineTrim = SHRT_MAX;
+										payload.push_back(engineTrim & 0xFF);
+										payload.push_back((engineTrim >> 8) & 0xFF);
+
+										header.pgn = 127488;
+										FragmentFastMessage(&header, &payload, canMessages);
+									}
 								
-								if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ENGINEOIL#"), &remainingString)) && ( engineInstance != -1)) {
+									if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ENGINEOIL#"), &remainingString)) && ( engineInstance != -1)) {
 
-									payload.push_back(engineInstance);
+										payload.push_back(engineInstance);
 
-									unsigned short oilPressure = nmeaParser.Xdr.TransducerInfo[i].MeasurementData / 100; // hPa (1hPa = 100Pa)
-									payload.push_back(oilPressure & 0xFF);
-									payload.push_back((oilPressure >> 8) & 0xFF);
+										unsigned short oilPressure = nmeaParser.Xdr.TransducerInfo[i].MeasurementData / 100; // hPa (1hPa = 100Pa)
+										payload.push_back(oilPressure & 0xFF);
+										payload.push_back((oilPressure >> 8) & 0xFF);
 
-									unsigned short oilTemperature = USHRT_MAX;
-									payload.push_back(oilTemperature & 0xFF);
-									payload.push_back((oilTemperature >> 8) & 0xFF);
+										unsigned short oilTemperature = USHRT_MAX;
+										payload.push_back(oilTemperature & 0xFF);
+										payload.push_back((oilTemperature >> 8) & 0xFF);
 
-									unsigned short engineTemperature = USHRT_MAX;
-									payload.push_back(engineTemperature & 0xFF);
-									payload.push_back((engineTemperature >> 8) & 0xFF);
+										unsigned short engineTemperature = USHRT_MAX;
+										payload.push_back(engineTemperature & 0xFF);
+										payload.push_back((engineTemperature >> 8) & 0xFF);
 
-									unsigned short alternatorPotential = USHRT_MAX; // 0.01 Volts
-									payload.push_back(alternatorPotential & 0xFF);
-									payload.push_back((alternatorPotential >> 8) & 0xFF);
+										unsigned short alternatorPotential = USHRT_MAX; // 0.01 Volts
+										payload.push_back(alternatorPotential & 0xFF);
+										payload.push_back((alternatorPotential >> 8) & 0xFF);
 
-									unsigned short fuelRate = USHRT_MAX; // 0.1 Litres/hour
-									payload.push_back(fuelRate & 0xFF);
-									payload.push_back((fuelRate >> 8) &0xFF);
+										unsigned short fuelRate = USHRT_MAX; // 0.1 Litres/hour
+										payload.push_back(fuelRate & 0xFF);
+										payload.push_back((fuelRate >> 8) &0xFF);
 
-									unsigned int totalEngineHours = UINT_MAX;  // seconds
-									payload.push_back(totalEngineHours & 0xFF);
-									payload.push_back((totalEngineHours >> 8) & 0xFF);
-									payload.push_back((totalEngineHours >> 16) & 0xFF);
-									payload.push_back((totalEngineHours >> 24) & 0xFF);
+										unsigned int totalEngineHours = UINT_MAX;  // seconds
+										payload.push_back(totalEngineHours & 0xFF);
+										payload.push_back((totalEngineHours >> 8) & 0xFF);
+										payload.push_back((totalEngineHours >> 16) & 0xFF);
+										payload.push_back((totalEngineHours >> 24) & 0xFF);
 
-									unsigned short coolantPressure = USHRT_MAX; // hPA
-									payload.push_back(coolantPressure & 0xFF);
-									payload.push_back((coolantPressure >> 8) & 0xFF);
+										unsigned short coolantPressure = USHRT_MAX; // hPA
+										payload.push_back(coolantPressure & 0xFF);
+										payload.push_back((coolantPressure >> 8) & 0xFF);
 
-									unsigned short fuelPressure = USHRT_MAX; // hPa
-									payload.push_back(fuelPressure & 0xFF);
-									payload.push_back((fuelPressure >> 8) & 0xFF);
+										unsigned short fuelPressure = USHRT_MAX; // hPa
+										payload.push_back(fuelPressure & 0xFF);
+										payload.push_back((fuelPressure >> 8) & 0xFF);
 
-									byte reserved = UCHAR_MAX;
-									payload.push_back(reserved & 0xFF);
+										byte reserved = UCHAR_MAX;
+										payload.push_back(reserved & 0xFF);
 
-									unsigned short statusOne = USHRT_MAX;
-									payload.push_back(statusOne & 0xFF);
-									payload.push_back((statusOne >> 8) & 0xFF);
-		
-									unsigned short statusTwo = USHRT_MAX;
-									payload.push_back(statusTwo & 0xFF);
-									payload.push_back((statusTwo >> 8) & 0xFF);
+										unsigned short statusOne = USHRT_MAX;
+										payload.push_back(statusOne & 0xFF);
+										payload.push_back((statusOne >> 8) & 0xFF);
+			
+										unsigned short statusTwo = USHRT_MAX;
+										payload.push_back(statusTwo & 0xFF);
+										payload.push_back((statusTwo >> 8) & 0xFF);
 
-									byte engineLoad = UCHAR_MAX;  // percentage
-									payload.push_back(engineLoad & 0xFF);
+										byte engineLoad = UCHAR_MAX;  // percentage
+										payload.push_back(engineLoad & 0xFF);
 
-									byte engineTorque = UCHAR_MAX; // percentage
-									payload.push_back(engineTorque & 0xFF);
+										byte engineTorque = UCHAR_MAX; // percentage
+										payload.push_back(engineTorque & 0xFF);
 
-									header.pgn = 127489;
-									FragmentFastMessage(&header, &payload, canMessages);
-								}
-															
+										header.pgn = 127489;
+										FragmentFastMessage(&header, &payload, canMessages);
+									}
+								}						
 							}
 						}
 
@@ -1185,26 +1192,29 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 								int batteryInstance = GetInstanceNumber(nmeaParser.Xdr.TransducerInfo[i].TransducerName);
 								wxString remainingString;
 
-								if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("BATTERY#"), &remainingString)) && (batteryInstance != -1)) {
-									
-									payload.push_back(batteryInstance & 0xF);
+								if (batteryInstance != -1) {
 
-									unsigned short batteryVoltage = USHRT_MAX;
-									payload.push_back(batteryVoltage & 0xFF);
-									payload.push_back((batteryVoltage >> 8) & 0xFF);
+									if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("BATTERY#"), &remainingString)) && (batteryInstance != -1)) {
+										
+										payload.push_back(batteryInstance & 0xF);
 
-									short batteryCurrent  = nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 10;
-									payload.push_back(batteryCurrent & 0xFF);
-									payload.push_back((batteryCurrent >> 8) & 0xFF);
-		
-									unsigned short batteryTemperature = USHRT_MAX; 
-									payload.push_back(batteryTemperature & 0xFF);
-									payload.push_back((batteryTemperature >> 8) & 0xFF);
-		
-									payload.push_back(sequenceId);
+										unsigned short batteryVoltage = USHRT_MAX;
+										payload.push_back(batteryVoltage & 0xFF);
+										payload.push_back((batteryVoltage >> 8) & 0xFF);
 
-									header.pgn = 127508;
-									FragmentFastMessage(&header, &payload, canMessages);
+										short batteryCurrent  = nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 10;
+										payload.push_back(batteryCurrent & 0xFF);
+										payload.push_back((batteryCurrent >> 8) & 0xFF);
+			
+										unsigned short batteryTemperature = USHRT_MAX; 
+										payload.push_back(batteryTemperature & 0xFF);
+										payload.push_back((batteryTemperature >> 8) & 0xFF);
+			
+										payload.push_back(sequenceId);
+
+										header.pgn = 127508;
+										FragmentFastMessage(&header, &payload, canMessages);
+									}
 								}
 							}
 						}
@@ -1217,90 +1227,89 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 								
 								int batteryInstance = GetInstanceNumber(nmeaParser.Xdr.TransducerInfo[i].TransducerName);
 								wxString remainingString;
+
+								if (batteryInstance != -1) {
 								
-								if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("BATTERY#"), &remainingString)) && (batteryInstance != -1)) {
-																	
-									payload.push_back(batteryInstance & 0xF);
+									if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("BATTERY#"), &remainingString)) && (batteryInstance != -1)) {
+																		
+										payload.push_back(batteryInstance & 0xF);
 
-									// BUG BUG REMOVE
-									wxLogMessage(_T("TwoCan Encoder, Debug Info, Volts: %d"), static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100.0f));
+										unsigned short batteryVoltage = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100.0f);
+										payload.push_back(batteryVoltage & 0xFF);
+										payload.push_back((batteryVoltage >> 8) & 0xFF);
 
-									unsigned short batteryVoltage = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100.0f);
-									payload.push_back(batteryVoltage & 0xFF);
-									payload.push_back((batteryVoltage >> 8) & 0xFF);
+										short batteryCurrent  = SHRT_MAX;
+										payload.push_back(batteryCurrent & 0xFF);
+										payload.push_back((batteryCurrent >> 8) & 0xFF);
+			
+										unsigned short batteryTemperature = USHRT_MAX; 
+										payload.push_back(batteryTemperature & 0xFF);
+										payload.push_back((batteryTemperature >> 8) & 0xFF);
+			
+										payload.push_back(sequenceId);
 
-									short batteryCurrent  = SHRT_MAX;
-									payload.push_back(batteryCurrent & 0xFF);
-									payload.push_back((batteryCurrent >> 8) & 0xFF);
-		
-									unsigned short batteryTemperature = USHRT_MAX; 
-									payload.push_back(batteryTemperature & 0xFF);
-									payload.push_back((batteryTemperature >> 8) & 0xFF);
-		
-									payload.push_back(sequenceId);
+										header.pgn = 127508;
+										FragmentFastMessage(&header, &payload, canMessages);
+									}
+								
+									if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ALTERNATOR#"), &remainingString)) && (batteryInstance != -1)) {
 
-									header.pgn = 127508;
-									FragmentFastMessage(&header, &payload, canMessages);
-								}
+										payload.push_back(batteryInstance);
 
+										unsigned short oilPressure = USHRT_MAX;
+										payload.push_back(oilPressure & 0xFF);
+										payload.push_back((oilPressure >> 8) & 0xFF);
 
-								if ((nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ALTERNATOR#"), &remainingString)) && (batteryInstance != -1)) {
+										unsigned short oilTemperature = USHRT_MAX;
+										payload.push_back(oilTemperature & 0xFF);
+										payload.push_back((oilTemperature >> 8) & 0xFF);
 
-									payload.push_back(batteryInstance);
+										unsigned short engineTemperature = USHRT_MAX;
+										payload.push_back(engineTemperature & 0xFF);
+										payload.push_back((engineTemperature >> 8) & 0xFF);
 
-									unsigned short oilPressure = USHRT_MAX;
-									payload.push_back(oilPressure & 0xFF);
-									payload.push_back((oilPressure >> 8) & 0xFF);
+										unsigned short alternatorPotential = nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100; 
+										payload.push_back(alternatorPotential & 0xFF);
+										payload.push_back((alternatorPotential >> 8) & 0xFF);
 
-									unsigned short oilTemperature = USHRT_MAX;
-									payload.push_back(oilTemperature & 0xFF);
-									payload.push_back((oilTemperature >> 8) & 0xFF);
+										unsigned short fuelRate = USHRT_MAX; // 0.1 Litres/hour
+										payload.push_back(fuelRate & 0xFF);
+										payload.push_back((fuelRate >> 8) &0xFF);
 
-									unsigned short engineTemperature = USHRT_MAX;
-									payload.push_back(engineTemperature & 0xFF);
-									payload.push_back((engineTemperature >> 8) & 0xFF);
+										unsigned int totalEngineHours = UINT_MAX;  // seconds
+										payload.push_back(totalEngineHours & 0xFF);
+										payload.push_back((totalEngineHours >> 8) & 0xFF);
+										payload.push_back((totalEngineHours >> 16) & 0xFF);
+										payload.push_back((totalEngineHours >> 24) & 0xFF);
 
-									unsigned short alternatorPotential = nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100; 
-									payload.push_back(alternatorPotential & 0xFF);
-									payload.push_back((alternatorPotential >> 8) & 0xFF);
+										unsigned short coolantPressure = USHRT_MAX; // hPA
+										payload.push_back(coolantPressure & 0xFF);
+										payload.push_back((coolantPressure >> 8) & 0xFF);
 
-									unsigned short fuelRate = USHRT_MAX; // 0.1 Litres/hour
-									payload.push_back(fuelRate & 0xFF);
-									payload.push_back((fuelRate >> 8) &0xFF);
+										unsigned short fuelPressure = USHRT_MAX; // hPa
+										payload.push_back(fuelPressure & 0xFF);
+										payload.push_back((fuelPressure >> 8) & 0xFF);
 
-									unsigned int totalEngineHours = UINT_MAX;  // seconds
-									payload.push_back(totalEngineHours & 0xFF);
-									payload.push_back((totalEngineHours >> 8) & 0xFF);
-									payload.push_back((totalEngineHours >> 16) & 0xFF);
-									payload.push_back((totalEngineHours >> 24) & 0xFF);
+										byte reserved = UCHAR_MAX;
+										payload.push_back(reserved & 0xFF);
 
-									unsigned short coolantPressure = USHRT_MAX; // hPA
-									payload.push_back(coolantPressure & 0xFF);
-									payload.push_back((coolantPressure >> 8) & 0xFF);
+										unsigned short statusOne = USHRT_MAX;
+										payload.push_back(statusOne & 0xFF);
+										payload.push_back((statusOne >> 8) & 0xFF);
+			
+										unsigned short statusTwo = USHRT_MAX;
+										payload.push_back(statusTwo & 0xFF);
+										payload.push_back((statusTwo >>8) & 0xFF);
 
-									unsigned short fuelPressure = USHRT_MAX; // hPa
-									payload.push_back(fuelPressure & 0xFF);
-									payload.push_back((fuelPressure >> 8) & 0xFF);
+										byte engineLoad = UCHAR_MAX;  // percentage
+										payload.push_back(engineLoad & 0xFF);
 
-									byte reserved = UCHAR_MAX;
-									payload.push_back(reserved & 0xFF);
+										byte engineTorque = UCHAR_MAX; // percentage
+										payload.push_back(engineTorque & 0xFF);
 
-									unsigned short statusOne = USHRT_MAX;
-									payload.push_back(statusOne & 0xFF);
-									payload.push_back((statusOne >> 8) & 0xFF);
-		
-									unsigned short statusTwo = USHRT_MAX;
-									payload.push_back(statusTwo & 0xFF);
-									payload.push_back((statusTwo >>8) & 0xFF);
-
-									byte engineLoad = UCHAR_MAX;  // percentage
-									payload.push_back(engineLoad & 0xFF);
-
-									byte engineTorque = UCHAR_MAX; // percentage
-									payload.push_back(engineTorque & 0xFF);
-
-									header.pgn = 127489;
-									FragmentFastMessage(&header, &payload, canMessages);
+										header.pgn = 127489;
+										FragmentFastMessage(&header, &payload, canMessages);
+									}
 								}
 							}
 						}
@@ -1308,8 +1317,8 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 
 					// "V" Volume or "E" Volume - "P" as percent capacity
 					if ((nmeaParser.Xdr.TransducerInfo[i].TransducerType == _T("V")) || (nmeaParser.Xdr.TransducerInfo[i].TransducerType == _T("E"))) {
-						if (nmeaParser.Xdr.TransducerInfo[i].UnitOfMeasurement == _T("P")) {
-							if (!(supportedPGN & FLAGS_TNK)) {
+						if (!(supportedPGN & FLAGS_TNK)) {
+							if (nmeaParser.Xdr.TransducerInfo[i].UnitOfMeasurement == _T("P")) {
 
 								int tankInstance = GetInstanceNumber(nmeaParser.Xdr.TransducerInfo[i].TransducerName);
 								byte tankType;
@@ -1318,44 +1327,41 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 								if (tankInstance != -1) {
 
 									if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("FUEL#"), &remainingString)) {
-										tankType = 0;
+										tankType = TANK_FUEL;
 									}
 
 									else if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith( _T("FRESHWATER#"), &remainingString)) {
-										tankType = 1;
+										tankType = TANK_FRESHWATER;
 									}
 
 									else if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("WASTEWATER#"), &remainingString)) {
-										tankType = 2;
+										tankType = TANK_WASTEWATER;
 									}
 
 									else if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("LIVEWELL#"), &remainingString)) {
-										tankType = 3;
+										tankType = TANK_LIVEWELL;
 									}
 
 									else if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("OIL#"), &remainingString)) {
-										tankType = 4;
+										tankType = TANK_OIL;
 									}
 
 									else if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("BLACKWATER#"), &remainingString)) {
-										tankType = 5;
+										tankType = TANK_BLACKWATER;
 									}
 
 									else {
 										// Not a transducer measurement we are interested in
-										break;
+										return FALSE;
 									}
 		
 									payload.push_back((tankInstance & 0x0F) | ((tankType << 4) & 0xF0));
 
-									// BUG BUG REMOVE
-									wxLogMessage(_T("TwoCan Encoder, debg Info, Tank: %d %d"), tankInstance, static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 40.0f));
-
-									unsigned short tankLevel = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 400.0f); // percentage in 0.025 increments
+									unsigned short tankLevel = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * QUARTER_PERCENT); // percentage in 0.25 % increments
 									payload.push_back(tankLevel & 0xFF);
 									payload.push_back((tankLevel >> 8) & 0xFF);
 
-									unsigned int tankCapacity = UINT_MAX; 
+									unsigned int tankCapacity = UINT_MAX;  // Capacity in tenths of litres
 									payload.push_back(tankCapacity & 0xFF);
 									payload.push_back((tankCapacity >> 8) & 0xFF); 
 									payload.push_back((tankCapacity >> 16) & 0xFF);
@@ -1423,6 +1429,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("ZTG")) {
 			if (nmeaParser.Parse()) {
 				// IGNORE
+
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -1982,9 +1989,6 @@ bool TwoCanEncoder::EncodePGN129025(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((longitude >> 8) & 0xFF);
 			n2kMessage->push_back((longitude >> 16) & 0xFF);
 			n2kMessage->push_back((longitude >> 24) & 0xFF);
-
-			wxLogMessage(_T("Lat %f, Lon %f"), parser->Rmc.Position.Latitude.Latitude, parser->Rmc.Position.Longitude.Longitude);
-			wxLogMessage(_T("Lat %d, Lon %d"), latitude, longitude);
 
 			return TRUE;
 		}
@@ -2953,9 +2957,6 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((crossTrackError >> 16) & 0xFF);
 			n2kMessage->push_back((crossTrackError >> 24) & 0xFF);
 
-			// BUG BUG REMOVE
-			wxLogMessage(_T("TwoCan Encoder, Debig nfo,  XTE: %d"), crossTrackError);
-
 			return TRUE;
 		}
 	}
@@ -2993,9 +2994,6 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((crossTrackError >> 8) & 0xFF);
 			n2kMessage->push_back((crossTrackError >> 16) & 0xFF);
 			n2kMessage->push_back((crossTrackError >> 24) & 0xFF);
-
-			// BUG BUG REMOVE
-			wxLogMessage(_T("TwoCan Encoder,Debug Info, APB %d"), crossTrackError);
 
 			return TRUE;
 		}
@@ -4043,9 +4041,7 @@ bool TwoCanEncoder::EncodePGN130310(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(sequenceId);
 
-		unsigned short waterTemperature = static_cast<unsigned short>(100 * (parser->Mtw.Temperature + CONST_KELVIN));
-
-		wxLogMessage(_T("TwoCan Encoder, debug Info, Temperature: %d"), waterTemperature);
+		unsigned short waterTemperature = static_cast<unsigned short>((parser->Mtw.Temperature + CONST_KELVIN) * 100);
 
 		n2kMessage->push_back(waterTemperature & 0xFF);
 		n2kMessage->push_back((waterTemperature >> 8) & 0xFF);

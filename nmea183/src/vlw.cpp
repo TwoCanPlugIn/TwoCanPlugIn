@@ -71,7 +71,7 @@ bool VLW::Parse( SENTENCE const& sentence )
    ** First we check the checksum...
    */
 
-   if ( sentence.IsChecksumBad( 5 ) == TRUE )
+   if ( sentence.IsChecksumBad( 5 ) == NTrue )
    {
        SetErrorMessage(_T("Invalid Checksum"));
        return( FALSE );

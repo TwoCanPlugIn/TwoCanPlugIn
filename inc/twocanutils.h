@@ -190,6 +190,15 @@
 #define	TEMPERATURE_FREEZER 13
 #define	TEMPERATURE_EXHAUST 14
 
+// Fluid levels
+#define TANK_FUEL 0
+#define TANK_FRESHWATER 1
+#define TANK_WASTEWATER 2
+#define TANK_LIVEWELL 3
+#define TANK_OIL 4
+#define TANK_BLACKWATER 5
+#define QUARTER_PERCENT 250 // Fluid levels are defined in qurater percent intervals
+
 
 // Bit values to determine what NMEA 2000 PGN's are converted to their NMEA 0183 equivalent
 // Warning must match order of items in Preferences Dialog !!

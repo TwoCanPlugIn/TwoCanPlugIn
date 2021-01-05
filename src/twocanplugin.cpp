@@ -252,7 +252,7 @@ void TwoCan::SetPositionFix(PlugIn_Position_Fix &pfix) {
 
 		int returnCode = twoCanDevice->TransmitFrame(id, payload);
 		if (returnCode != TWOCAN_RESULT_SUCCESS) {
-			wxLogMessage(_T("TwoCanPlugin, Error sending position fix: %ul"), returnCode);
+			wxLogMessage(_T("TwoCanPlugin, Error sending position fix: %lu"), returnCode);
 		}
 	}
 }
@@ -272,7 +272,7 @@ void TwoCan::SetNMEASentence(wxString &sentence) {
 				int returnCode;
 				returnCode = twoCanDevice->TransmitFrame(id, i.payload.data());
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Plugin, Error sending converted NMEA 183 sentence %ul"), returnCode);
+					wxLogMessage(_T("TwoCan Plugin, Error sending converted NMEA 183 sentence %lu"), returnCode);
 				}
 				
 			}
@@ -321,7 +321,6 @@ void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 // Autopilot event handler
 // Autopilot commands are issued from the Autopilot dialog
 // BUG BUG To Do 
-// Route & Waypoint import/export, commands are issued from the preferences dialog
 void TwoCan::OnAutopilotCommand(wxCommandEvent &event) {
 	// Transmit autopilot commands onto the network
 	std::vector<CanMessage> nmeaMessages;
@@ -336,10 +335,10 @@ void TwoCan::OnAutopilotCommand(wxCommandEvent &event) {
 			int returnCode = TRUE;
 			//returnCode = twoCanDevice->TransmitFrame(id, i.payload.data());
 			if (returnCode == TWOCAN_RESULT_SUCCESS) {
-				wxLogMessage(_T("Successfully Tx Auopilot message"));
+				wxLogMessage(_T("TwoCan Autopilot, Debug, Tx Auopilot message"));
 			}
 			else {
-				wxLogMessage(_T("Error Tx Autopilot message %ul"), returnCode);
+				wxLogMessage(_T("TwoCan Autopilot, Debug, Error Tx Autopilot message %ul"), returnCode);
 			}
 				
 		}
@@ -347,6 +346,7 @@ void TwoCan::OnAutopilotCommand(wxCommandEvent &event) {
 	}
 
 	// BUG BUG superfluous....
+	// Debug code
 	switch (event.GetId()) {
 		// BUG BUG TODO For autopilots we need to retrieve the pgn from twocanautopilot 
 		// and then transmit via the twoCanDevice 
@@ -453,10 +453,11 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("Address"), &networkAddress, 0);
 		configSettings->Read(_T("Heartbeat"), &enableHeartbeat, FALSE);
 		configSettings->Read(_T("Gateway"), &enableGateway, FALSE);
+		// Not ready to implement yet
 		//configSettings->Read(_T("Waypoint"), &enableWaypoint, FALSE);
 		//configSettings->Read(_T("Music"), &enableMusic, FALSE);
 		//configSettings->Read(_T("SignalK"), &enableSignalK, FALSE);
-		configSettings->Read(_T("Autopilot"), &autopilotMode, FLAGS_AUTOPILOT_NONE);
+		//configSettings->Read(_T("Autopilot"), &autopilotMode, FLAGS_AUTOPILOT_NONE);
 		return TRUE;
 	}
 	else {
@@ -488,7 +489,8 @@ bool TwoCan::SaveConfiguration(void) {
 		configSettings->Write(_T("Address"), networkAddress);
 		configSettings->Write(_T("Heartbeat"), enableHeartbeat);
 		configSettings->Write(_T("Gateway"), enableGateway);
-		configSettings->Write(_T("Autopilot"), autopilotMode);
+		// Not ready to implement yet....
+		//configSettings->Write(_T("Autopilot"), autopilotMode);
 		//configSettings->Write(_T("Waypoint"), enableWaypoint);
 		//configSettings->Write(_T("Music"), enableMusic);
 		//configSettings->Write(_T("SignalK"), enableSignalK);

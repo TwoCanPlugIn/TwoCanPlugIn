@@ -111,7 +111,7 @@ bool GGA::Parse( const SENTENCE& sentence )
    ** First we check the checksum...
    */
 
-   if ( sentence.IsChecksumBad( 15 ) ==NTrue )
+   if ( sentence.IsChecksumBad( 15 ) == NTrue )
    {
       SetErrorMessage( _T("Invalid Checksum" ));
       return( FALSE );

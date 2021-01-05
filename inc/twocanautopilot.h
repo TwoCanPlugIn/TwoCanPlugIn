@@ -38,6 +38,15 @@ extern int autopilotMode;
 // A 1 byte CAN bus network address for this device if it is an Active device (0-253)
 extern int networkAddress;
 
+
+#define AUTOPILOT_POWER_OFF 0
+#define AUTOPILOT_POWER_STANDBY 1
+#define AUTOPILOT_POWER_ON 2
+
+#define AUTOPILOT_COMMAND_HEADING 0
+#define AUTOPILOT_COMMAND_WIND 1
+#define AUTOPIOT_COMMAND_GPS 2
+
 // The TwoCan Autopilot
 class TwoCanAutopilot {
 

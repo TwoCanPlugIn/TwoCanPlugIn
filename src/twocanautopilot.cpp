@@ -91,23 +91,24 @@ bool TwoCanAutopilot::ParseCommand(int commandId, int commandValue, std::vector<
         case FLAGS_AUTOPILOT_GARMIN:
             switch (commandId) {
                 case AUTOPILOT_POWER_EVENT:
-                    if (commandValue == 0) {
+                    if (commandValue == AUTOPILOT_POWER_OFF) {
                         // Turn Off 
                     }
-                    else if (commandValue == 1) {
+                    else if (commandValue == AUTOPILOT_POWER_STANDBY) {
+                        // Standby
                     }
-                    else if (commandValue == 2) {
+                    else if (commandValue == AUTOPILOT_POWER_ON) {
                         // Turn On
                     }
                 break;
                 case AUTOPILOT_MODE_EVENT:
-                    if (commandValue == 0) {
-                        // heading Mode 
+                    if (commandValue == AUTOPILOT_COMMAND_HEADING) {
+                        // Heading Mode 
                     }
-                    else if (commandValue == 1) {
+                    else if (commandValue == AUTOPILOT_COMMAND_WIND) {
                         // Wind mode
                     }
-                    else if (commandValue == 2) {
+                    else if (commandValue == AUTOPIOT_COMMAND_GPS) {
                         // GPS mode
                     }
                 break;
@@ -120,11 +121,11 @@ bool TwoCanAutopilot::ParseCommand(int commandId, int commandValue, std::vector<
         case FLAGS_AUTOPILOT_RAYMARINE:
             switch (commandId) {
                 case AUTOPILOT_POWER_EVENT:
-                    if (commandValue == 0) {
+                    if (commandValue == AUTOPILOT_POWER_OFF) {
                         // Turn Off 
                     }
-                    else if (commandValue == 1) {
-                        // set to Standby
+                    else if (commandValue == AUTOPILOT_POWER_STANDBY) {
+                        // Set to Standby
                         header.pgn = 0;
                         header.destination = CONST_GLOBAL_ADDRESS;
                         header.priority = CONST_PRIORITY_VERY_HIGH;
@@ -134,7 +135,7 @@ bool TwoCanAutopilot::ParseCommand(int commandId, int commandValue, std::vector<
                         nmeaMessages->push_back(message);
                         return TRUE;
                     }
-                    else if (commandValue == 2) {
+                    else if (commandValue == AUTOPILOT_POWER_ON) {
                         // set to On
                         header.pgn = 0;
                         header.destination = CONST_GLOBAL_ADDRESS;
@@ -147,7 +148,7 @@ bool TwoCanAutopilot::ParseCommand(int commandId, int commandValue, std::vector<
                     }
                 break;
                 case AUTOPILOT_MODE_EVENT:
-                    if (commandValue == 0) {
+                    if (commandValue == AUTOPILOT_COMMAND_HEADING) {
                         // set to Compass Heading Mode
                         header.pgn = 0;
                         header.destination = CONST_GLOBAL_ADDRESS;
@@ -158,11 +159,11 @@ bool TwoCanAutopilot::ParseCommand(int commandId, int commandValue, std::vector<
                         nmeaMessages->push_back(message);
                         return TRUE;
                     }
-                    else if (commandValue == 1) {
+                    else if (commandValue == AUTOPILOT_COMMAND_WIND) {
                         // set to Wind Mode
                         
                     }
-                    else if (commandValue == 2) {
+                    else if (commandValue == AUTOPIOT_COMMAND_GPS) {
                         // set to GPS mode
                         header.pgn = 0;
                         header.destination = CONST_GLOBAL_ADDRESS;
@@ -173,10 +174,10 @@ bool TwoCanAutopilot::ParseCommand(int commandId, int commandValue, std::vector<
                         nmeaMessages->push_back(message);
                         return TRUE;
                     }
-                break;
+                    break;
                 case AUTOPILOT_HEADING_EVENT:
                     // Adjust Heading
-                break;
+                    break;
             }
 
             break;
@@ -184,30 +185,30 @@ bool TwoCanAutopilot::ParseCommand(int commandId, int commandValue, std::vector<
         case FLAGS_AUTOPILOT_NAVICO:
             switch (commandId) {
                 case AUTOPILOT_POWER_EVENT:
-                    if (commandValue == 0) {
+                    if (commandValue == AUTOPILOT_POWER_OFF) {
                         // Turn Off 
                     }
-                    else if (commandValue == 1) {
+                    else if (commandValue == AUTOPILOT_POWER_STANDBY) {
                         // set to Standby
                     }
-                    else if (commandValue == 2) {
+                    else if (commandValue == AUTOPILOT_POWER_ON) {
                         // Turn On
                     }
-                break;
+                    break;
                 case AUTOPILOT_MODE_EVENT:
-                    if (commandValue == 0) {
-                        // heading Mode 
+                    if (commandValue == AUTOPILOT_COMMAND_HEADING) {
+                        // Heading Mode 
                     }
-                    else if (commandValue == 1) {
+                    else if (commandValue == AUTOPILOT_COMMAND_WIND) {
                         // Wind mode
                     }
-                    else if (commandValue == 2) {
+                    else if (commandValue == AUTOPIOT_COMMAND_GPS) {
                         // GPS mode
                     }
-                break;
+                    break;
                 case AUTOPILOT_HEADING_EVENT:
                     // Adjust Heading
-                break;
+                    break;
             }
 
             break;

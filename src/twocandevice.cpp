@@ -2282,7 +2282,7 @@ bool TwoCanDevice::DecodePGN127505(const byte *payload, std::vector<wxString> *n
 	if (payload != NULL) {
 
 		byte instance;
-		instance = payload[0] & 0xF;
+		instance = payload[0] & 0x0F;
 
 		byte tankType;
 		tankType = (payload[0] & 0xF0) >> 4;
@@ -2296,23 +2296,24 @@ bool TwoCanDevice::DecodePGN127505(const byte *payload, std::vector<wxString> *n
 		if (TwoCanUtils::IsDataValid(tankLevel)) {
 			switch (tankType) {
 				// BUG BUG Using Transducer Type = V (Volume) but units = P to indicate percentage rather than M (Cubic Meters)
-				case 0:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,FUEL", (float)tankLevel * 0.025f));
+				// BUG BUG Consider change to NMEA 0183 v4.11 Transducer Names & Units
+				case TANK_FUEL:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,FUEL", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 1:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,H20", (float)tankLevel * 0.025f));
+				case TANK_FRESHWATER:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,H20", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 2:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,GREY", (float)tankLevel * 0.025f));
+				case TANK_WASTEWATER:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,GREY", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 3:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,LIVE", (float)tankLevel * 0.025f));
+				case TANK_LIVEWELL:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,LIVE", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 4:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,OIL", (float)tankLevel * 0.025f));
+				case TANK_OIL:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,OIL", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 5:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,BLK", (float)tankLevel * 0.025f));
+				case TANK_BLACKWATER:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,BLK", (float)tankLevel / QUARTER_PERCENT));
 					break;
 			}
 			return TRUE;
