@@ -278,6 +278,8 @@ public:
 	static int EncodeCanHeader(unsigned int *id, const CanHeader *header);
 	// Convert a string of hex characters to the corresponding byte array
 	static int ConvertHexStringToByteArray(const byte *hexstr, const unsigned int len, byte *buf);
+	// Generates the ID for Fast Messages. 3 high bits are ID, lower 5 bits are the sequence number
+	byte GenerateID(unsigned char oldID)
 	// BUG BUG Any other conversion functions required ??
 
 	// Used to generate the unique id for Windows versions (Note the Linux version is defined in twocansocket

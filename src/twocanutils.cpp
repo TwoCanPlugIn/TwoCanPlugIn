@@ -106,6 +106,12 @@ int TwoCanUtils::DecodeCanHeader(const byte *buf, CanHeader *header) {
 	}
 }
 
+// Generates the ID for Fast Messages. 3 high bits are ID, lower 5 bits are the sequence number
+byte TwoCanUtils::GenerateID(unsigned char oldID) {
+    unsigned char tmp = (oldID >> 5) + 1;
+    return tmp == 8 ? 0: tmp << 5; 
+}
+
 // Encodes a 29 bit CAN header
 int TwoCanUtils::EncodeCanHeader(unsigned int *id, const CanHeader *header) {
 	if ((id != NULL) && (header != NULL)) {
