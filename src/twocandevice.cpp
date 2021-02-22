@@ -39,6 +39,7 @@
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // 1.91 - 20-10-2020 Add PGN 129540, Bug Fixes (random position - missing break, socket & queue timeouts)
+// 1.92 - 20-02-2021 Fix for fast message assembly & SID generation
 // Outstanding Features: 
 // 1. Bi-directional gateway ??
 // 2. Rewrite/Port Adapter drivers to C++
@@ -767,7 +768,7 @@ void TwoCanDevice::RaiseEvent(wxString sentence) {
 bool TwoCanDevice::IsFastMessage(const CanHeader header) {
 	static const unsigned int nmeafastMessages[] = { 65240, 126208, 126464, 126996, 126998, 127233, 127237, 127489, 127496, 127506, 128275, 129029, 129038, \
 	129039, 129040, 129041, 129284, 129285, 129540, 129793, 129794, 129795, 129797, 129798, 129801, 129802, 129808, 129809, 129810, 130074, 130323, 130577 };
-	for (int i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
+	for (size_t i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
 		if (nmeafastMessages[i] == header.pgn) {
 			return TRUE;
 		}
@@ -780,14 +781,26 @@ bool TwoCanDevice::IsFastMessage(const CanHeader header) {
 void TwoCanDevice::AssembleFastMessage(const CanHeader header, const byte *payload) {
 	if (IsFastMessage(header) == TRUE) {
 		int position;
-		position = MapFindMatchingEntry(header);
+		position = MapFindMatchingEntry(header, payload[0]);
+		// No existing fast message 
 		if (position == NOT_FOUND) {
-			MapInsertEntry(header, payload, MapFindFreeEntry());
+			// Find a free slot
+			position = MapFindFreeEntry();
+			// No free slots, exit
+			if (position == NOT_FOUND) {
+				return;
+			}
+			// Insert the first frame of the fast message
+			else {
+				MapInsertEntry(header, payload, position);
+			}
 		}
+		// An existing fast message is present, append the frame
 		else {
 			MapAppendEntry(header, payload, position);
 		}
 	}
+	// This is a single frame message, parse it
 	else {
 		ParseMessage(header, payload);
 	}
@@ -796,7 +809,7 @@ void TwoCanDevice::AssembleFastMessage(const CanHeader header, const byte *paylo
 // Initialize each entry in the Fast Message Map
 void TwoCanDevice::MapInitialize(void) {
 	for (int i = 0; i < CONST_MAX_MESSAGES; i++) {
-		fastMessages[i].IsFree = TRUE;
+		fastMessages[i].isFree = TRUE;
 		fastMessages[i].data = NULL;
 	}
 }
@@ -804,10 +817,12 @@ void TwoCanDevice::MapInitialize(void) {
 // Lock a range of entries
 // BUG BUG Remove for production, just used for testing
 void TwoCanDevice::MapLockRange(const int start, const int end) {
+	struct timeval now;
+	gettimeofday(&now, NULL);
 	if (start < end)  {
 		for (int i = start; i < end; i++) {
-			fastMessages[i].IsFree = FALSE;
-			fastMessages[i].timeArrived = time(0);
+			fastMessages[i].isFree = FALSE;
+			fastMessages[i].timeArrived = (now.tv_sec * 1e6 ) + now.tv_usec;
 		}
 	}
 
@@ -816,11 +831,11 @@ void TwoCanDevice::MapLockRange(const int start, const int end) {
 // Find first free entry in fastMessages
 int TwoCanDevice::MapFindFreeEntry(void) {
 	for (int i = 0; i < CONST_MAX_MESSAGES; i++) {
-		if (fastMessages[i].IsFree == TRUE) {
+		if (fastMessages[i].isFree == TRUE) {
 			return i;
 		}
 	}
-	// Could also run the garbageCollection routine in a separate thread, would require locking etc.
+	// Could also run the Garbage Collection routine in a separate thread, would require locking etc.
 	// But this will look for stale entries in case there are no free entries
 	// If there are no free entries, then indicative that we are receiving more Fast messages
 	// than I anticipated. As someone said, "Assumptions are the mother of all fuckups"
@@ -843,20 +858,27 @@ void TwoCanDevice::MapInsertEntry(const CanHeader header, const byte *data, cons
 	// data[1] Length of data bytes
 	// data[2..7] 6 data bytes
 
-	int totalDataLength; // will also include padding as we memcpy all of the frame, because I'm lazy
-	totalDataLength = (unsigned int)data[1];
-	totalDataLength += 7 - ((totalDataLength - 6) % 7);
+	// Ensure that this is indeed the first frame of a fast message
+	if ((data[0] & 0x1F) == 0) {
+		struct timeval now;
+		gettimeofday(&now, NULL);
+		int totalDataLength; // will also include padding as we memcpy all of the frame, because I'm lazy
+		totalDataLength = (unsigned int)data[1];
+		totalDataLength += 7 - ((totalDataLength - 6) % 7);
 
-	fastMessages[position].sid = (unsigned int)data[0];
-	fastMessages[position].expectedLength = (unsigned int)data[1];
-	fastMessages[position].header = header;
-	fastMessages[position].timeArrived = time(NULL);
-	fastMessages[position].IsFree = FALSE;
-	// Remember to free after we have processed the final frame
-	fastMessages[position].data = (byte *)malloc(totalDataLength);
-	memcpy(&fastMessages[position].data[0], &data[2], 6);
-	// First frame of a multi-frame Fast Message contains six data bytes, position the cursor ready for next message
-	fastMessages[position].cursor = 6; 
+		fastMessages[position].sid = (unsigned int)data[0];
+		fastMessages[position].expectedLength = (unsigned int)data[1];
+		fastMessages[position].header = header;
+		fastMessages[position].timeArrived = (now.tv_sec * 1e6 ) + now.tv_usec;
+		fastMessages[position].isFree = FALSE;
+		// Remember to free after we have processed the final frame
+		fastMessages[position].data = (byte *)malloc(totalDataLength);
+		memcpy(&fastMessages[position].data[0], &data[2], 6);
+		// First frame of a multi-frame Fast Message contains six data bytes, position the cursor ready for next message
+		fastMessages[position].cursor = 6; 
+	}
+	// No further processing is performed if this is not a start frame. 
+	// A start frame may have been dropped and we received a subsequent frame	
 }
 
 // Append subsequent messages of a sequence of fast messages
@@ -868,7 +890,6 @@ int TwoCanDevice::MapAppendEntry(const CanHeader header, const byte *data, const
 	if ((fastMessages[position].sid + 1) == data[0]) { 
 		memcpy(&fastMessages[position].data[fastMessages[position].cursor], &data[1], 7);
 		fastMessages[position].sid = data[0];
-		fastMessages[position].timeArrived = time(NULL);
 		// Subsequent messages contains seven data bytes (last message may be padded with 0xFF)
 		fastMessages[position].cursor += 7; 
 		// Is this the last message ?
@@ -877,17 +898,38 @@ int TwoCanDevice::MapAppendEntry(const CanHeader header, const byte *data, const
 			ParseMessage(header, fastMessages[position].data);
 			// Clear the entry
 			free(fastMessages[position].data);
-			fastMessages[position].IsFree = TRUE;
+			fastMessages[position].isFree = TRUE;
 			fastMessages[position].data = NULL;
 		}
 		return TRUE;
 	}
+	else if ((data[0] & 0x1F) == 0) {
+		// We've found a matching entry, however this is a start frame, therefore
+		// we've missed an end frame, and now we have a start frame with the same id (top 3 bits). 
+		// The id has obviously rolled over. Should really double check that (data[0] & 0xE0) 
+		// Clear the entry as we don't want to leak memory, prior to inserting a start frame
+		free(fastMessages[position].data);
+		fastMessages[position].isFree = TRUE;
+		fastMessages[position].data = NULL;
+		// And now insert it
+		MapInsertEntry(header, data, position);
+		// BUG BUG Should update the dropped frame stats
+		return TRUE;
+	}
 	else {
+		// This is not the next frame in the sequence and not a start frame
+		// We've dropped an intermedite frame, so free the slot and do no further processing
+		free(fastMessages[position].data);
+		fastMessages[position].isFree = TRUE;
+		fastMessages[position].data = NULL;
 
-		// This is not the next message in the sequence. Must have dropped a message ?
+		// Dropped frame statistics
 		if (droppedFrames == 0) {
 			droppedFrameTime = wxDateTime::Now();
-			droppedFrames++;
+			droppedFrames += 1;
+		}
+		else {
+			droppedFrames += 1;
 		}
 		if ((droppedFrames > CONST_DROPPEDFRAME_THRESHOLD) && (wxDateTime::Now() < (droppedFrameTime + wxTimeSpan::Seconds(CONST_DROPPEDFRAME_PERIOD) ) ) ) {
 			wxLogError(_T("TwoCan Device, Dropped Frames rate exceeded"));
@@ -899,10 +941,11 @@ int TwoCanDevice::MapAppendEntry(const CanHeader header, const byte *data, const
 	}
 }
 
-// Determine whether an entry with a matching header exists. If not, then assume this is the first frame of a multi-frame Fast Message
-int TwoCanDevice::MapFindMatchingEntry(const CanHeader header) {
+// Determine whether an entry with a matching header & sequence ID exists
+// If not, then assume this is the first frame of a multi-frame Fast Message
+int TwoCanDevice::MapFindMatchingEntry(const CanHeader header, const byte sid) {
 	for (int i = 0; i < CONST_MAX_MESSAGES; i++) {
-		if ((fastMessages[i].IsFree == FALSE) && (fastMessages[i].header.pgn == header.pgn) && \
+		if (((sid & 0xE0) == (fastMessages[i].sid & 0xE0)) && (fastMessages[i].isFree == FALSE) && (fastMessages[i].header.pgn == header.pgn) && \
 			(fastMessages[i].header.source == header.source) && (fastMessages[i].header.destination == header.destination)) {
 			return i;
 		}
@@ -912,21 +955,19 @@ int TwoCanDevice::MapFindMatchingEntry(const CanHeader header) {
 
 // BUG BUG if this gets run in a separate thread, need to lock the fastMessages 
 int TwoCanDevice::MapGarbageCollector(void) {
-	time_t now = time(0);
+	struct timeval now;
+	gettimeofday(&now, NULL);
 	int staleEntries;
 	staleEntries = 0;
 	for (int i = 0; i < CONST_MAX_MESSAGES; i++) {
-		if ((fastMessages[i].IsFree == FALSE) && (difftime(now, fastMessages[i].timeArrived) > CONST_TIME_EXCEEDED)) {
+		if ((fastMessages[i].isFree == FALSE) && (((now.tv_sec * 1e6 ) + now.tv_usec) - fastMessages[i].timeArrived > CONST_TIME_EXCEEDED)) {
 			staleEntries++;
 			free(fastMessages[i].data);
-			fastMessages[i].IsFree = TRUE;
+			fastMessages[i].isFree = TRUE;
 		}
 	}
 	return staleEntries;
 }
-
-
-
 
 void TwoCanDevice::LogReceivedFrames(const CanHeader *header, const byte *frame) {
 	// TwoCan Raw format 0x01,0x01,0xF8,0x09,0x64,0xD9,0xDF,0x19,0xC7,0xB9,0x0A,0x04
