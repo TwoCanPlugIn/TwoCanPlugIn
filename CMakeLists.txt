@@ -179,7 +179,7 @@ IF(APPLE)
         inc/twocaninterface.h)
 
     # For Rusoku Toucan, Assumes the MacCan Rusoku headers have been installed in the default location
-    SET(RUSOKU_HEADER "~/rusokuCAN/Includes")
+    SET(RUSOKU_HEADER "../rusokuCAN/Includes")
     INCLUDE_DIRECTORIES(AFTER ${RUSOKU_HEADER})
 
 ENDIF(APPLE)
