@@ -19,6 +19,8 @@ for pkg in cairo cmake gettext libarchive libexif python wget; do
     brew list --versions $pkg || brew install $pkg || brew install $pkg || :
     brew link --overwrite $pkg || brew install $pkg
 done
+#working out where we are
+echo $PWD
 
 # Build the Rusoku Toucan Library
 git clone https://github.com/mac-can/RusokuCAN
@@ -31,6 +33,11 @@ make all
 sudo make install
 # back to the project build directory
 cd ..
+# copy the headers
+cp rusokuCAN/Includes/TouCAN.h /usr/local/include/TouCAN.h
+cp rusokuCAN/Includes/MacCAN.h /usr/local/include/MacCAN.h
+cp rusokuCAN/Includes/CANAPI_Defines.h /usr/local/include/CANAPI_Defines.h
+cp rusokuCAN/Includes/CANAPI_Types.h /usr/local/include/CANAPI_Types.h
 # copy the resulting Toucan library to the plugin data/drivers directory
 # We will include the dylib file so that users do not have to compile/install 
 # the dylibs themselves.
