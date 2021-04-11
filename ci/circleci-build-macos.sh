@@ -21,12 +21,11 @@ for pkg in cairo cmake gettext libarchive libexif python wget; do
 done
 
 # Build the Rusoku Toucan Library
-git clone https://github.com/rusoku/RusokuCAN
-cd RusokuCAN/Sources
+git clone https://github.com/mac-can/RusokuCAN
+cd RusokuCAN
 # generates the build/version number for the Toucan library
 ./build_no.sh
-# back to the rusokucan directory
-cd ..
+# build
 make all
 # perhaps unnecessary
 sudo make install
