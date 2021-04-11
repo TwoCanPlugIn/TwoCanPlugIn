@@ -35,7 +35,7 @@ cd ..
 # We will include the dylib file so that users do not have to compile/install 
 # the dylibs themselves.
 # It also allows the rpath to be correctly generated in the plugin dylib linker
-for f in $(find RusokuCAN/Library/TouCAN  -name '*.dylib')
+for f in $(find RusokuCAN/Libraries/TouCAN  -name '*.dylib')
 do
   echo $f
   cp $f data/drivers 
