@@ -38,9 +38,9 @@ set(SHORT_DESCRIPTION "TwoCan Plugin, integrates OpenCPN with NMEA 2000 networks
 set(LONG_DESCRIPTION "TwoCan Plugin, integrates OpenCPN with NMEA 2000 networks by converting NMEA 2000 messages to NMEA 183 sentences for use by OpenCPN") 
 set(VERSION_MAJOR "1")
 set(VERSION_MINOR "9")
-set(VERSION_PATCH "2")
+set(VERSION_PATCH "3")
 set(VERSION_TWEAK "0")
-set(VERSION_DATE "20/02/2021")
+set(VERSION_DATE "10/04/2021")
 set(OCPN_MIN_VERSION "ov50")
 set(OCPN_API_VERSION_MAJOR "1")
 set(OCPN_API_VERSION_MINOR "16")
@@ -179,7 +179,7 @@ IF(APPLE)
         inc/twocaninterface.h)
 
     # For Rusoku Toucan, Assumes the MacCan Rusoku headers have been installed in the default location
-    SET(RUSOKU_HEADER "/usr/local/include")
+    SET(RUSOKU_HEADER "~/rusokuCAN/Includes")
     INCLUDE_DIRECTORIES(AFTER ${RUSOKU_HEADER})
 
 ENDIF(APPLE)
