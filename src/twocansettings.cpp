@@ -180,6 +180,8 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	labelModelId->SetLabel(wxString::Format("Model ID: %s", PLUGIN_COMMON_NAME));
 	labelManufacturer->SetLabel("Manufacturer: TwoCan");
 	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %d.%d", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR));
+	labelDevice->SetLabel(wxString::Format("Device Class: %d", CONST_DEVICE_CLASS));
+	labelFunction->SetLabel(wxString::Format("Device Function: %d", CONST_DEVICE_FUNCTION));
 
 	// Logging Options
 	// Add Logging Options to the hashmap

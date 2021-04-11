@@ -1000,7 +1000,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										payload.push_back(oilTemperature & 0xFF);
 										payload.push_back((oilTemperature >> 8) & 0xFF);
 
-										unsigned short engineTemperature = static_cast<unsigned short>((nmeaParser.Xdr.TransducerInfo[i].MeasurementData + CONST_KELVIN) * 100.0f);
+										unsigned short engineTemperature = static_cast<unsigned short>(((nmeaParser.Xdr.TransducerInfo[i].MeasurementData + CONST_KELVIN) * 100));
 										payload.push_back(engineTemperature & 0xFF);
 										payload.push_back((engineTemperature >> 8) & 0xFF);
 

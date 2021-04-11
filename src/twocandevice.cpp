@@ -987,7 +987,8 @@ void TwoCanDevice::LogReceivedFrames(const CanHeader *header, const byte *frame)
 			rawLogFile.Write(wxString::Format("(%010ld.%06ld)",seconds,microseconds));
 #endif
 
-			rawLogFile.Write(" can0 ");
+			//rawLogFile.Write(" can0 ");
+			rawLogFile.Write(wxString::Format(" %s ", canAdapter));
 			// Note CanId must be written LSB
 			// BUG BUG What about the Extended Frame bit 0x80000000 ??
 			rawLogFile.Write(wxString::Format("%02X%02X%02X%02X#", frame[3] ,frame[2],frame[1],frame[0]));
