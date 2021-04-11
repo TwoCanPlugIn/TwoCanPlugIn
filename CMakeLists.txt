@@ -208,7 +208,7 @@ IF(APPLE)
     ADD_CUSTOM_COMMAND( POST_BUILD
       TARGET ${PACKAGE_NAME} 
       COMMAND install_name_tool -add_rpath "@loader_path/./../SharedSupport/plugins/${PACKAGE_NAME}/data/drivers" "lib${PACKAGE_NAME}.dylib"
-      COMMAND install_name_tool -change libTouCAN.0.1.dylib @rpath/libTouCAN.0.1.dylib lib${PACKAGE_NAME}.dylib
+      COMMAND install_name_tool -change libTouCAN.0.2.dylib @rpath/libTouCAN.0.2.dylib lib${PACKAGE_NAME}.dylib
     )
     
 ENDIF(APPLE)
