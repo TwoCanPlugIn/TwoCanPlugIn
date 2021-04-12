@@ -48,16 +48,19 @@ parameters:
     run_build_macos:
         type: boolean
         default: true
-
-orbs:
-    cloudsmith: cloudsmith/cloudsmith@1.0.4
+    run_build_android_arm64:
+        type: boolean
+        default: true
+    run_build_android_armhf:
+        type: boolean
+        default: true
 
 jobs:
     build-armhf-stretch:
         machine: true
         environment:
         - OCPN_TARGET=stretch-armhf
-        - DOCKER_IMAGE=balenalib/raspberry-pi-debian:stretch
+        - DOCKER_IMAGE=jongough/raspbian-stretch:latest
         - BUILD_FLAGS=-j3
         - BUILD_ENV=raspbian
         steps:
@@ -74,7 +77,7 @@ jobs:
         machine: true
         environment:
         - OCPN_TARGET=buster-armhf
-        - DOCKER_IMAGE=balenalib/raspberry-pi-debian:buster
+        - DOCKER_IMAGE=jongough/raspbian-buster:plugin_build_tooling_current
         - BUILD_FLAGS=-j3
         - BUILD_ENV=raspbian
         steps:
@@ -88,10 +91,10 @@ jobs:
             steps:
             - run: ci/cloudsmith-upload.sh
     build-armhf-bionic-64:
-        machine:
-            image: ubuntu-1604:202010-01
+        machine: true
         environment:
-        - OCPN_TARGET=bionic-armh64
+        - OCPN_TARGET=bionic-arm64
+        - OCPN_BRANCH=master
         - DOCKER_IMAGE=arm64v8/ubuntu:18.04
         - BUILD_FLAGS=-j3
         - BUILD_ENV=ubuntu
@@ -110,7 +113,6 @@ jobs:
         - image: circleci/buildpack-deps:trusty-scm
         environment:
         - OCPN_TARGET:  trusty
-        - DEPLOY_USE_ORB: true
         steps:
         - checkout
         - run: >
@@ -125,15 +127,12 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
-            - cloudsmith/ensure-api-key
-            - cloudsmith/install-cli
             - run: ci/cloudsmith-upload.sh
     build-xenial:
         docker:
         - image: circleci/buildpack-deps:xenial-scm
         environment:
         - OCPN_TARGET:  xenial
-        - DEPLOY_USE_ORB: true
         steps:
         - checkout
         - run: >
@@ -148,15 +147,12 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
-            - cloudsmith/ensure-api-key
-            - cloudsmith/install-cli
             - run: ci/cloudsmith-upload.sh
     build-bionic:
         docker:
-        - image: circleci/buildpack-deps:bionic-scm@sha256:3d8e5303b6984bfae23f8fce2b827888fb1d16c10e2c61635eaae4fb9b7f284a
+        - image: circleci/buildpack-deps:bionic-scm
         environment:
         - OCPN_TARGET:  bionic
-        - DEPLOY_USE_ORB: true
         steps:
         - checkout
         - run: >
@@ -171,16 +167,13 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
-            - cloudsmith/ensure-api-key
-            - cloudsmith/install-cli
             - run: ci/cloudsmith-upload.sh
     build-bionic-gtk3:
         docker:
-        - image: circleci/buildpack-deps:bionic-scm@sha256:3d8e5303b6984bfae23f8fce2b827888fb1d16c10e2c61635eaae4fb9b7f284a
+        - image: circleci/buildpack-deps:bionic-scm
         environment:
         - BUILD_GTK3: true
         - OCPN_TARGET:  bionic-gtk3
-        - DEPLOY_USE_ORB: true
         steps:
         - checkout
         - run: >
@@ -195,15 +188,12 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
-            - cloudsmith/ensure-api-key
-            - cloudsmith/install-cli
             - run: ci/cloudsmith-upload.sh
     build-focal:
         docker:
         - image: circleci/buildpack-deps:focal-scm
         environment:
         - OCPN_TARGET:  focal
-        - DEPLOY_USE_ORB: true
         steps:
         - checkout
         - run: >
@@ -218,8 +208,6 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
-            - cloudsmith/ensure-api-key
-            - cloudsmith/install-cli
             - run: ci/cloudsmith-upload.sh
     build-focal-gtk3:
         docker:
@@ -227,7 +215,6 @@ jobs:
         environment:
         - BUILD_GTK3: true
         - OCPN_TARGET: focal-gtk3
-        - DEPLOY_USE_ORB: true
         steps:
         - checkout
         - run: >
@@ -242,15 +229,12 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
-            - cloudsmith/ensure-api-key
-            - cloudsmith/install-cli
             - run: ci/cloudsmith-upload.sh
     build-buster:
         docker:
         - image: circleci/buildpack-deps:buster-scm
         environment:
         - OCPN_TARGET:  buster
-        - DEPLOY_USE_ORB: true
         steps:
         - checkout
         - run: >
@@ -265,8 +249,6 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
-            - cloudsmith/ensure-api-key
-            - cloudsmith/install-cli
             - run: ci/cloudsmith-upload.sh
     build-flatpak:
         machine:
@@ -287,7 +269,6 @@ jobs:
         - image: fedora:33
         environment:
         - OCPN_TARGET:  fedora
-        - DEPLOY_USE_ORB: true
         steps:
         - run: su -c "dnf install -q -y git openssh-clients openssh-server"
         - checkout
@@ -296,8 +277,6 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
-            - cloudsmith/ensure-api-key
-            - cloudsmith/install-cli
             - run: ci/cloudsmith-upload.sh
     build-mingw:
         docker:
@@ -320,7 +299,6 @@ jobs:
         environment:
         - OCPN_TARGET:  macos
         - CLOUDSMITH_PKG_EXT: pkg
-        - DEPLOY_USE_ORB: true
         steps:
         - checkout
         - run: chmod a+x ci/*.sh
@@ -328,10 +306,33 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
-            - cloudsmith/ensure-api-key
-            - cloudsmith/install-cli
             - run: ci/cloudsmith-upload.sh
-            
+    build-android-arm64:
+        docker:
+        - image: circleci/android:api-28-ndk
+        environment:
+        - OCPN_TARGET:  android-arm64
+        steps:
+        - checkout
+        - run: chmod a+x ci/*.sh
+        - run: bash ci/circleci-build-android-arm64.sh
+        - when:
+            condition: <<pipeline.parameters.run_workflow_deploy>>
+            steps:
+            - run: ci/cloudsmith-upload.sh
+    build-android-armhf:
+        docker:
+        - image: circleci/android:api-28-ndk
+        environment:
+        - OCPN_TARGET:  android-armhf
+        steps:
+        - checkout
+        - run: chmod a+x ci/*.sh
+        - run: bash ci/circleci-build-android-armhf.sh
+        - when:
+            condition: <<pipeline.parameters.run_workflow_deploy>>
+            steps:
+            - run: ci/cloudsmith-upload.sh
 workflows:
     build_1:
         when: <<pipeline.parameters.run_build_armhf_stretch>>
@@ -355,17 +356,18 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
-    build_3:
-        when: <<pipeline.parameters.run_build_armhf_bionic_64>>
-        jobs:
-        - build-armhf-bionic-64:
-            filters:
-                branches:
-                    ignore:
-                    - devel
-                    - tmp
-                tags:
-                    only: /.*/
+# Currently circleci does not build armf64 correctly due to no suitable docker image
+#        build_3:
+#        when: <<pipeline.parameters.run_build_bionic-64>>
+#        jobs:
+#        - build-armhf-bionic-64:
+#            filters:
+#                branches:
+#                    ignore:
+#                    - devel
+#                    - tmp
+#                tags:
+#                    only: /.*/
     build_4:
         when: <<pipeline.parameters.run_build_trusty>>
         jobs:
@@ -489,3 +491,26 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
+#    build_15:
+#        when: <<pipeline.parameters.run_build_android_arm64>>
+#        jobs:
+#        - build-android-arm64:
+#            filters:
+#                branches:
+#                    ignore:
+#                    - devel
+#                    - tmp
+#                tags:
+#                    only: /.*/
+#    build_16:
+#        when: <<pipeline.parameters.run_build_android_armhf>>
+#        jobs:
+#        - build-android-armhf:
+#            filters:
+#                branches:
+#                    ignore:
+#                    - devel
+#                    - tmp
+#                tags:
+#                    only: /.*/
+

@@ -19,8 +19,6 @@ for pkg in cairo cmake gettext libarchive libexif python wget; do
     brew list --versions $pkg || brew install $pkg || brew install $pkg || :
     brew link --overwrite $pkg || brew install $pkg
 done
-#working out where we are
-echo $PWD
 
 # Build the Rusoku Toucan Library
 git clone https://github.com/mac-can/RusokuCAN
@@ -33,7 +31,7 @@ make all
 sudo make install
 # back to the project build directory
 cd ..
-# copy the headers
+# copy the headers as install no longer copies them
 cp rusokuCAN/Includes/TouCAN.h /usr/local/include/TouCAN.h
 cp rusokuCAN/Includes/MacCAN.h /usr/local/include/MacCAN.h
 cp rusokuCAN/Includes/CANAPI_Defines.h /usr/local/include/CANAPI_Defines.h
@@ -86,3 +84,4 @@ make -sj2
 make package
 
 make create-pkg
+
