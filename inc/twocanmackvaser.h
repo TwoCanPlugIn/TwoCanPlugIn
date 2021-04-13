@@ -24,7 +24,7 @@
 
 // Mac-Can interfaces
 #include <MacCAN.h>
-#include <KVaserCAN.h>
+#include <KvaserCAN.h>
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFNumber.h>
