@@ -301,7 +301,7 @@ IF(APPLE)
     # Similarly we install the Kvaser library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
     ADD_CUSTOM_COMMAND( POST_BUILD
       TARGET ${PACKAGE_NAME} 
-      COMMAND install_name_tool -change libKvaserCAN.0.1.dylib @rpath/llibKvaserCAN.0.1.dylib lib${PACKAGE_NAME}.dylib
+      COMMAND install_name_tool -change libKvaserCAN.0.1.dylib @rpath/libKvaserCAN.0.1.dylib lib${PACKAGE_NAME}.dylib
     )
     
 ENDIF(APPLE)

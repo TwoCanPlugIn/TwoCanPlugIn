@@ -50,6 +50,34 @@ do
   break
 done
 
+# Build the Kvaser Library
+git clone https://github.com/mac-can/MacCAN-KvaserCAN
+cd MacCAN-KvaserCAN
+# generates the build/version number for the Kvaser library
+./build_no.sh
+# build
+make all
+# perhaps unnecessary
+sudo make install
+# back to the project build directory
+cd ..
+# copy the headers as install no longer copies them,
+# note the MacCAN.h, CANAPI_Defines.h and CANAPI_Types.h have been copied previously
+cp MacCAN-KvaserCAN/Includes/KvaserCAN.h /usr/local/include/KvaserCAN.h
+# copy the resulting KvaserCAN library to the plugin data/drivers directory
+# We will include the dylib file so that users do not have to compile/install 
+# the dylibs themselves.
+# It also allows the rpath to be correctly generated in the plugin dylib linker
+for f in $(find MacCAN-KvaserCAN/Libraries/KvaserCAN  -name '*.dylib')
+do
+  echo $f
+  cp $f data/drivers 
+   # create a symbolic link to the library file
+   ln -s "data/drivers/${f##*/}" data/drivers/libKvaserCAN.dylib
+   # there should only be one file, but in anycase exit after the first
+  break
+done
+
 #wget -q http://opencpn.navnux.org/build_deps/wx312_opencpn50_macos109.tar.xz - unsupported link, replaced with below
 curl -o wx312B_opencpn50_macos109.tar.xz https://download.opencpn.org/s/rwoCNGzx6G34tbC/download
 tar xJf wx312B_opencpn50_macos109.tar.xz -C /tmp
