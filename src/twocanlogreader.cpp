@@ -1,4 +1,4 @@
-// Copyright(C) 2019 by Steven Adler
+// Copyright(C) 2018-2020 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //

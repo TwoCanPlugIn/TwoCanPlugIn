@@ -1,4 +1,4 @@
-// Copyright(C) 2018-2019 by Steven Adler
+// Copyright(C) 2018-2020 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -31,6 +31,7 @@
 // 1.7 - 10/12/2019 Flags for Battery
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
+// 2.0 - 11-04-2021 Bi-directional gateway
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -163,18 +164,24 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	
 	// Device tab
 	chkDeviceMode->SetValue(deviceMode);
-	chkEnableHeartbeat->Enable(chkDeviceMode->IsChecked());
+	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
+	chkGateway->Enable(chkDeviceMode->IsChecked());
 	if (deviceMode == TRUE) {
-		chkEnableHeartbeat->SetValue(enableHeartbeat);
+		chkHeartbeat->SetValue(enableHeartbeat);
+		chkGateway->SetValue(enableGateway);
 	}
 	else {
-		chkEnableHeartbeat->SetValue(FALSE);
+		chkHeartbeat->SetValue(FALSE);
+		chkGateway->SetValue(FALSE);
 	}
+
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
 	labelModelId->SetLabel(wxString::Format("Model ID: %s", PLUGIN_COMMON_NAME));
 	labelManufacturer->SetLabel("Manufacturer: TwoCan");
 	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %d.%d", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR));
+	labelDevice->SetLabel(wxString::Format("Device Class: %d", CONST_DEVICE_CLASS));
+	labelFunction->SetLabel(wxString::Format("Device Function: %d", CONST_DEVICE_FUNCTION));
 
 	// Logging Options
 	// Add Logging Options to the hashmap
@@ -228,13 +235,20 @@ void TwoCanSettings::OnCopy(wxCommandEvent &event) {
 
 // Set whether the device is an actve or passive node on the NMEA 2000 network
 void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
-	chkEnableHeartbeat->Enable(chkDeviceMode->IsChecked());
-	chkEnableHeartbeat->SetValue(FALSE);
+	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
+	chkHeartbeat->SetValue(FALSE);
+	chkGateway->Enable(chkDeviceMode->IsChecked());
+	chkGateway->SetValue(FALSE);
 	this->settingsDirty = TRUE;
 }
 
 // Set whether the device sends heartbeats onto the network
 void TwoCanSettings::OnCheckHeartbeat(wxCommandEvent &event) {
+	this->settingsDirty = TRUE;
+}
+
+// Set whether the device acts as a bi-directional gateway, NMEA 183 -> NMEA 2000
+void TwoCanSettings::OnCheckGateway(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
 
@@ -302,8 +316,13 @@ void TwoCanSettings::SaveSettings(void) {
 	}
 
 	enableHeartbeat = FALSE;
-	if (chkEnableHeartbeat->IsChecked()) {
+	if (chkHeartbeat->IsChecked()) {
 		enableHeartbeat = TRUE;
+	}
+
+	enableGateway = FALSE;
+	if (chkGateway->IsChecked()) {
+		enableGateway = TRUE;
 	}
 		
 	deviceMode = FALSE;
@@ -392,9 +411,10 @@ wxString driversFolder = pluginDataFolder +  _T("drivers") + wxFileName::GetPath
 #endif
 
 #if defined (__APPLE__) && defined (__MACH__)
-	// Add the built-in Log File Reader, Cantact and Rusoku interfaces to the Adapter hashmap
+	// Add the built-in Log File Reader, Cantact, Kvaser and Rusoku interfaces to the Adapter hashmap
 	adapters["Log File Reader"] = "Log File Reader";
 	adapters["Cantact"] = "Cantact";
+	adapters["Kvaser"] = "Kvaser";
 	adapters["Rusoku"] = "Rusoku";
 #endif
 

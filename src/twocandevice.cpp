@@ -1,4 +1,4 @@
-// Copyright(C) 2018-2019 by Steven Adler
+// Copyright(C) 2018-2020 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -39,10 +39,10 @@
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // 1.91 - 20-10-2020 Add PGN 129540, Bug Fixes (random position - missing break, socket & queue timeouts)
-// 1.92 - 20-02-2021 Fix for fast message assembly & SID generation
+// 1.92 - 10-04-2021 Fix for fast message assembly & SID generation
+// 2.0 - 11/04/2021 Bi-directional gateway
 // Outstanding Features: 
-// 1. Bi-directional gateway ??
-// 2. Rewrite/Port Adapter drivers to C++
+// 1. Rewrite/Port Adapter drivers to C++
 //
 
 #include "twocandevice.h"
@@ -254,6 +254,11 @@ int TwoCanDevice::Init(wxString driverPath) {
 		adapterInterface = new TwoCanMacToucan(canQueue);
 		returnCode = adapterInterface->Open(canAdapter);
 	}
+	else if (driverName.CmpNoCase("Kvaser") == 0) {
+		// Load the MAC interface for the Kvaser adapter
+		adapterInterface = new TwoCanMacKvaser(canQueue);
+		returnCode = adapterInterface->Open(canAdapter);
+	}
 #endif
 
 #if defined (__LINUX__)
@@ -406,7 +411,7 @@ int TwoCanDevice::ReadLinuxOrMacDriver(void) {
 	
 	while (!TestDestroy())	{
 		
-		// Wait for a CAN Frame. timeout if on an idle netowork
+		// Wait for a CAN Frame. timeout if on an idle network
 		queueError = canQueue->ReceiveTimeout(CONST_TEN_MILLIS, receivedFrame);
 		
 		if (queueError == wxMSGQUEUE_NO_ERROR) {
@@ -760,6 +765,7 @@ void TwoCanDevice::RaiseEvent(wxString sentence) {
 // 129808 - DSC Call Information
 // 129809 - AIS Class B Static Data: Part A
 // 129810 - AIS Class B Static Data Part B
+// 130065 - Route List
 // 130074 - Waypoint List
 // 130323 - Meteorological Data
 // 130577 - Direction Data
@@ -767,8 +773,9 @@ void TwoCanDevice::RaiseEvent(wxString sentence) {
 // Checks whether a frame is a single frame message or multiframe Fast Packet message
 bool TwoCanDevice::IsFastMessage(const CanHeader header) {
 	static const unsigned int nmeafastMessages[] = { 65240, 126208, 126464, 126996, 126998, 127233, 127237, 127489, 127496, 127506, 128275, 129029, 129038, \
-	129039, 129040, 129041, 129284, 129285, 129540, 129793, 129794, 129795, 129797, 129798, 129801, 129802, 129808, 129809, 129810, 130074, 130323, 130577 };
-	for (size_t i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
+	129039, 129040, 129041, 129284, 129285, 129540, 129793, 129794, 129795, 129797, 129798, 129801, 129802, 129808, 129809, 129810, 130065, 130074, 130323, \
+	130577 };
+	for (int i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
 		if (nmeafastMessages[i] == header.pgn) {
 			return TRUE;
 		}
@@ -779,6 +786,7 @@ bool TwoCanDevice::IsFastMessage(const CanHeader header) {
 // Determine if message is a single frame message (if so parse it) otherwise
 // Assemble the sequence of frames into a multi-frame Fast Message
 void TwoCanDevice::AssembleFastMessage(const CanHeader header, const byte *payload) {
+
 	if (IsFastMessage(header) == TRUE) {
 		int position;
 		position = MapFindMatchingEntry(header, payload[0]);
@@ -1094,6 +1102,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		
 			case 60928: // Address Claim
 				// BUG BUG The bastards are using an address claim as a heartbeat !!
+				wxLogMessage("TwoCan Device, ISO Request for Address Claim");
 				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
 					int returnCode;
 					returnCode = SendAddressClaim(networkAddress);
@@ -1118,11 +1127,22 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 				break;
 		
 			case 126996: // Product Information 
+				wxLogMessage("TwoCan Device, ISO Request for Product Info");
 				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
 					int returnCode;
 					returnCode = SendProductInformation();
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
 						wxLogMessage("TwoCan Device, Error Sending Product Information: %lu", returnCode);
+					}
+				}
+				break;
+		
+			case 126998: // Configuration Information
+				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
+					int returnCode;
+					returnCode = SendConfigurationInformation();
+					if (returnCode != TWOCAN_RESULT_SUCCESS) {
+						wxLogMessage("TwoCan Device, Error Sending Configuration Information: %lu", returnCode);
 					}
 				}
 				break;
@@ -1283,8 +1303,12 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		result = FALSE;
 		break;
 
+case 127237: // Heading/Track control
+		result = DecodePGN127237(payload, &nmeaSentences);
+		break;
+
 	case 127245: // Rudder
-		if (supportedPGN & FLAGS_RDR) {
+		if (supportedPGN & FLAGS_RSA) {
 			result = DecodePGN127245(payload, &nmeaSentences);
 		}
 		break;
@@ -1491,6 +1515,18 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		}
 		break;
 	
+	case 130065: // Route & Waypoint Service - Route List
+		if (supportedPGN & FLAGS_NAV) {
+			result = DecodePGN130065(payload, &nmeaSentences);
+		}
+		break;
+
+	case 130074: // Route & Waypoint service - Waypoint List
+		if (supportedPGN & FLAGS_NAV) {
+			result = DecodePGN130074(payload, &nmeaSentences);
+		}
+		break;
+	
 	case 130306: // Wind data
 		if (supportedPGN & FLAGS_MWV) {
 			result = DecodePGN130306(payload, &nmeaSentences);
@@ -1498,25 +1534,25 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		break;
 	
 	case 130310: // Environmental Parameters
-		if (supportedPGN & FLAGS_MWT) {
+		if (supportedPGN & FLAGS_MTW) {
 			result = DecodePGN130310(payload, &nmeaSentences);
 		}
 		break;
 		
 	case 130311: // Environmental Parameters (supercedes 130310)
-		if (supportedPGN & FLAGS_MWT) {
+		if (supportedPGN & FLAGS_MTW) {
 			result = DecodePGN130311(payload, &nmeaSentences);
 		}
 		break;
 	
 	case 130312: // Temperature
-		if (supportedPGN & FLAGS_MWT) {
+		if (supportedPGN & FLAGS_MTW) {
 			result = DecodePGN130312(payload, &nmeaSentences);
 		}
 		break;
 		
 	case 130316: // Temperature Extended Range
-		if (supportedPGN & FLAGS_MWT) {
+		if (supportedPGN & FLAGS_MTW) {
 			result = DecodePGN130316(payload, &nmeaSentences);
 		}
 		break;
@@ -1762,6 +1798,119 @@ int TwoCanDevice::DecodePGN126996(const byte *payload, ProductInformation *produ
 	else {
 		return FALSE;
 	}
+}
+
+// Decode PGN 127237 NMEA Heading/Track Control
+// $--APB,A,A,x.x,a,N,A,A,x.x,a,c--c,x.x,a,x.x,a*hh<CR><LF>
+// 
+
+//Status A OK, V reliable fix is not available
+
+//Status V = Loran-C Cycle Lock warning flag A = OK or not used
+
+//Cross Track Error Magnitude
+
+//Direction to steer, L or R
+
+//Cross Track Units, N = Nautical Miles
+
+//Status A = Arrival Circle Entered
+
+//Status A = Perpendicular passed at waypoint
+
+//Bearing origin to destination
+
+//M = Magnetic, T = True
+
+//Destination Waypoint ID
+
+//Bearing, present position to Destination
+
+//M = Magnetic, T = True
+
+//Heading to steer to destination waypoint
+
+//M = Magnetic, T = True
+
+
+bool TwoCanDevice::DecodePGN127237(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte rudderLimitExceeded; // 0 - No, 1 - Yes, 2 - Error, 3 - Unavailable
+		rudderLimitExceeded = (payload[0] & 0xC0) >> 6;
+
+		byte offHeadingLimitExceeded; // 0 - No, 1 - Yes, 2 - Error, 3 - Unavailable
+		offHeadingLimitExceeded = (payload[0] & 0x30) >> 4; 
+        
+		byte offTrackLimitExceeded;
+		offTrackLimitExceeded = (payload[0] & 0x0C) >> 2;
+        
+		byte overRide;
+		overRide = payload[0] & 0x03;
+		
+		byte steeringMode;
+		steeringMode = (payload[1] & 0xE0) >> 5;
+		// 0 - Main Steering
+		// 1 - Non-Follow-up Device
+		// 2 - Follow-up Device
+		// 3 - Heading Control Standalone
+		// 4 - Heading Control
+		// 5 - Track Control
+		
+		byte turnMode;
+		turnMode = (payload[1] & 0x1C) >> 2;
+        // 0 - Rudder Limit controlled
+        // 1 - turn rate controlled
+        // 2 - radius controlled
+		
+		byte headingReference;
+		headingReference = payload[1] & 0x03;
+		// 0 - True
+		// 1 - Magnetic
+		// 2 - Error
+		// 3 - Null
+		
+		byte reserved;
+		reserved = (payload[2] & 0xF8) >> 3;
+          
+		byte commandedRudderDirection;
+		commandedRudderDirection = payload[2] & 0x03;
+        // 0 - No Order
+		// 1 - Move to starboard
+		// 2 - Move to port
+		short commandedRudderAngle; //0.0001 radians
+		commandedRudderAngle = payload[3] | (payload[4] << 8);
+		
+		unsigned short headingToSteer; //0.0001 radians
+		headingToSteer = payload[5] | (payload[6] << 8);
+        
+		unsigned short track; //0.0001 radians
+		track = payload[7] | (payload[8] << 8);
+
+		unsigned short rudderLimit; //0.0001 radians
+		rudderLimit = payload[9] | (payload[10] << 8);
+
+		unsigned short offHeadingLimit; // 0.0001 radians
+		offHeadingLimit = payload[11] | (payload[12] << 8);
+		  
+		short radiusOfTurn; // 0.0001 radians
+		radiusOfTurn = payload[13] | (payload[14] << 8);
+		  
+		short rateOfTurn; // 3.125e-05
+		rateOfTurn = payload[15] | (payload[16] << 8); 
+
+        short offTrackLimit; //in metres (or is it 0.01 m)??
+		offTrackLimit = payload[17] | (payload[18] << 8); 
+		
+		unsigned short vesselHeading; // 0.0001 radians
+		vesselHeading = payload[19] | (payload[20] << 8); 
+
+		nmeaSentences->push_back(wxString::Format("$IIAPB,A,A,%0.2f,%c,N,,,%02f,%c ", \
+		 fabs(CONVERT_METRES_NAUTICAL_MILES * offTrackLimit),offTrackLimit < 0? 'L':'R', \
+		 RADIANS_TO_DEGREES((float)headingToSteer / 10000), \
+		 headingReference == 0 ? 'T' : headingReference == 1 ? 'M' : char(0) ));
+	}
+	return TRUE;
 }
 
 // Decode PGN 127245 NMEA Rudder
@@ -2145,21 +2294,21 @@ bool TwoCanDevice::DecodePGN127489(const byte *payload, std::vector<wxString> *n
 			switch (engineInstance) {
 			case 0:
 				if (IsMultiEngineVessel) {
-					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,PORT,C,%.2f,C,PORT,U,%.2f,V,PORT", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,PORT,C,%.2f,C,PORT,U,%.2f,V,PORT", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) - CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 					// Type G = Generic, I'm defining units as H to define hours
 					nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,PORT", (float)totalEngineHours / 3600));
 				}
 				else {
-					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+					nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) - CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 					nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,MAIN", (float)totalEngineHours / 3600));
 				}
 				break;
 			case 1:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,STBD,C,%.2f,C,STBD,U,%.2f,V,STBD", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,STBD,C,%.2f,C,STBD,U,%.2f,V,STBD", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) - CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 				nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,STBD", (float)totalEngineHours / 3600));
 				break;
 			default:
-				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) + CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
+				nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,MAIN,C,%.2f,C,MAIN,U,%.2f,V,MAIN", (float)(oilPressure * 100.0f), (float)(engineTemperature * 0.01f) - CONST_KELVIN, (float)(alternatorPotential * 0.01f)));
 				nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,MAIN", (float)totalEngineHours / 3600));
 				break;
 			}
@@ -2179,7 +2328,7 @@ bool TwoCanDevice::DecodePGN127505(const byte *payload, std::vector<wxString> *n
 	if (payload != NULL) {
 
 		byte instance;
-		instance = payload[0] & 0xF;
+		instance = payload[0] & 0x0F;
 
 		byte tankType;
 		tankType = (payload[0] & 0xF0) >> 4;
@@ -2193,23 +2342,24 @@ bool TwoCanDevice::DecodePGN127505(const byte *payload, std::vector<wxString> *n
 		if (TwoCanUtils::IsDataValid(tankLevel)) {
 			switch (tankType) {
 				// BUG BUG Using Transducer Type = V (Volume) but units = P to indicate percentage rather than M (Cubic Meters)
-				case 0:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,FUEL", (float)tankLevel * 0.025f));
+				// BUG BUG Consider change to NMEA 0183 v4.11 Transducer Names & Units
+				case TANK_FUEL:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,FUEL", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 1:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,H20", (float)tankLevel * 0.025f));
+				case TANK_FRESHWATER:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,H20", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 2:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,GREY", (float)tankLevel * 0.025f));
+				case TANK_WASTEWATER:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,GREY", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 3:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,LIVE", (float)tankLevel * 0.025f));
+				case TANK_LIVEWELL:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,LIVE", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 4:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,OIL", (float)tankLevel * 0.025f));
+				case TANK_OIL:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,OIL", (float)tankLevel / QUARTER_PERCENT));
 					break;
-				case 5:
-					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,BLK", (float)tankLevel * 0.025f));
+				case TANK_BLACKWATER:
+					nmeaSentences->push_back(wxString::Format("$IIXDR,V,%.2f,P,BLK", (float)tankLevel / QUARTER_PERCENT));
 					break;
 			}
 			return TRUE;
@@ -2248,11 +2398,11 @@ bool TwoCanDevice::DecodePGN127508(const byte *payload, std::vector<wxString> *n
 		if ((TwoCanUtils::IsDataValid(batteryVoltage)) && (TwoCanUtils::IsDataValid(batteryCurrent))) {
 			if (batteryInstance == 0) { 
 				nmeaSentences->push_back(wxString::Format("$IIXDR,U,%.2f,V,STRT,U,%.2f,A,STRT,C,%.2f,C,STRT", 
-				(float)(batteryVoltage * 0.01f), (float)(batteryCurrent * 0.1f), (float)(batteryTemperature * 0.01f) + CONST_KELVIN));			
+				(float)(batteryVoltage * 0.01f), (float)(batteryCurrent * 0.1f), (float)(batteryTemperature * 0.01f) - CONST_KELVIN));			
 			}
 			else { // Assume any instance other than 0 is a house or auxilliary battery
 				nmeaSentences->push_back(wxString::Format("$IIXDR,U,%.2f,V,HOUS,U,%.2f,A,HOUS,C,%.2f,C,HOUS", 
-				(float)(batteryVoltage * 0.01f), (float)(batteryCurrent * 0.1f), (float)(batteryTemperature * 0.01f) + CONST_KELVIN));			
+				(float)(batteryVoltage * 0.01f), (float)(batteryCurrent * 0.1f), (float)(batteryTemperature * 0.01f) - CONST_KELVIN));			
 			}
 			return TRUE;
 		}
@@ -2281,6 +2431,12 @@ bool TwoCanDevice::DecodePGN128259(const byte *payload, std::vector<wxString> *n
 		unsigned short speedGroundReferenced;
 		speedGroundReferenced = payload[3] | (payload[4] << 8);
 		
+		byte referenceType;
+		referenceType = payload[5] & 0x07;
+
+		unsigned short direction;
+		direction = payload[6] | (payload[7] << 8);
+
 		if (TwoCanUtils::IsDataValid(speedWaterReferenced)) {
 
 			// BUG BUG Maintain heading globally from other sources to insert corresponding values into sentence	
@@ -2306,19 +2462,20 @@ bool TwoCanDevice::DecodePGN128267(const byte *payload, std::vector<wxString> *n
 		byte sid;
 		sid = payload[0];
 
-		unsigned short depth;
-		depth = payload[1] | (payload[2] << 8);
+		unsigned int depth; // /100
+		depth = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
-		short offset;
-		offset = payload[3] | (payload[4] << 8);
+		short offset; // /1000
+		offset = payload[5] | (payload[6] << 8);
 
-		unsigned short maxRange;
-		maxRange = payload[5] | (payload[6] << 8);
+		byte maxRange; // * 10
+		maxRange = payload[7];
 
 		if (TwoCanUtils::IsDataValid(depth)) {
 			
-			// return wxString::Format("$IIDPT,%.2f,%.2f,%.2f", (float)depth / 100, (float)offset / 100, \
-			//	((maxRange != 0xFFFF) && (maxRange > 0)) ? maxRange / 100 : (int)NULL);
+			// BUG BUG FIX
+			//nmeaSentences->push_back(wxString::Format("$IIDPT,%.2f,%.2f,%.2f", (float)depth / 100, (float)offset / 100, \
+			//((maxRange != 0xFFFF) && (maxRange > 0)) ? maxRange / 100 : (int)NULL);
 		
 			// OpenCPN Dashboard only accepts DBT sentence
 			nmeaSentences->push_back(wxString::Format("$IIDBT,%.2f,f,%.2f,M,%.2f,F", CONVERT_METRES_FEET * (double)depth / 100, \
@@ -2567,8 +2724,8 @@ bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *n
 			byte fixType;
 			byte fixMethod;
 
-			fixType = (payload[31] & 0xF0) >> 4;
 			fixMethod = payload[31] & 0x0F;
+			fixType = (payload[31] & 0xF0) >> 4;
 
 			byte fixIntegrity;
 			fixIntegrity = payload[32] & 0x03;
@@ -3272,25 +3429,25 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 		sid = payload[0];
 
 		unsigned short distance;
-		distance = payload[1] | (payload[2] << 8);
+		distance = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		byte bearingRef; // Magnetic or True
-		bearingRef = payload[3] & 0xC0;
+		bearingRef = payload[5] & 0xC0;
 
 		byte perpendicularCrossed; // Yes or No
-		perpendicularCrossed = payload[3] & 0x30;
+		perpendicularCrossed = payload[5] & 0x30;
 
 		byte circleEntered; // Yes or No
-		circleEntered = payload[3] & 0x0C;
+		circleEntered = payload[5] & 0x0C;
 
 		byte calculationType; //Great Circle or Rhumb Line
-		calculationType = payload[3] & 0x3C;
+		calculationType = payload[5] & 0x3C;
 
 		unsigned int secondsSinceMidnight;
-		secondsSinceMidnight = payload[4] | (payload[5] << 8) | (payload[6] << 16) | (payload[7] << 24);
+		secondsSinceMidnight = payload[6] | (payload[7] << 8) | (payload[8] << 16) | (payload[9] << 24);
 
 		unsigned short daysSinceEpoch;
-		daysSinceEpoch = payload[8] | (payload[9] << 8);
+		daysSinceEpoch = payload[10] | (payload[11] << 8);
 
 		wxDateTime tm;
 		tm.ParseDateTime("00:00:00 01-01-1970");
@@ -3298,31 +3455,31 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
 		unsigned short bearingOrigin;
-		bearingOrigin = (payload[10] | (payload[11] << 8)) * 0.001;
+		bearingOrigin = (payload[12] | (payload[13] << 8)) * 0.001;
 
 		unsigned short bearingPosition;
-		bearingPosition = (payload[12] | (payload[13] << 8)) * 0.001;
+		bearingPosition = (payload[14] | (payload[15] << 8)) * 0.001;
 
 		int originWaypointId;
-		originWaypointId = payload[14] | (payload[15] << 8) | (payload[16] << 16) | (payload[17] << 24);
+		originWaypointId = payload[16] | (payload[17] << 8) | (payload[18] << 16) | (payload[19] << 24);
 
 		int destinationWaypointId;
-		destinationWaypointId = payload[18] | (payload[19] << 8) | (payload[20] << 16) | (payload[21] << 24);
+		destinationWaypointId = payload[20] | (payload[21] << 8) | (payload[22] << 16) | (payload[23] << 24);
 
 		double latitude;
-		latitude = ((payload[22] | (payload[23] << 8) | (payload[24] << 16) | (payload[25] << 24))) * 1e-7;
+		latitude = ((payload[24] | (payload[25] << 8) | (payload[26] << 16) | (payload[27] << 24))) * 1e-7;
 
 		int latitudeDegrees = trunc(latitude);
 		double latitudeMinutes = (fabs(latitude) - abs(latitudeDegrees)) * 60;
 
 		double longitude;
-		longitude = ((payload[26] | (payload[27] << 8) | (payload[28] << 16) | (payload[29] << 24))) * 1e-7;
+		longitude = ((payload[28] | (payload[29] << 8) | (payload[30] << 16) | (payload[31] << 24))) * 1e-7;
 
 		int longitudeDegrees = trunc(longitude);
 		double longitudeMinutes = (fabs(longitude) - abs(longitudeDegrees)) * 60;
 
 		int waypointClosingVelocity;
-		waypointClosingVelocity = (payload[30] | (payload[31] << 8)) * 0.01;
+		waypointClosingVelocity = (payload[32] | (payload[33] << 8)) * 0.01;
 
 		wxDateTime timeNow;
 		timeNow = wxDateTime::Now();
@@ -4384,6 +4541,137 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 	}
 }
 
+// decode PGN 130068 NMEA Route & Waypoint Service - Route List
+bool TwoCanDevice::DecodePGN130065(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+		
+		byte startRouteId;
+		startRouteId = payload[0];
+		
+		byte nItems;
+		nItems = payload[1];
+
+        byte nRoutes;
+		nRoutes = payload[2];
+
+        byte databaseId;
+		databaseId = payload[3];
+		
+		unsigned int index;
+		index = 4;
+
+		for (unsigned int i = 0; i < nItems; i++) {
+			
+			byte routeId;
+			routeId = payload[index];
+			index += 1;
+
+			// BUG BUG Are these null terminated ??
+			char routeName[8];
+			memcpy(routeName, &payload[index], 8);
+			index += 8;
+
+			byte wpIdMethod;
+			wpIdMethod = (payload[index] & 0x30) >> 4;
+
+			byte routeStatus;
+			routeStatus = (payload[index] & 0xC0 ) >> 6;
+			index += 1;
+
+			if (enableWaypoint) {
+				PlugIn_Route route;
+				route.m_NameString = routeName;
+				route.m_GUID = GetNewGUID();
+				// What to do with
+				// route.m_StartString;
+    			// route.m_EndString;
+				AddPlugInRoute(&route, true);
+			}
+
+		}
+          
+        
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	}
+
+}
+
+// Decode PGN 130074 NMEA Route & Waypoint Service - Waypoint List
+bool TwoCanDevice::DecodePGN130074(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte startingWaypointId;
+		startingWaypointId = payload[0];
+
+        byte items;
+		items = payload[1];
+
+        unsigned short validItems;
+		validItems = payload[2] | (payload[3] << 8);
+
+		byte databaseId;
+		databaseId = payload[4];
+
+        byte reserved;
+		reserved = payload[5];
+
+		unsigned int index;
+		index = 6;
+
+        for (size_t i = 0; i < items; i++) {
+			byte waypointId;
+			waypointId = payload[index];
+			index += 1;
+
+			// BUG BUG Is this NULL teminated ??
+			char waypointName[8];
+			memcpy(waypointName, &payload[index], 8);
+			index += 8;
+
+			double latitude;
+			latitude = (payload[index] | (payload[index +1] << 8) | (payload[index + 2] << 16) | (payload[index +3] << 24)) * 1e-7;
+			int latitudeDegrees = trunc(latitude);
+			double latitudeMinutes = fabs(latitude - latitudeDegrees);
+			index += 4;
+
+			double longitude;
+			longitude = (payload[index] | (payload[index +1] << 8) | (payload[index + 2] << 16) | (payload[index +3] << 24)) * 1e-7;
+			int longitudeDegrees = trunc(longitude);
+			double longitudeMinutes = fabs(longitude - longitudeDegrees);
+
+			index += 4;
+
+			// Generate the NMEA 183 WPL sentence, although it is not used by OpenCPN.
+			nmeaSentences->push_back(wxString::Format("$IIWPL,%02d%05.2f,%c,%03d%05.2f,%c,%d",
+				abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S',
+				abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W',
+				waypointId));
+
+			// Insert the waypoint directly into OpenCPN as it does not parse WPL sentences.
+			// we can't retrieve waypoints, so no way to avoid duplication......
+			if (enableWaypoint) {
+				PlugIn_Waypoint waypoint;
+				waypoint.m_IsVisible = true;
+				waypoint.m_MarkName = waypointName;
+				// BUG BUG Should have a UI thingy to specify the default symbol
+				waypoint.m_IconName = "Symbol_Triangle";
+				waypoint.m_GUID = GetNewGUID();
+				waypoint.m_lat = latitude; 
+				waypoint.m_lon = longitude;
+				AddSingleWaypoint(&waypoint, true);
+			}
+		}
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	}
+}
+
+
 // Decode PGN 130306 NMEA Wind
 // $--MWV,x.x,a,x.x,a,A*hh<CR><LF>
 bool TwoCanDevice::DecodePGN130306(const byte *payload, std::vector<wxString> *nmeaSentences) {
@@ -4449,7 +4737,7 @@ bool TwoCanDevice::DecodePGN130310(const byte *payload, std::vector<wxString> *n
 		airPressure = payload[5] | (payload[6] << 8);
 		
 		if (TwoCanUtils::IsDataValid(waterTemperature)) {
-			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", ((float)waterTemperature * 0.01f) + CONST_KELVIN));
+			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", ((float)waterTemperature * 0.01f) - CONST_KELVIN));
 			return TRUE;
 		}
 		else {
@@ -4486,7 +4774,7 @@ bool TwoCanDevice::DecodePGN130311(const byte *payload, std::vector<wxString> *n
 		pressure = payload[6] | (payload[7] << 8);
 		
 		if ((temperatureSource == TEMPERATURE_SEA) && (TwoCanUtils::IsDataValid(temperature))) {
-			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", ((float)temperature * 0.01f) + CONST_KELVIN));
+			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", ((float)temperature * 0.01f) - CONST_KELVIN));
 			return TRUE;
 		}
 		else {
@@ -4520,7 +4808,7 @@ bool TwoCanDevice::DecodePGN130312(const byte *payload, std::vector<wxString> *n
 		setTemperature = payload[5] | (payload[6] << 8);
 
 		if ((source == TEMPERATURE_SEA) && (TwoCanUtils::IsDataValid(actualTemperature))) {
-			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", ((float)actualTemperature * 0.01f) + CONST_KELVIN));
+			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", ((float)actualTemperature * 0.01f) - CONST_KELVIN));
 			return TRUE;
 		}
 		else {
@@ -4553,7 +4841,7 @@ bool TwoCanDevice::DecodePGN130316(const byte *payload, std::vector<wxString> *n
 		setTemperature = payload[6] | (payload[7] << 8);
 
 		if ((source == TEMPERATURE_SEA) && (actualTemperature < 0xFFFFFD)) {
-			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", ((float)actualTemperature * 0.001f) + CONST_KELVIN));
+			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", ((float)actualTemperature * 0.001f) - CONST_KELVIN));
 			return TRUE; 
 		}
 		else {
@@ -4672,7 +4960,7 @@ bool TwoCanDevice::DecodePGN130323(const byte *payload, std::vector<wxString> *n
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 		
 		nmeaSentences->push_back(wxString::Format("$IIMDA,,I,%.2f,B,%.1f,C,,C,,,,C,%.2f,T,,M,%.2f,N,%.2f,M", atmosphericPressure, \
-		((float)ambientTemperature * 0.01f) + CONST_KELVIN, RADIANS_TO_DEGREES((float)windAngle / 10000 ), \
+		((float)ambientTemperature * 0.01f) - CONST_KELVIN, RADIANS_TO_DEGREES((float)windAngle / 10000 ), \
 		(double)windSpeed * CONVERT_MS_KNOTS / 100, (double)windSpeed / 100));
 		
 		return TRUE;
@@ -4742,13 +5030,7 @@ int TwoCanDevice::SendISORequest(const byte destination, const unsigned int pgn)
 	payload[1] = (pgn >> 8) & 0xFF;
 	payload[2] = (pgn >> 16) & 0xFF;
 	
-#if defined (__WXMSW__)
-	return (writeFrame(id, 3, payload));
-#endif
-	
-#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-	return (adapterInterface->Write(id,3,payload));
-#endif
+return TransmitFrame(id, &payload[0]);
 }
 
 // Claim an Address on the NMEA 2000 Network
@@ -4787,13 +5069,7 @@ int TwoCanDevice::SendAddressClaim(const unsigned int sourceAddress) {
 	// And while we're at it, calculate my deviceName (aka NMEA 'NAME')
 	deviceName = (unsigned long long)payload[0] | ((unsigned long long)payload[1] << 8) | ((unsigned long long)payload[2] << 16) | ((unsigned long long)payload[3] << 24) | ((unsigned long long)payload[4] << 32) | ((unsigned long long)payload[5] << 40) | ((unsigned long long)payload[6] << 48) | ((unsigned long long)payload[7] << 54);
 	
-#if defined (__WXMSW__)
-	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
-#endif
-	
-#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-	return (adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&payload[0]));
-#endif
+	return TransmitFrame(id, &payload[0]);
 }
 
 // Transmit NMEA 2000 Heartbeat
@@ -4826,13 +5102,7 @@ int TwoCanDevice::SendHeartbeat() {
 		heartbeatCounter = 0;
 	}
 	
-#if defined (__WXMSW__)
-	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
-#endif
-
-#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-	return (adapterInterface->Write(id, CONST_PAYLOAD_LENGTH, &payload[0]));
-#endif
+	return TransmitFrame(id, &payload[0]);
 
 }
 
@@ -4887,6 +5157,66 @@ int TwoCanDevice::SendProductInformation() {
 	delete mid;
 
 	return FragmentFastMessage(&header,sizeof(payload),&payload[0]);
+
+}
+
+// BUG BUG REMOVE
+// Transmit NMEA 2000 Configuration Information
+int TwoCanDevice::SendConfigurationInformation() {
+	CanHeader header;
+	header.pgn = 126998;
+	header.destination = CONST_GLOBAL_ADDRESS;
+	header.source = networkAddress;
+	header.priority = CONST_PRIORITY_MEDIUM;
+	
+	// 3 messages each 32 bytes in length (and size & encoding byte)
+	// Others have mentioned max len is 70 characters ??
+	std::vector<byte> payload(102, 0x20);
+		
+	std::string message;
+	int index;
+
+	message = "TwoCan Plugin 2.0";
+	
+	index = 0; // Begin at the beginning !
+	
+	payload.at(index) = 34;
+	index +=1;
+	
+	payload.at(index) = 1; // ASCII Encoded String
+	index +=1;
+	
+	for (size_t i = 0; i < message.length(); i++) {
+		payload.at(index + i) = message.at(i);
+	}
+	index +=32;
+	
+	message = "OpenCPN";
+	
+	payload.at(index) = 34;
+	index +=1;
+	
+	payload.at(index) = 1; // ASCII Encoded String
+	index +=1;
+	
+	for (size_t i = 0; i < message.length(); i++) {
+		payload.at(index + i) = message.at(i);
+	}
+	index +=32;
+
+	message = "Something";
+	
+	payload.at(index) = 34;
+	index +=1;
+	
+	payload.at(index) = 1; // ASCII Encoded String
+	index +=1;
+	
+	for (size_t i = 0; i < message.length(); i++) {
+		payload.at(index + i) = message.at(i);
+	}
+	
+	return FragmentFastMessage(&header,payload.size(),payload.data());
 
 }
 
@@ -4962,14 +5292,8 @@ int TwoCanDevice::SendISOResponse(unsigned int sender, unsigned int pgn) {
 	payload[6] = (pgn >> 8) & 0xFF;
 	payload[7] = (pgn >> 16) & 0xFF;
 	
-#if defined (__WXMSW__)
-	return (writeFrame(id, CONST_PAYLOAD_LENGTH, &payload[0]));
-#endif
-	
-#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-	return (adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&payload[0]));
-#endif
- 
+	return TransmitFrame(id, &payload[0]);
+
 }
 
 // Shamelessly copied from somewhere, another plugin ?
@@ -5006,13 +5330,7 @@ int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLen
 	data[1] = payloadLength;
 	memcpy(&data[2], &payload[0], 6);
 	
-#if defined (__WXMSW__)
-		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
-#endif
-	
-#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-	returnCode = adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
-#endif
+	returnCode = TransmitFrame(id, &data[0]);
 
 	if (returnCode != TWOCAN_RESULT_SUCCESS) {
 		wxLogError(_T("TwoCan Device, Error sending fast message frame"));
@@ -5031,13 +5349,7 @@ int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLen
 		data[0] = sid;
 		memcpy(&data[1],&payload[6 + (i * 7)],7);
 		
-#if defined (__WXMSW__)
-		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
-#endif
-		
-#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-		returnCode = adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
-#endif
+		returnCode = TransmitFrame(id, &data[0]);
 
 		if (returnCode != TWOCAN_RESULT_SUCCESS) {
 			wxLogError(_T("TwoCan Device, Error sending fast message frame"));
@@ -5056,15 +5368,9 @@ int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLen
 		data[0] = sid;
 		memset(&data[1],0xFF,7);
 		memcpy(&data[1], &payload[payloadLength - remainingBytes], remainingBytes );
+			
+		returnCode = TransmitFrame(id, &data[0]);
 		
-#if defined (__WXMSW__)
-		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
-#endif
-		
-#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-		returnCode = adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
-#endif
-
 		if (returnCode != TWOCAN_RESULT_SUCCESS) {
 			wxLogError(_T("TwoCan Device, Error sending fast message frame"));
 			// BUG BUG Should we log the frame ??
@@ -5075,7 +5381,25 @@ int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLen
 	return TWOCAN_RESULT_SUCCESS;
 }
 
+// Transmit a NMEA 2000 message
+// Called by the plugin for the gateway & autopilot functions.
+int TwoCanDevice::TransmitFrame(unsigned int id, byte *data) {
+	int returnCode;
+	const std::lock_guard<std::mutex> lock(writeMutex);
+
+	#if defined (__WXMSW__)
+		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
+#endif
 	
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	returnCode = adapterInterface->Write(id,CONST_PAYLOAD_LENGTH,&data[0]);
+#endif
+
+	return returnCode;
+
+}
+
+
 // Encode an 8 bit ASCII character using NMEA 0183 6 bit encoding
 char TwoCanDevice::AISEncodeCharacter(char value)  {
 		char result = value < 40 ? value + 48 : value + 56;

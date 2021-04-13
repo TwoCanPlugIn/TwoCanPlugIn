@@ -339,8 +339,6 @@ jobs:
             - run: ci/cloudsmith-upload.sh
     build-android-arm64:
         docker:
-        #- image: circleci/android:api-28-ndk@sha256:01744d97c0dd870acf6d724aca246306eec0c3b5f128fd27a1d7bb637dc521c1
-        #- image: circleci/android:api-28-ndk@sha256:5eda43632ee1accf6e3cf2c3980ce68e579552a8c90d8e1f6753c3862541f04e
         - image: circleci/android:api-28-ndk
         environment:
         - OCPN_TARGET:  android-arm64
@@ -354,7 +352,6 @@ jobs:
             - run: ci/cloudsmith-upload.sh
     build-android-armhf:
         docker:
-#        - image: circleci/android:api-28-ndk@sha256:01744d97c0dd870acf6d724aca246306eec0c3b5f128fd27a1d7bb637dc521c1
         - image: circleci/android:api-28-ndk
         environment:
         - OCPN_TARGET:  android-armhf
@@ -523,6 +520,7 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
+# Twoccan plugin is not developed or supported on Android
 #    build_15:
 #        when: <<pipeline.parameters.run_build_android_arm64>>
 #        jobs:

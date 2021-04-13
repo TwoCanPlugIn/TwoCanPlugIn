@@ -36,9 +36,9 @@ set(PACKAGE_CONTACT "twocanplugin@hotmail.com")
 set(PACKAGE "twocan_plugin")
 set(SHORT_DESCRIPTION "TwoCan Plugin, integrates OpenCPN with NMEA 2000 networks")
 set(LONG_DESCRIPTION "TwoCan Plugin, integrates OpenCPN with NMEA 2000 networks by converting NMEA 2000 messages to NMEA 183 sentences for use by OpenCPN") 
-set(VERSION_MAJOR "1")
-set(VERSION_MINOR "9")
-set(VERSION_PATCH "3")
+set(VERSION_MAJOR "2")
+set(VERSION_MINOR "0")
+set(VERSION_PATCH "0")
 set(VERSION_TWEAK "0")
 set(VERSION_DATE "10/04/2021")
 set(OCPN_MIN_VERSION "ov50")
@@ -60,7 +60,7 @@ set(CLOUDSMITH_USER "steven-adler")
 # set this if your cloudsmith repository name does not match your git repository name 
 set(CLOUDSMITH_BASE_REPOSITORY "twocanplugin")
 
-set(XML_INFO_URL "https://opencpn.org/wiki/dokuwiki/doku.php?id=opencpn:developer_manual:plugins:beta_plugins:twocan_pi")
+set(XML_INFO_URL "https://opencpn.org/wiki/dokuwiki/doku.php?id=opencpn:opencpn_user_manual:plugins:other:twocan_pi")
 set(XML_SUMMARY ${SHORT_DESCRIPTION})
 set(XML_DESCRIPTION ${LONG_DESCRIPTION})
 
@@ -130,9 +130,9 @@ add_definitions(-DPLUGIN_USE_SVG)
 ##endif(APPLE)
 
 ## Need api-16 for ocpn_plugin.h
-include_directories(BEFORE ${PROJECT_SOURCE_DIR}/api-16)
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/api-16)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/inc ${CMAKE_SOURCE_DIR}/src)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/inc ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/nmea183/src ${CMAKE_SOURCE_DIR}/nmea183/inc)
 
 SET(SOURCES src/twocanerror.cpp
             src/twocandevice.cpp
@@ -140,7 +140,11 @@ SET(SOURCES src/twocanerror.cpp
             src/twocansettings.cpp
             src/twocansettingsbase.cpp
             src/twocanutils.cpp
-            src/twocanicons.cpp)
+            src/twocanicons.cpp
+            src/twocanencoder.cpp
+            src/twocanautopilot.cpp
+            src/twocanautopilotdialog.cpp
+            src/twocanautopilotdialogbase.cpp)
 
 SET(HEADERS inc/twocanerror.h
             inc/twocandevice.h
@@ -148,7 +152,82 @@ SET(HEADERS inc/twocanerror.h
             inc/twocansettings.h
             inc/twocansettingsbase.h
             inc/twocanutils.h
-            inc/twocanicons.h)
+            inc/twocanicons.h
+            inc/twocanencoder.h
+            inc/twocanautopilot.h
+            inc/twocanautopilotdialog.h
+            inc/twocanautopilotdialogbase.h)
+
+SET(NMEA183_SRC nmea183/src/apb.cpp
+                nmea183/src/dbt.cpp
+                nmea183/src/dpt.cpp
+                nmea183/src/expid.cpp
+                nmea183/src/gga.cpp
+                nmea183/src/gll.cpp
+                nmea183/src/gpwpl.cpp
+                nmea183/src/gsv.cpp
+                nmea183/src/hdg.cpp
+                nmea183/src/hdm.cpp
+                nmea183/src/hdt.cpp
+                nmea183/src/hexvalue.cpp
+                nmea183/src/lat.cpp
+                nmea183/src/latlong.cpp
+                nmea183/src/long.cpp
+                nmea183/src/mtw.cpp
+                nmea183/src/mwv.cpp
+                nmea183/src/nmea0183.cpp
+                nmea183/src/response.cpp
+                nmea183/src/rmb.cpp
+                nmea183/src/rmc.cpp
+                nmea183/src/rot.cpp
+                nmea183/src/rpm.cpp
+                nmea183/src/rsa.cpp
+                nmea183/src/rte.cpp
+                nmea183/src/sentence.cpp
+                nmea183/src/talkerid.cpp
+                nmea183/src/vdm.cpp
+                nmea183/src/vdr.cpp
+                nmea183/src/vhw.cpp
+                nmea183/src/vlw.cpp
+                nmea183/src/vtg.cpp
+                nmea183/src/wpl.cpp
+                nmea183/src/xdr.cpp
+                nmea183/src/xte.cpp
+                nmea183/src/zda.cpp)
+
+SET(NMEA183_INC nmea183/inc/apb.hpp
+                nmea183/inc/dbt.hpp
+                nmea183/inc/dpt.hpp
+                nmea183/inc/gga.hpp
+                nmea183/inc/gll.hpp
+                nmea183/inc/gpwpl.hpp
+                nmea183/inc/gsv.hpp
+                nmea183/inc/hdg.hpp
+                nmea183/inc/hdm.hpp
+                nmea183/inc/hdt.hpp
+                nmea183/inc/latlong.hpp
+                nmea183/inc/mtw.hpp
+                nmea183/inc/mwv.hpp
+                nmea183/inc/nmea0183.h
+                nmea183/inc/nmea0183.hpp
+                nmea183/inc/response.hpp
+                nmea183/inc/rmb.hpp
+                nmea183/inc/rmc.hpp
+                nmea183/inc/rot.hpp
+                nmea183/inc/rpm.hpp
+                nmea183/inc/rsa.hpp
+                nmea183/inc/rte.hpp
+                nmea183/inc/satinfo.h
+                nmea183/inc/sentence.hpp
+                nmea183/inc/vdm.hpp
+                nmea183/inc/vdr.hpp
+                nmea183/inc/vhw.hpp
+                nmea183/inc/vlw.hpp
+                nmea183/inc/vtg.hpp
+                nmea183/inc/wpl.hpp
+                nmea183/inc/xdr.hpp
+                nmea183/inc/xte.hpp
+                nmea183/inc/zda.hpp)
 
 IF(UNIX AND NOT APPLE)
 
@@ -170,21 +249,24 @@ IF(APPLE)
         src/twocanlogreader.cpp
         src/twocanmacserial.cpp
         src/twocanmactoucan.cpp
+        src/twocanmackvaser.cpp
         src/twocaninterface.cpp)
 
     LIST(APPEND HEADERS
         inc/twocanlogreader.h
         inc/twocanmacserial.h
         inc/twocanmactoucan.h
+        inc/twocanmackvaser.h
         inc/twocaninterface.h)
 
-    # For Rusoku Toucan, Assumes the MacCan Rusoku headers have been installed in the default location
-    SET(RUSOKU_HEADER "/usr/local/include")
-    INCLUDE_DIRECTORIES(AFTER ${RUSOKU_HEADER})
+    # For Rusoku Toucan & Kvaser interfaces, The MacCan Rusoku & Kvaser headers have been manually copied to this location
+    # refer to ci/circleci-build-macos.sh under the Rusoku section
+    SET(MACCAN_HEADER "/usr/local/include")
+    INCLUDE_DIRECTORIES(AFTER ${MACCAN_HEADER})
 
 ENDIF(APPLE)
 
-ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SOURCES} ${HEADERS} )
+ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SOURCES} ${HEADERS} ${NMEA183_INC} ${NMEA183_SRC})
 
 IF(WIN32)
 	TARGET_LINK_LIBRARIES(${PACKAGE_NAME} iphlpapi)
@@ -194,21 +276,32 @@ IF(APPLE)
     # use runtime paths
     set(CMAKE_MACOSX_RPATH TRUE)
     
-    # Refer to circleci_build-macos as we build the Toucan library and copy the dylib to data/drivers
-    # So that is the location where will link, but will also need to specify the rpath
+    # Refer to ci/circleci_build-macos,sh as we build the Toucan & Kvaser library and copy the dylib to data/drivers
+    # So that is the location where it will be dynamically linked, but will also need to specify the rpath
 
     FIND_LIBRARY(RUSOKU_LIBRARY
     NAMES libTouCAN.dylib
     PATHS usr/local/lib
     )
 
-    TARGET_LINK_LIBRARIES(${PACKAGE_NAME} ${RUSOKU_LIBRARY})
+    FIND_LIBRARY(KVASER_LIBRARY
+    NAMES libKvaserCAN.dylib
+    PATHS usr/local/lib
+    )
+
+    TARGET_LINK_LIBRARIES(${PACKAGE_NAME} ${RUSOKU_LIBRARY} ${KVASER_LIBRARY})
 
     # As we install the Rusoku library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
     ADD_CUSTOM_COMMAND( POST_BUILD
       TARGET ${PACKAGE_NAME} 
       COMMAND install_name_tool -add_rpath "@loader_path/./../SharedSupport/plugins/${PACKAGE_NAME}/data/drivers" "lib${PACKAGE_NAME}.dylib"
       COMMAND install_name_tool -change libTouCAN.0.2.dylib @rpath/libTouCAN.0.2.dylib lib${PACKAGE_NAME}.dylib
+    )
+
+    # Similarly we install the Kvaser library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
+    ADD_CUSTOM_COMMAND( POST_BUILD
+      TARGET ${PACKAGE_NAME} 
+      COMMAND install_name_tool -change libKvaserCAN.0.1.dylib @rpath/llibKvaserCAN.0.1.dylib lib${PACKAGE_NAME}.dylib
     )
     
 ENDIF(APPLE)

@@ -44,6 +44,9 @@
 // For memcpy
 #include <string.h>
 
+// For transmitting N2K Messages
+#include <vector>
+
 // Some NMEA 2000 constants
 #define CONST_HEADER_LENGTH 4
 #define CONST_PAYLOAD_LENGTH 8
@@ -125,8 +128,8 @@
 #define CONVERT_METRES_NAUTICAL_MILES 0.000539957
 
 // Kelvin to celsius
-#define CONST_KELVIN -273.15
-#define CONVERT_KELVIN(x) (x + CONST_KELVIN )
+#define CONST_KELVIN 273.15
+#define CONVERT_KELVIN(x) (x - CONST_KELVIN )
 
 // NMEA 183 GPS Fix Modes
 #define GPS_MODE_AUTONOMOUS 'A' 
@@ -143,6 +146,13 @@
 
 #define GREAT_CIRCLE 0
 #define RHUMB_LINE 1
+
+#define TIME_SOURCE_GPS 0
+#define TIME_SOURCE_GLONASS 1
+#define TIME_SOURCE_RADIO 2
+#define TIME_SOURCE_CAESIUM 3
+#define TIME_SOURCE_RUBIDIUM 4
+#define TIME_SOURCE_CRYSTAL 5
 
 #define	GNSS_FIX_NONE 0
 #define	GNSS_FIX_GNSS 1
@@ -180,6 +190,15 @@
 #define	TEMPERATURE_FREEZER 13
 #define	TEMPERATURE_EXHAUST 14
 
+// Fluid levels
+#define TANK_FUEL 0
+#define TANK_FRESHWATER 1
+#define TANK_WASTEWATER 2
+#define TANK_LIVEWELL 3
+#define TANK_OIL 4
+#define TANK_BLACKWATER 5
+#define QUARTER_PERCENT 250 // Fluid levels are defined in qurater percent intervals
+
 
 // Bit values to determine what NMEA 2000 PGN's are converted to their NMEA 0183 equivalent
 // Warning must match order of items in Preferences Dialog !!
@@ -191,7 +210,7 @@
 #define FLAGS_GGA 32
 #define FLAGS_ZDA 64
 #define FLAGS_MWV 128
-#define FLAGS_MWT 256
+#define FLAGS_MTW 256
 #define FLAGS_DSC 512
 #define FLAGS_AIS 1024
 #define FLAGS_RTE 2048
@@ -200,7 +219,7 @@
 #define FLAGS_XDR 16384
 #define FLAGS_ENG 32768
 #define FLAGS_TNK 65536
-#define FLAGS_RDR 131072
+#define FLAGS_RSA 131072
 #define FLAGS_BAT 262144
 #define FLAGS_NAV 524288
 #define FLAGS_LOG 1048576
@@ -214,6 +233,19 @@
 #define FLAGS_LOG_YACHTDEVICES 4 // Found some samples from their Voyage Data Recorder
 #define FLAGS_LOG_CSV 5 // Comma Separted Variables
 
+// Bit values to determine in what Autpilot Model is selected
+#define FLAGS_AUTOPILOT_NONE 0
+#define FLAGS_AUTOPILOT_GARMIN 1 
+#define FLAGS_AUTOPILOT_RAYMARINE 2 
+#define FLAGS_AUTOPILOT_NAVICO 3 
+
+// Bit values to match 2000 Active Mode features and the options checklistbox control
+#define FLAGS_MODE_HEARTBEAT 0
+#define FLAGS_MODE_GATEWAY 1
+#define FLAGS_MODE_WAYPOINT 2
+#define FLAGS_MODE_MUSIC 3
+#define FLAGS_MODE_AUTOPILOT 4
+
 // All the NMEA 2000 data is transmitted as an unsigned char which for convenience sake, I call a byte
 typedef unsigned char byte;
 
@@ -224,6 +256,12 @@ typedef struct CanHeader {
 	byte destination;
 	unsigned int pgn;
 } CanHeader;
+
+// CAN v2.0 Message (used by TwoCanEncoder)
+typedef struct CanMessage {
+	CanHeader header;
+	std::vector<byte> payload;
+} CanMessage;
 
 // NMEA 2000 Product Information, transmitted in PGN 126996 NMEA Product Information
 typedef struct ProductInformation {

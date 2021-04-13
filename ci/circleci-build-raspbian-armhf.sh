@@ -40,7 +40,7 @@ rm -f build.sh
 if [ "$BUILD_ENV" = "raspbian" ]; then
     if [ "$OCPN_TARGET" = "buster-armhf" ]; then
         cat > build.sh << "EOF"
-        # cmake 3.16 has a bug that stops the build to use an older version
+        # cmake 3.16 has a bug that stops the build so use an older version
         install_packages cmake=3.13.4-1 cmake-data=3.13.4-1
 EOF
     else
