@@ -73,11 +73,12 @@ option(PLUGIN_USE_SVG "Use SVG graphics" ON)
 
 set(CMAKE_CXX_STANDARD 11)
 
+# Use local version of GLU library
+set(USE_LOCAL_GLU TRUE)
 # Prefer libGL.so to libOpenGL.so, see CMP0072
 set(OpenGL_GL_PREFERENCE "LEGACY")
-# Don't use local version of GLU library
-set(USE_LOCAL_GLU FALSE)
-option(USE_GL "Enable OpenGL support" OFF)
+#OpenGL support
+option(USE_GL "Enable OpenGL support" ON)
 message(STATUS "${CMLOC}USE_GL: ${USE_GL}")
 
 ## Define the build type
@@ -95,13 +96,15 @@ message(STATUS "${CMLOC}Build type: ${CMAKE_BUILD_TYPE}")
 
 project(${PACKAGE})
 
-include("cmake/PluginSetup.cmake")
+## Provide path to additional CMAKE files (extension is assumed to be .cmake)
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include("PluginSetup")
 
 ##
 ## ----- Modify section below if there are special requirements for the plugin ----- ##
 ##
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_VERBOSE_MAKEFILE "Activate verbose mode for make files" ON)
 
 option(Plugin_CXX11 "Use c++11" OFF)
 
@@ -110,7 +113,7 @@ option(Plugin_CXX11 "Use c++11" OFF)
 ## ----- do not change next section - needed to configure build process ----- ##
 ##
 
-include("cmake/PluginConfigure.cmake")
+include("PluginConfigure")
 
 ##
 ## ----- Change below to match project requirements for source, headers, etc. ----- ##
@@ -269,6 +272,7 @@ ENDIF(APPLE)
 ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SOURCES} ${HEADERS} ${NMEA183_INC} ${NMEA183_SRC})
 
 IF(WIN32)
+    # This library is used to obtain a MAC address and hence derive a NMEA 2000 Unique Id
 	TARGET_LINK_LIBRARIES(${PACKAGE_NAME} iphlpapi)
 ENDIF(WIN32)
 
@@ -310,7 +314,12 @@ ENDIF(APPLE)
 ## ----- do not change next section - needed to configure build process ----- ##
 ##
 
-include("cmake/PluginInstall.cmake")
-include("cmake/PluginLocalization.cmake")
-include("cmake/PluginPackage.cmake")
+include("PluginInstall")
+include("PluginLocalization")
+include("PluginPackage")
 
+message(STATUS "${CMLOC}include directories: ")
+get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+foreach(dir ${dirs})
+    message(STATUS "${CMLOC}dir='${dir}'")
+endforeach()

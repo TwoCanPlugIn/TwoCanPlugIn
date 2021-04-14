@@ -119,8 +119,8 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	// About Tab
 	bmpAbout->SetBitmap(wxBitmap(*_img_Toucan_64));
   
-	// BUG BUG Localization & version numbers
-	txtAbout->SetLabel(_T("TwoCan PlugIn for OpenCPN\nEnables some NMEA2000\xae data to be directly integrated with OpenCPN.\nSend bug reports to twocanplugin@hotmail.com"));
+	// BUG BUG Localization
+	txtAbout->SetLabel(wxString::Format("TwoCan PlugIn for OpenCPN\nEnables some NMEA2000\xae data to be directly integrated with OpenCPN.\nVersion: %d.%d.%d\nSend bug reports to twocanplugin@hotmail.com", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR, PLUGIN_VERSION_PATCH));
 
 	// Debug Tab
 	// BUG BUG Localization

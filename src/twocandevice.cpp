@@ -775,7 +775,7 @@ bool TwoCanDevice::IsFastMessage(const CanHeader header) {
 	static const unsigned int nmeafastMessages[] = { 65240, 126208, 126464, 126996, 126998, 127233, 127237, 127489, 127496, 127506, 128275, 129029, 129038, \
 	129039, 129040, 129041, 129284, 129285, 129540, 129793, 129794, 129795, 129797, 129798, 129801, 129802, 129808, 129809, 129810, 130065, 130074, 130323, \
 	130577 };
-	for (int i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
+	for (size_t i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
 		if (nmeafastMessages[i] == header.pgn) {
 			return TRUE;
 		}
