@@ -132,8 +132,8 @@ add_definitions(-DPLUGIN_USE_SVG)
 ##    option(PI_JSON_SCHEMA_VALIDATOR "Use JSON Schema validator" ON)
 ##endif(APPLE)
 
-## Need api-16 for ocpn_plugin.h
-INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/api-16)
+## Need following directory for ocpn_plugin.h
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/libs/ocpn-api)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/inc ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/nmea183/src ${CMAKE_SOURCE_DIR}/nmea183/inc)
 
