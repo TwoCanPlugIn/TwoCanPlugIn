@@ -37,18 +37,16 @@
 #include "twocanutils.h"
 
 #if defined (__APPLE__) && defined (__MACH__)
-#include "twocanlogreader.h"
-#include "twocanmacserial.h"
-#include "twocanmactoucan.h"
-#include "twocanmackvaser.h"
+	#include "twocanlogreader.h"
+	#include "twocanmacserial.h"
+	#include "twocanmactoucan.h"
+	#include "twocanmackvaser.h"
 #endif
 
 #if defined (__LINUX__)
-// For Linux , "baked in" classes for the Log File reader and SocketCAN interface
-#include "twocanlogreader.h"
-#include "twocansocket.h"
-// For logging to get time values
-#include <sys/time.h>
+	// For Linux , "baked in" classes for the Log File reader and SocketCAN interface
+	#include "twocanlogreader.h"
+	#include "twocansocket.h"
 #endif
 
 // STL
@@ -58,9 +56,6 @@
 #include <bitset>
 #include <iostream>
 #include <mutex>
-
-// For Apple & Linux logging and for Fast Message assembly to get time values
-#include <sys/time.h>
 
 // wxWidgets
 // BUG BUG work out which ones we really need
@@ -81,6 +76,8 @@
 #include <wx/stdpaths.h>
 
 #if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	// For Apple & Linux logging and for Fast Message assembly to get time values
+	#include <sys/time.h>
 	// redefine Windows safe snprintf function to an equivalent
 	#define _snprintf_s(a,b,c,...) snprintf(a,b,__VA_ARGS__)
 #endif
