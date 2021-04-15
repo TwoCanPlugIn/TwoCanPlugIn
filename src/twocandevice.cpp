@@ -825,12 +825,32 @@ void TwoCanDevice::MapInitialize(void) {
 // Lock a range of entries
 // BUG BUG Remove for production, just used for testing
 void TwoCanDevice::MapLockRange(const int start, const int end) {
-	struct timeval now;
-	gettimeofday(&now, NULL);
+
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	struct timeval currentTime;
+	gettimeofday(&currentTime, NULL);   
+#endif
+#if defined (__WXMSW__) 
+	FILETIME currentTime;
+	GetSystemTimeAsFileTime(&currentTime);
+
+	unsigned long long totalTime = currentTime.dwHighDateTime;
+	totalTime <<= 32;
+	totalTime |= currentTime.dwLowDateTime;
+	totalTime /= 10; // Windows file time is expressed in tenths of microseconds (or 100 nanoseconds)
+	totalTime -= 11644473600000000ULL; // convert from Windows epoch (1/1/1601) to Posix Epoch 1/1/1970	
+#endif
+
 	if (start < end)  {
 		for (int i = start; i < end; i++) {
 			fastMessages[i].isFree = FALSE;
+			#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
 			fastMessages[i].timeArrived = (now.tv_sec * 1e6 ) + now.tv_usec;
+			#endif
+			#if defined (__WXMSW__) 
+			fastMessages[i].timeArrived = totalTime;
+			#endif
+
 		}
 	}
 
