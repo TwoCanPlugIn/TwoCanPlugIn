@@ -29,10 +29,14 @@
 
 // For specific Windows functions & typedefs such as LPDWORD etc.
 #if defined (__WXMSW__)
-#include <windows.h>
+	#include <windows.h>
+	// IP helper API for GetMacAddress
+	#include <iphlpapi.h>
+#endif
 
-// IP helper API for GetMacAddress
-#include <iphlpapi.h>
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	// For Apple & Linux logging and for Fast Message assembly to get time values
+	#include <sys/time.h>
 #endif
 
 // For wxWidgets Pi
@@ -317,7 +321,9 @@ public:
 	// Convert a string of hex characters to the corresponding byte array
 	static int ConvertHexStringToByteArray(const byte *hexstr, const unsigned int len, byte *buf);
 	// Generates the ID for Fast Messages. 3 high bits are ID, lower 5 bits are the sequence number
-	byte GenerateID(unsigned char previousSID);
+	static byte GenerateID(unsigned char previousSID);
+	// Calculate the number of microsoeconds since Posix Epoch
+	static unsigned long long GetTimeInMicroseconds(void);
 	// BUG BUG Any other conversion functions required ??
 
 	// Used to generate the unique id for Windows versions (Note the Linux version is defined in twocansocket

@@ -826,31 +826,10 @@ void TwoCanDevice::MapInitialize(void) {
 // BUG BUG Remove for production, just used for testing
 void TwoCanDevice::MapLockRange(const int start, const int end) {
 
-#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-	struct timeval currentTime;
-	gettimeofday(&currentTime, NULL);   
-#endif
-#if defined (__WXMSW__) 
-	FILETIME currentTime;
-	GetSystemTimeAsFileTime(&currentTime);
-
-	unsigned long long totalTime = currentTime.dwHighDateTime;
-	totalTime <<= 32;
-	totalTime |= currentTime.dwLowDateTime;
-	totalTime /= 10; // Windows file time is expressed in tenths of microseconds (or 100 nanoseconds)
-	totalTime -= 11644473600000000ULL; // convert from Windows epoch (1/1/1601) to Posix Epoch 1/1/1970	
-#endif
-
 	if (start < end)  {
 		for (int i = start; i < end; i++) {
 			fastMessages[i].isFree = FALSE;
-			#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-			fastMessages[i].timeArrived = (now.tv_sec * 1e6 ) + now.tv_usec;
-			#endif
-			#if defined (__WXMSW__) 
-			fastMessages[i].timeArrived = totalTime;
-			#endif
-
+			fastMessages[i].timeArrived = TwoCanUtils::GetTimeInMicroseconds();
 		}
 	}
 
@@ -888,8 +867,6 @@ void TwoCanDevice::MapInsertEntry(const CanHeader header, const byte *data, cons
 
 	// Ensure that this is indeed the first frame of a fast message
 	if ((data[0] & 0x1F) == 0) {
-		struct timeval now;
-		gettimeofday(&now, NULL);
 		int totalDataLength; // will also include padding as we memcpy all of the frame, because I'm lazy
 		totalDataLength = (unsigned int)data[1];
 		totalDataLength += 7 - ((totalDataLength - 6) % 7);
@@ -897,7 +874,7 @@ void TwoCanDevice::MapInsertEntry(const CanHeader header, const byte *data, cons
 		fastMessages[position].sid = (unsigned int)data[0];
 		fastMessages[position].expectedLength = (unsigned int)data[1];
 		fastMessages[position].header = header;
-		fastMessages[position].timeArrived = (now.tv_sec * 1e6 ) + now.tv_usec;
+		fastMessages[position].timeArrived = TwoCanUtils::GetTimeInMicroseconds();;
 		fastMessages[position].isFree = FALSE;
 		// Remember to free after we have processed the final frame
 		fastMessages[position].data = (byte *)malloc(totalDataLength);
@@ -983,12 +960,10 @@ int TwoCanDevice::MapFindMatchingEntry(const CanHeader header, const byte sid) {
 
 // BUG BUG if this gets run in a separate thread, need to lock the fastMessages 
 int TwoCanDevice::MapGarbageCollector(void) {
-	struct timeval now;
-	gettimeofday(&now, NULL);
 	int staleEntries;
 	staleEntries = 0;
 	for (int i = 0; i < CONST_MAX_MESSAGES; i++) {
-		if ((fastMessages[i].isFree == FALSE) && (((now.tv_sec * 1e6 ) + now.tv_usec) - fastMessages[i].timeArrived > CONST_TIME_EXCEEDED)) {
+		if ((fastMessages[i].isFree == FALSE) &&  (TwoCanUtils::GetTimeInMicroseconds() - fastMessages[i].timeArrived > CONST_TIME_EXCEEDED)) {
 			staleEntries++;
 			free(fastMessages[i].data);
 			fastMessages[i].isFree = TRUE;

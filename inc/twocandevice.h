@@ -76,8 +76,6 @@
 #include <wx/stdpaths.h>
 
 #if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
-	// For Apple & Linux logging and for Fast Message assembly to get time values
-	#include <sys/time.h>
 	// redefine Windows safe snprintf function to an equivalent
 	#define _snprintf_s(a,b,c,...) snprintf(a,b,__VA_ARGS__)
 #endif
@@ -166,7 +164,7 @@ typedef int(*LPFNDLLWrite)(const unsigned int id, const int length, const byte *
 // Buffer used to re-assemble sequences of multi frame Fast Packet messages
 typedef struct FastMessageEntry {
 	byte isFree; // indicate whether this entry is free
-	unsigned int timeArrived; // time of last message.
+	unsigned long long timeArrived; // time of last message in microseconds.
 	CanHeader header; // the header of the message. Used to "map" the incoming fast message fragments
 	unsigned int sid; // message sequence identifier, used to check if a received message is the next message in the sequence
 	unsigned int expectedLength; // total data length obtained from first frame

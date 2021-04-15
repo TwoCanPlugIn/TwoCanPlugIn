@@ -175,3 +175,21 @@ int TwoCanUtils::GetUniqueNumber(unsigned long *uniqueNumber) {
 }
 
 #endif
+
+unsigned long long TwoCanUtils::GetTimeInMicroseconds() {
+	#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	struct timeval currentTime;
+	gettimeofday(&currentTime, NULL);   
+	return (currentTime.tv_sec * 1e6 ) + currentTime.tv_usec;
+#endif
+#if defined (__WXMSW__) 
+	FILETIME currentTime;
+	GetSystemTimeAsFileTime(&currentTime);
+	unsigned long long totalTime = currentTime.dwHighDateTime;
+	totalTime <<= 32;
+	totalTime |= currentTime.dwLowDateTime;
+	totalTime /= 10; // Windows file time is expressed in tenths of microseconds (or 100 nanoseconds)
+	totalTime -= 11644473600000000ULL; // convert from Windows epoch (1/1/1601) to Posix Epoch 1/1/1970	
+	return totalTime;
+#endif
+}
