@@ -120,7 +120,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	bmpAbout->SetBitmap(wxBitmap(*_img_Toucan_64));
   
 	// BUG BUG Localization
-	txtAbout->SetLabel(wxString::Format("TwoCan PlugIn for OpenCPN\nEnables some NMEA2000\xae data to be directly integrated with OpenCPN.\nVersion: %d.%d.%d\nSend bug reports to twocanplugin@hotmail.com", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR, PLUGIN_VERSION_PATCH));
+	txtAbout->SetLabel(_("TwoCan PlugIn for OpenCPN\nEnables some NMEA2000\u00AE data to be directly integrated with OpenCPN.\nSend bug reports to twocanplugin@hotmail.com"));
 
 	// Debug Tab
 	// BUG BUG Localization
@@ -179,7 +179,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
 	labelModelId->SetLabel(wxString::Format("Model ID: %s", PLUGIN_COMMON_NAME));
 	labelManufacturer->SetLabel("Manufacturer: TwoCan");
-	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %d.%d", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR));
+	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %d.%d.%d", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR, PLUGIN_VERSION_PATCH));
 	labelDevice->SetLabel(wxString::Format("Device Class: %d", CONST_DEVICE_CLASS));
 	labelFunction->SetLabel(wxString::Format("Device Function: %d", CONST_DEVICE_FUNCTION));
 
