@@ -229,7 +229,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	wxBoxSizer* sizerTextAbout;
 	sizerTextAbout = new wxBoxSizer( wxHORIZONTAL );
 
-	txtAbout = new wxStaticText( panelAbout, wxID_ANY, wxT("About BlahBlah"), wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE );
+	txtAbout = new wxStaticText( panelAbout, wxID_ANY, wxT("About BlahBlah"), wxDefaultPosition, wxDefaultSize, 0);
 	txtAbout->Wrap( 400 );
 	sizerTextAbout->Add( txtAbout, 0, wxALL, 5 );
 
@@ -273,7 +273,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 
 	// Connect Events
 	this->Connect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
-	cmbInterfaces->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceInterfaces ), NULL, this );
+	cmbInterfaces->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoice ), NULL, this );
 	chkListPGN->Connect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
 	chkListPGN->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( TwoCanSettingsBase::OnRightClick ), NULL, this );
 	chkDeviceMode->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );
@@ -291,7 +291,7 @@ TwoCanSettingsBase::~TwoCanSettingsBase()
 {
 	// Disconnect Events
 	this->Disconnect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
-	cmbInterfaces->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceInterfaces ), NULL, this );
+	cmbInterfaces->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoice ), NULL, this );
 	chkListPGN->Disconnect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
 	chkListPGN->Disconnect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( TwoCanSettingsBase::OnRightClick ), NULL, this );
 	chkDeviceMode->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );

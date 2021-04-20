@@ -437,11 +437,6 @@ public:
  typedef opencpn_plugin* create_t(void*);
  typedef void destroy_t(opencpn_plugin*);
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Woverloaded-virtual"
-#endif
-
  class DECL_EXP opencpn_plugin_16 : public opencpn_plugin
  {
        public:
@@ -479,10 +474,6 @@ class DECL_EXP opencpn_plugin_18 : public opencpn_plugin
             virtual void SetPositionFixEx(PlugIn_Position_Fix_Ex &pfix);
 
 };
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 class DECL_EXP opencpn_plugin_19 : public opencpn_plugin_18
 {

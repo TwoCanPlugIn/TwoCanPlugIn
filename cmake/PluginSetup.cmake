@@ -24,7 +24,7 @@ endif(NOT ${PACKAGE} MATCHES "(.*)_pi")
 string(TOUPPER "${PACKAGE}" TITLE_NAME)
 
 # add library for use later - not used as we define the target link libraries in cmakelists.txt
-# add_library(${PACKAGE_NAME} SHARED)
+add_library(${PACKAGE_NAME} SHARED)
 
 project(${PACKAGE} VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.${VERSION_TWEAK})
 message(STATUS "${CMLOC}PROJECT_VERSION: ${PROJECT_VERSION}")

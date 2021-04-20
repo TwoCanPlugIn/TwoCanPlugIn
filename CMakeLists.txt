@@ -73,12 +73,11 @@ option(PLUGIN_USE_SVG "Use SVG graphics" ON)
 
 set(CMAKE_CXX_STANDARD 11)
 
-# Do not use local version of GLU library
-set(USE_LOCAL_GLU FALSE)
 # Prefer libGL.so to libOpenGL.so, see CMP0072
 set(OpenGL_GL_PREFERENCE "LEGACY")
-#OpenGL support
-option(USE_GL "Enable OpenGL support" ON)
+# Don't use local version of GLU library
+set(USE_LOCAL_GLU FALSE)
+option(USE_GL "Enable OpenGL support" OFF)
 message(STATUS "${CMLOC}USE_GL: ${USE_GL}")
 
 ## Define the build type
@@ -132,8 +131,8 @@ add_definitions(-DPLUGIN_USE_SVG)
 ##    option(PI_JSON_SCHEMA_VALIDATOR "Use JSON Schema validator" ON)
 ##endif(APPLE)
 
-## Need following directory for ocpn_plugin.h
-INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/libs/ocpn-api)
+## Need api-16 for ocpn_plugin.h
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/api-16)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/inc ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/nmea183/src ${CMAKE_SOURCE_DIR}/nmea183/inc)
 
@@ -269,7 +268,7 @@ IF(APPLE)
 
 ENDIF(APPLE)
 
-ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SOURCES} ${HEADERS} ${NMEA183_INC} ${NMEA183_SRC})
+TARGET_SOURCES(${PACKAGE_NAME} PUBLIC ${SOURCES} ${HEADERS} ${NMEA183_INC} ${NMEA183_SRC})
 
 IF(WIN32)
     # This library is used to obtain a MAC address and hence derive a NMEA 2000 Unique Id
