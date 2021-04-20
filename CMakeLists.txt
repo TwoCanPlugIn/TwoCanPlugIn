@@ -160,7 +160,7 @@ SET(HEADERS inc/twocanerror.h
             inc/twocanautopilotdialog.h
             inc/twocanautopilotdialogbase.h)
 
-SET(NMEA183_SRC nmea183/src/apb.cpp
+            SET(NMEA183_SRC nmea183/src/apb.cpp
                 nmea183/src/dbt.cpp
                 nmea183/src/dpt.cpp
                 nmea183/src/expid.cpp
@@ -268,7 +268,7 @@ IF(APPLE)
 
 ENDIF(APPLE)
 
-TARGET_SOURCES(${PACKAGE_NAME} PUBLIC ${SOURCES} ${HEADERS} ${NMEA183_INC} ${NMEA183_SRC})
+ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SOURCES} ${HEADERS} ${NMEA183_INC} ${NMEA183_SRC})
 
 IF(WIN32)
     # This library is used to obtain a MAC address and hence derive a NMEA 2000 Unique Id
@@ -301,11 +301,11 @@ IF(APPLE)
       COMMAND install_name_tool -change libTouCAN.0.2.dylib @rpath/libTouCAN.0.2.dylib lib${PACKAGE_NAME}.dylib
     )
 
-    # Similarly we install the Kvaser library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
+      # Similarly we install the Kvaser library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
     ADD_CUSTOM_COMMAND( POST_BUILD
-      TARGET ${PACKAGE_NAME} 
-      COMMAND install_name_tool -change libKvaserCAN.0.1.dylib @rpath/libKvaserCAN.0.1.dylib lib${PACKAGE_NAME}.dylib
-    )
+    TARGET ${PACKAGE_NAME} 
+    COMMAND install_name_tool -change libKvaserCAN.0.1.dylib @rpath/libKvaserCAN.0.1.dylib lib${PACKAGE_NAME}.dylib
+  )
     
 ENDIF(APPLE)
 
@@ -317,8 +317,3 @@ include("PluginInstall")
 include("PluginLocalization")
 include("PluginPackage")
 
-message(STATUS "${CMLOC}include directories: ")
-get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-foreach(dir ${dirs})
-    message(STATUS "${CMLOC}dir='${dir}'")
-endforeach()
