@@ -512,12 +512,12 @@ void TwoCan::StopDevice(void) {
 			if (threadError == wxTHREAD_NO_ERROR) {
 				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Result: %lu"), threadExitCode);
 				// BUG BUG Following is to prevent wxLog message "Error: Can not wait for thread termination (error 6: the handle is invalid.)"
-				// when runing on Windows, due to some bug in wxWidgets
-				#if defined (__WXMSW__) 
-					if (twoCanDevice->IsRunning()) {
-						twoCanDevice->Wait(wxTHREAD_WAIT_BLOCK);
-					}
-				#endif
+				// when runing on Windows, refer to https://forums.wxwidgets.org/viewtopic.php?t=13726. However no seems to be fixed
+				//#if defined (__WXMSW__) 
+				//	if (twoCanDevice->IsRunning()) {
+				//		twoCanDevice->Wait(wxTHREAD_WAIT_BLOCK);
+				//	}
+				//#endif
 				delete twoCanDevice;
 			}
 			else {
