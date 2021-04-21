@@ -1,0 +1,291 @@
+== TwoCan
+
+image::twocan_64.png[]
+
+by Steven Adler [Stevead]
+
+Inspired by Canboat and Openskipper, frustrated by those who claim
+“OpenCPN is not a hardware experimenter's platform”, and desiring to
+give back something to the OpenCPN community.
+
+TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000®
+networks. It enables some NMEA2000® data to be directly integrated with
+OpenCPN by converting some NMEA2000® messages to NMEA 183 sentences and
+inserting them into the OpenCPN data stream. TwoCan support Windows,
+Linux (including RaspberryPi) and Mac OSX.
+
+For Windows it uses a “plug-in” driver model to support different CAN
+bus adapters and different log file formats. +
+Four hardware adapters are currently supported:
+
+* https://www.kvaser.com/product/kvaser-leaf-light-hs-v2/[Kvaser
+Leaflight HS v2]
+* http://canable.io/[Canable Contact]
+* http://www.axiomtek.com/Default.aspx?MenuId=Products&FunctionId=ProductView&ItemId=8270&upcat=318&C=AX92903[Axiomtek
+AX92903]
+* http://www.rusoku.com/products/toucan-marine/[Rusoku Toucan Marine]
+
+Four log file formats are currently supported (with examples of their
+file format):
+
+* TwoCan: 0x01,0x01,0xF8,0x09,0x64,0xD9,0xDF,0x19,0xC7,0xB9,0x0A,0x04
+* Candump (Linux utilty): (1542794025.315691) can0
+1DEFFF03#A00FE59856050404
+* Kees Verruijt's Canboat:
+2014-08-14T19:00:00.042,3,128267,1,255,8,0B,F5,0D,8D,24,01,00,00
+* Yacht Devices: 19:07:47.607 R 0DF80503 00 2B 2D 9E 44 5A A0 A1
+
+For Windows, the default file name for each of the input log files are:
+twocanraw.log, candump.log, kees.log and yachtdevices.log respectively.
+
+For Linux it does not use a “plug-in” driver model, rather it uses two
+“baked in” classes that support the SocketCAN interface and a generic
+Log File Reader. Any CAN bus adapter that supports the SocketCAN
+interface “should” work. It has been tested with native interfaces (eg.
+can0), serial interfaces (eg. slcan0) and virtual interfaces (eg.
+vcan0).
+
+Several hardware adapters have been successfully tested under Linux:
+
+* Canable Cantact - (see above)
+* Rusoku Toucan Marine (see above)
+* Waveshare CAN Hat for Raspberry PI -
+https://www.waveshare.com/rs485-can-hat.htm
+* USBTin - https://www.fischl.de/usbtin/[USBTin]
+* Copperhill Tech PICAN-M for Raspberry Pi -
+https://copperhilltech.com/pican-m-nmea-0183-nmea-2000-hat-for-raspberry-pi/
+
+A good reference to using & configuring the CAN interfaces on Linux can
+be found at: https://elinux.org/Bringing_CAN_interface_up
+
+image::raspberrypi-01.png[]
+
+Above, a Raspberry Pi with Waveshare CAN Hat installed.
+
+The Linux Log File Reader automagically™ detects the four supported log
+file formats. The default file name for the input log file is
+twocan.log.
+
+Similarly the Mac OSX version uses three “baked in” classes, one
+supporting the generic Log File reader, one supporting the Rusoku Toucan
+adapter (see above) and the other supporting serial USB CAN bus adapters
+such as the Canable Cantact (also see above).
+
+It seems as though the same command set is used by adapters that support
+the serial SocketCAN interface (SLCAN), so while the Mac OSX plugin's
+Canable Cantact driver was developed purely for that device, it may also
+work with other serial USB Can bus adapters such as the USBTin (see
+above) and Lawicell adapters. The plugin automagically™ detects these
+three adapters using their respective USB Vendor Id's and product Id's
+and may work with serial USB devices other then the Canable Cantact.
+
+NMEA 2000 frames may be logged by the plugin. By default they are
+written to the user's home directory and named using the following
+convention: twocan-YYYY-MM-DD_HHmmSS.log
+
+The TwoCan Plugin source code is available at
+https://github.com/twocanplugin/twocanplugindrivers.git[https://github.com/twocanplugin/twocanplugin.git]
+
+The TwoCan Plugin Windows drivers are available at
+https://github.com/twocanplugin/twocanplugindrivers.git
+
+=== Aim
+
+The aim of the TwoCan plugin is to allow OpenCPN to integrate with
+modern NMEA2000® networks and use the data directly from those sensors
+without relying on additional gateways or converters. Navigation data
+such as position, speed, depth, wind and time can be incorporated into
+OpenCPN without the need for feeding legacy NMEA 0183 data via serial
+communications or TCP/IP.
+
+image::twocan_screen_2.png.[]
+
+The plug-in supports Position, Speed, Depth. Wind, Time, AIS, DSC,
+Engine, Fluid Levels, Battery Status and Environmental (temperature,
+pressure, humidity etc.) data which is used directly by OpenCPN or by
+other plug-ins such as the Dashboard plug-in.
+
+image::twocan_screen_0.png[]
+
+=== Installation
+
+With version 1.9 of the plugin, it is now directly supported by OpenCPN
+5.2 and the Plugin Manager. Once you have updated your Master Catalogue,
+the plugin can be directly installed from the Plugin Manager.
+
+image::twocan_install01.png[]
+
+For versions prior to 1.9
+
+{empty}1. After compiling and creating the standalone installation
+package for TwoCan, use the resulting installer to install the TwoCan
+plugin.
+
+{empty}2. If using Windows compile the TwoCan plugin drivers. At present
+they do not have an installation package so you must manually copy the
+drivers (Windows DLL's) into the “twocan_pi\drivers” folder. This folder
+will be found in the “plugins” folder of your OpenCPN installation which
+in a default installation will be found in the “program files\opencpn”
+folder on your System drive.
+
+For example on a standard Windows system it may be: “c:\program
+files\opencpn\plugins\twocan_pi\drivers”
+
+=== Usage
+
+{empty}1. Enable the TwoCan Plugin from the OpenCPN Options dialog.
+
+image::twocan_screen_4.png[]
+
+2, From the TwoCan Preferences dialog, use the Settings tab to select
+the appropriate driver from the drop down list, and select the required
+NMEA2000® PGN's,
+
+image::twocan_screen_6.png[]
+
+For Linux users, if any SocketCAN driver is installed, it will be
+displayed in the drop down list, together with the Log File Reader.
+
+image::twocan-linux-01.png[]
+
+If using the hardware drivers you may log the raw data. At present the
+raw data is hard coded to write log files to the user's home directory;
+for Windows usually the “My Documents” folder, for Linux and Mac OSX,
+“home” aka “~”
+
+{empty}3. From the TwoCan Preferences dialog, you may use the Debug tab
+to observe the converted NMEA 0183 sentences in real time. Sentences may
+also be copied to the clipboard.
+
+image::twocan_screen_7.png[]
+
+Note: The same sentences may also be viewed from OpenCPN if the “Show
+NMEA Debug Window” is selected from the OpenCPN Connection Settings
+dialog.
+
+image::twocan_screen_3.png[]
+
+A new feature introduced with version 1.4 is the ability to enable
+TwoCan to participate on the NMEA 2000® network. The TwoCan plugn will
+acquire an address on the network and respond to a few network requests
+such as requests for address claims, device capabilities and product
+information. For the more technically minded, that means the Plugin
+supports the following Parameter Group Number (PGN's): 59904 ISO
+Request, 60928 Address Claim, 126993 Heartbeat, 126996 Product
+Information.
+
+This feature is confgured on an additional settings page.
+
+image::twocan-activedevice.png[]
+
+In addition, the plugin attempts to build a “map” of the network by
+listing all of the active devices on the network and attempting to
+display their NMEA 2000® network address, manufacturer and model id.
+
+image::twocan-network.png[]
+
+As the device responds to standard NMEA 2000® network requests, its
+presence is also displayed on third party NMEA 2000® display devices.
+
+image::simrad-02.png[]]
+
+=== Configuration Settings
+
+The TwoCan plugin persists its configuration settings in the OpenCPN
+initialization file. Under Windows this file is named “opencpn.ini” and
+is located in the “ProgramData\OpenCPN ” folder. For Linux and Mac OSX
+users, the OpenCPN initialization file is located in the .opencpn
+directory in the user's home directory.
+
+For example:
+
+[PlugIns/TwoCan] +
+PGN=511 +
+Log=0 +
+Adapter=C:\\Program
+Files\\OpenCPN\\plugins\\twocan_pi\\drivers\\kvaser.dll +
+Mode=0
+
+=== Problems
+
+The TwoCan plugin has undergone very limited testing.
+
+It has occasionally crashed OpenCPN, when changing drivers mid stream or
+selecting a driver for which the underlying hardware is not installed.
+In this case, manually edit the OpenCPN initializaion file and delete or
+correct the Adapter entry.
+
+For Windows, the drivers that use serial communications (Canable Cantact
+and Axiomtek AX92903) both attempt to automagically determine their
+serial port settings but again this has undergone limited testing and
+may not work correctly.
+
+For Linux, the CAN interfaces must be “up”. In general the “ifconfig”
+command can be used to determine the presence/state of the CAN adapters,
+and the “ip link” command can be used to bring up the interface. Eg. For
+a native interface the following command could be used: sudo ip link set
+up can0.
+
+For Mac OSX the plugin automagically detects the serial USB port that
+the Canable Cantact device is connected to, whilst for the Rusoku Toucan
+device the plugin also installs the necessary Rusoku Toucan device
+driver, which will also detect the correct USB port.
+
+For diagnostic purposes, the plugin logs messages into the OpenCPN
+logfile,
+
+For example:
+
+4:52:40 PM: PlugInManager: Loading PlugIn: C:\Program
+Files\OpenCPN\plugins\twocan_pi.dll +
+4:52:40 PM: C:\Program Files\OpenCPN\plugins\twocan_pi.dll +
+API Version detected: 108 +
+PlugIn Version detected: 100 +
+4:52:40 PM: TwoCan Device, Found driver C:\Program
+Files\OpenCPN\plugins\twocan_pi\drivers\filedevice.dll +
+4:52:40 PM: TwoCan Device, Driver Manufacturer: TwoCan +
+4:52:40 PM: TwoCan Device, Driver Name: Logfile Reader +
+4:52:40 PM: TwoCan Device, Driver Version: 1.0 +
+4:52:40 PM: TwoCan Device, Loaded driver C:\Program
+Files\OpenCPN\plugins\twocan_pi\drivers\filedevice.dll +
+4:52:40 PM: TwoCan Plugin, TwoCan Device Initialized +
+4:52:40 PM: TwoCan Plugin, Create Device Thread Result: 0 +
+4:52:40 PM: Changing NMEA Datasource for IIGLL to (Priority: 0) +
+4:52:40 PM: Changing NMEA Datasource for IIMWV to (Priority: 0) +
+4:52:40 PM: Changing NMEA Datasource for IIVHW to (Priority: 0) +
+4:52:40 PM: Changing NMEA Datasource for IIMTW to (Priority: 0) +
+4:52:40 PM: Changing NMEA Datasource for IIZDA to (Priority: 0) +
+4:52:40 PM: Changing NMEA Datasource for IIVTG to (Priority: 0) +
+4:52:40 PM: TwoCan Device, Driver Read result: 0 +
+4:52:41 PM: Changing NMEA Datasource for IIGGA to (Priority: 0) +
+4:52:41 PM: Changing NMEA Datasource for IIDBT to (Priority: 0) +
+4:52:45 PM: PlugInManager: Deactivating PlugIn: C:\Program
+Files\OpenCPN\plugins\twocan_pi.dll +
+4:52:45 PM: TwoCan Plugin, Device Thread Error Code: 0 Exit Code: 0 +
+4:52:45 PM: opencpn::MyFrame exiting cleanly. +
+4:52:45 PM: Chart cache PlugIn purge +
+4:52:45 PM: PlugInManager: Deactivating PlugIn: C:\Program
+Files\OpenCPN\plugins\twocan_pi.dll +
+4:52:45 PM: TwoCan Device, Read Thread terminating +
+4:52:45 PM: TwoCan Device, Driver Unload Result: 0 +
+4:52:45 PM: Chart cache purge +
+4:52:45 PM: opencpn::MyApp starting exit. +
+4:52:45 PM: LOGBOOK: 2018-10-16 16:52:45 UTC OFF: Lat 43.41000 Lon
+6.78117 COG 0.00000 SOG 0.00 kts +
+4:52:45 PM: opencpn::MyApp exiting cleanly…
+
+Please report any errors to either the forum or via email to
+twocanplugin@hotmail.com
+
+=== Trivia
+
+Why the name “TwoCan” ? Firstly NMEA2000® is based on the Controller
+Area Network (CAN). Secondly, I recall that the Year 2000 rollover was
+sometimes referred to as Y2K and that Windows 2000 was sometimes
+referred to as Win2K, So simply a play on words: NMEA2000® is shortened
+to 2000 which becomes 2K which ends up as Two and when appended with CAN
+becomes TwoCAN. But more importantly, every software project needs a
+cool icon !
+
+NMEA2000® is a registered Trademark of the National Marine Electronics
+Association.
