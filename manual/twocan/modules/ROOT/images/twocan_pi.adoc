@@ -68,9 +68,10 @@ The Linux Log File Reader automagically™ detects the four supported log
 file formats. The default file name for the input log file is
 twocan.log.
 
-Similarly the Mac OSX version uses three “baked in” classes, one
+Similarly the Mac OSX version uses four “baked in” classes, one
 supporting the generic Log File reader, one supporting the Rusoku Toucan
-adapter (see above) and the other supporting serial USB CAN bus adapters
+adapter (see above), one supporting the Kvaser Leaflight adapter (also see above)
+and the other supporting serial USB CAN bus adapters
 such as the Canable Cantact (also see above).
 
 It seems as though the same command set is used by adapters that support
@@ -99,6 +100,10 @@ without relying on additional gateways or converters. Navigation data
 such as position, speed, depth, wind and time can be incorporated into
 OpenCPN without the need for feeding legacy NMEA 0183 data via serial
 communications or TCP/IP.
+
+Version 2 of the plugin also supports a bi-directional gateway that
+converts NMEA 183 sentences recieved from OpenCPN to NMEA 2000 messages
+and transmits them onto the NMEA 2000 network.
 
 link:../../../manual/plugins/twocan/twocan_screen_2.png.detail.html[image:../../../manual/plugins/twocan/twocan_screen_2.png[image]]
 
@@ -229,8 +234,11 @@ up can0.
 
 For Mac OSX the plugin automagically detects the serial USB port that
 the Canable Cantact device is connected to, whilst for the Rusoku Toucan
-device the plugin also installs the necessary Rusoku Toucan device
-driver, which will also detect the correct USB port.
+and Kvaser Leaflight devices the plugin also installs the necessary device
+drivers, which will also detect the correct USB port.
+
+The drivers for these two devices are based on the MacCAN API.
+https://github.com/mac-can[Mac CAN API]
 
 For diagnostic purposes, the plugin logs messages into the OpenCPN
 logfile,
