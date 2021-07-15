@@ -37,19 +37,18 @@
 #include "twocanutils.h"
 
 #if defined (__APPLE__) && defined (__MACH__)
-#include "twocanlogreader.h"
-#include "twocanmacserial.h"
-#include "twocanmactoucan.h"
-// For logging to get time values
-#include <sys/time.h>
+	#include "twocanlogreader.h"
+	#include "twocanpcap.h"
+	#include "twocanmacserial.h"
+	#include "twocanmactoucan.h"
+	#include "twocanmackvaser.h"
 #endif
 
 #if defined (__LINUX__)
-// For Linux , "baked in" classes for the Log File reader and SocketCAN interface
-#include "twocanlogreader.h"
-#include "twocansocket.h"
-// For logging to get time values
-#include <sys/time.h>
+	// For Linux , "baked in" classes for the Log File reader and SocketCAN interface
+	#include "twocanlogreader.h"
+	#include "twocanpcap.h"
+	#include "twocansocket.h"
 #endif
 
 // STL
@@ -101,11 +100,15 @@ extern const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT;
 #if defined (__WXMSW__) 
 // BUG BUG not used as input log file name as each is hardcoded in each of the Windows log file readers
 #define CONST_LOGFILE_NAME L"twocan.log"
+#define CONST_PCAPFILE_NAME L"twocan.pcap"
 #endif
 
 #if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
 #define CONST_LOGFILE_NAME _T("twocan.log")
+#define CONST_PCAPFILE_NAME _T("twocan.pcap")
 #endif
+
+
 
 // Globally defined variables
 

@@ -242,6 +242,11 @@ int TwoCanDevice::Init(wxString driverPath) {
 		adapterInterface = new TwoCanLogReader(canQueue);
 		returnCode = adapterInterface->Open(CONST_LOGFILE_NAME);
 	}
+	else if (driverName.CmpNoCase("Pcap File Reader") == 0) {
+		// Load the Pcap (Wireshark) reader
+		adapterInterface = new TwoCanPcap(canQueue);
+		returnCode = adapterInterface->Open(CONST_PCAPFILE_NAME);
+	}
 #if defined (__APPLE__) && defined (__MACH__)
 	else if (driverName.CmpNoCase("Cantact") == 0) {
 		// Load the MAC Serial USB interface for the Canable Cantact
@@ -1652,12 +1657,26 @@ bool TwoCanDevice::DecodePGN126992(const byte *payload, std::vector<wxString> *n
 		secondsSinceMidnight = payload[4] | (payload[5] << 8) | (payload[6] << 16) | (payload[7] << 24);
 		
 		if ((TwoCanUtils::IsDataValid(daysSinceEpoch)) && (TwoCanUtils::IsDataValid(secondsSinceMidnight))) {
-		
+			
 			wxDateTime tm;
 			tm.ParseDateTime("00:00:00 01-01-1970");
 			tm += wxDateSpan::Days(daysSinceEpoch);
 			tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
-			nmeaSentences->push_back(wxString::Format("$IIZDA,%s", tm.Format("%H%M%S.00,%d,%m,%Y,%z")));
+			
+			// Calculate the local timezone offfset in hours & minutes
+			wxDateTime::TimeZone tz(wxDateTime::Local);
+    		long seconds = tz.GetOffset();
+			int hours = seconds / (3600);
+			seconds %= 3600;
+			int minutes = seconds / 60;
+
+			if (hours > 0) {
+				nmeaSentences->push_back(wxString::Format("$IIZDA,%s,%02d,%02d", tm.Format("%H%M%S.00,%d,%m,%Y"), hours, minutes));
+			}
+			else {
+				nmeaSentences->push_back(wxString::Format("$IIZDA,%s,%03d,%03d", tm.Format("%H%M%S.00,%d,%m,%Y"), hours, minutes));
+			}
+			
 			return TRUE;
 		}
 		else {
@@ -5086,9 +5105,12 @@ int TwoCanDevice::SendProductInformation() {
 	// Software Version Bytes [36] - [67]
 	// BUG BUG Should derive from PLUGIN_VERSION_MAJOR and PLUGIN_VERSION_MINOR
 	memset(&payload[36],0,32);
-	char const *swVersion = wxString::Format("%d.%d",PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR).c_str();  
-	memcpy(&payload[36], swVersion,strlen(swVersion));
-		
+	//char const *swVersion = ;  
+	std::string tmpStr = std::to_string(PLUGIN_VERSION_MAJOR);
+	tmpStr += ".";
+	tmpStr += std::to_string(PLUGIN_VERSION_MINOR);
+	memcpy(&payload[36], tmpStr.c_str(), tmpStr.length());
+	
 	// Model Version Bytes [68] - [99]
 	memset(&payload[68],0,32);
 	memcpy(&payload[68], hwVersion,strlen(hwVersion));
@@ -5186,9 +5208,12 @@ int TwoCanDevice::SendSupportedPGN() {
 	// BUG BUG Should define our supported Parameter Group Numbers somewhere else, not compiled int the code ??
 	unsigned int receivedPGN[] = {59904, 59392, 60928, 65240, 126464, 126992, 126993, 126996, 
 		127250,	127251, 127258, 128259, 128267, 128275, 129025, 129026, 129029, 129033, 
-		129028, 129039, 129040, 129041, 129283, 129793, 129794, 129798, 129801, 129802, 
+		129038, 129039, 129040, 129041, 129283, 129793, 129794, 129798, 129801, 129802, 
 		129808,	129809, 129810, 130306, 130310, 130312, 130577 };
-	unsigned int transmittedPGN[] = {59392, 59904, 60928, 126208, 126464, 126993, 126996 };
+	unsigned int transmittedPGN[] = {59904, 59392, 60928, 65240, 126464, 126992, 126993, 126996, 
+		127250,	127251, 127258, 128259, 128267, 128275, 129025, 129026, 129029, 129033, 
+		129038, 129039, 129040, 129041, 129283, 129793, 129794, 129798, 129801, 129802, 
+		129808,	129809, 129810, 130306, 130310, 130312, 130577 };
 	
 	// Payload is a one byte function code (receive or transmit) and 3 bytes for each PGN 
 	int arraySize;

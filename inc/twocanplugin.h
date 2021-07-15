@@ -157,6 +157,9 @@ private:
 
 	// TwoCanEncoder is used to convert NMEA 183 sentences to NMEA 2000 messages 
 	TwoCanEncoder *twoCanEncoder;
+
+	// BUG BUG Testing some failure on exit modes
+	bool isRunning;
 };
 
 #endif 

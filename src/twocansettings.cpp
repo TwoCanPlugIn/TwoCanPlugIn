@@ -31,7 +31,7 @@
 // 1.7 - 10/12/2019 Flags for Battery
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
-// 2.0 - 20-11-2020 Autopilot Control, Bi-directional gateway
+// 2.0 - 11-04-2021 Bi-directional gateway, PCAP log files
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -383,6 +383,7 @@ wxString driversFolder = pluginDataFolder +  _T("drivers") + wxFileName::GetPath
 	// Add the built-in Log File Reader to the Adapter hashmap
 	// BUG BUG Should add a #define for this string constant
 	adapters["Log File Reader"] = "Log File Reader";
+	adapters["Pcap File Reader"] = "Pcap File Reader";
 	// Add any physical CAN Adapters
 	std::vector<wxString> canAdapters;
 	// Enumerate installed CAN adapters
@@ -411,8 +412,9 @@ wxString driversFolder = pluginDataFolder +  _T("drivers") + wxFileName::GetPath
 #endif
 
 #if defined (__APPLE__) && defined (__MACH__)
-	// Add the built-in Log File Reader, Cantact and Rusoku interfaces to the Adapter hashmap
+	// Add the built-in Log File Reader, Pcap file reader, Cantact, Kvaser and Rusoku interfaces to the Adapter hashmap
 	adapters["Log File Reader"] = "Log File Reader";
+	adapters["Pcap File Reader"] = "Pcap File Reader";
 	adapters["Cantact"] = "Cantact";
 	adapters["Rusoku"] = "Rusoku";
 #endif

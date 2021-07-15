@@ -28,7 +28,7 @@
 // 1.4 - 25/4/2019. Active Mode implemented. 
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
-// 2.0 - 01-12-2020 Autopilot Control, Bi-Directional Gateway
+// 2.0 - 01-12-2020 Bi-Directional Gateway, Kvaser support on Mac OSX, Fast Message Assembly & SID generation fix, PCAP log file support 
 // Outstanding Features: 
 // 1. Localization ??
 //
@@ -93,14 +93,18 @@ int TwoCan::Init(void) {
 	autopilotToolbar = 0;
 
 	// TwoCan preferences dialog
-	settingsDialog = NULL;
+	settingsDialog = nullptr;
 	
 	// Initialize TwoCan Device to a nullptr to prevent crashes when trying to stop an unitialized device
 	// which is what happens upon first startup. Bugger, there must be a better way.
 	twoCanDevice = nullptr;
+	twoCanEncoder = nullptr;
 
 	// Toggles display of captured NMEA 2000 frames in the "debug" tab of the preferences dialog
 	debugWindowActive = FALSE;
+
+	// if the rug is pulled from underneath
+	isRunning = TRUE;
 
 	// Load the configuration items
 	if (LoadConfiguration()) {
@@ -112,16 +116,6 @@ int TwoCan::Init(void) {
 		else {
 			wxLogError(_T("TwoCan Plugin, No driver selected. Device not started"));
 		}
-		// If the autopilotMode is enabled, add the autopilot toolbar and initialize the autopilot class
-		if ((deviceMode == TRUE) && (autopilotMode != FLAGS_AUTOPILOT_NONE)) {
-			autopilotToolbar = InsertPlugInToolSVG(_T(""), normalIcon, rolloverIcon, toggledIcon, wxITEM_CHECK,_("TwoCan Autopilot"), _T(""), NULL, -1, 0, this);
-			twoCanAutopilot = new TwoCanAutopilot(autopilotMode);
-		}
-		// If the gateway is enabled, the plugin will convert NMEA 183 sentences to NMEA 2000 messages
-		if ((deviceMode == TRUE) && (enableGateway == TRUE)) {
-			twoCanEncoder = new TwoCanEncoder;
-		}
-
 	}
 	else {
 		wxLogError(_T("TwoCan Plugin, Load Configuration Error. Device not started"));
@@ -133,23 +127,15 @@ int TwoCan::Init(void) {
 
 // OpenCPN is either closing down, or we have been disabled from the Preferences Dialog
 bool TwoCan::DeInit(void) {
+	// BUG BUG Testing failure modes
+	isRunning = FALSE;
+
 	// Persist our network address to prevent address claim conflicts next time we start
 	if (deviceMode == TRUE) {
 		if (configSettings) {
 			configSettings->SetPath(_T("/PlugIns/TwoCan"));
 			configSettings->Write(_T("Address"), networkAddress);
 		}
-	}
-
-	// If the autopilot is enabled, cleanup
-	if ((deviceMode == TRUE) && (autopilotMode != FLAGS_AUTOPILOT_NONE) && (autopilotToolbar != 0)) {
-		RemovePlugInTool(autopilotToolbar);
-		delete twoCanAutopilot;
-	}
-
-	// If the gateway is enabled , cleanup
-	if ((deviceMode == TRUE) && (enableGateway == TRUE)) {
-		delete twoCanEncoder;
 	}
 
 	// Terminate the TwoCan Device Thread, but only if we have a valid driver selected !
@@ -223,7 +209,7 @@ void TwoCan::OnToolbarToolCallback(int id) {
 }
 
 void TwoCan::SetPositionFix(PlugIn_Position_Fix &pfix) {
-	// BUG BUG REMOVE Prototype to encode PGN 129025 Position Rapid Update
+	// BUG BUG REMOVE This was a prototype to encode PGN 129025 Position Rapid Update
 	if ((deviceMode == TRUE) && (enableGateway == TRUE)){
 
 		CanHeader header;
@@ -260,20 +246,21 @@ void TwoCan::SetPositionFix(PlugIn_Position_Fix &pfix) {
 
 // Convert NMEA 183 sentences to NMEA 2000 messages
 void TwoCan::SetNMEASentence(wxString &sentence) {
-	if ((twoCanDevice != nullptr) && (deviceMode == TRUE) && (enableGateway == TRUE)) {
+	if ((isRunning) && (twoCanEncoder != nullptr)  && (twoCanDevice != nullptr) && (deviceMode == TRUE) && (enableGateway == TRUE)) {
 		std::vector<CanMessage> nmeaMessages;
 
 		if (twoCanEncoder->EncodeMessage(sentence, &nmeaMessages) == TRUE) {
 			unsigned int id;
 			// Some NMEA 183 sentences are converted to multipe NMEA 2000 PGN's
 			// Also if the PGN is a fast message, there will be multiple messages
-			for (auto i : nmeaMessages) {
-				TwoCanUtils::EncodeCanHeader(&id,&i.header);
+			for (auto it : nmeaMessages) {
+				TwoCanUtils::EncodeCanHeader(&id,&it.header);
 				int returnCode;
-				returnCode = twoCanDevice->TransmitFrame(id, i.payload.data());
+				returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
 					wxLogMessage(_T("TwoCan Plugin, Error sending converted NMEA 183 sentence %lu"), returnCode);
 				}
+				wxThread::Sleep(CONST_TEN_MILLIS);
 				
 			}
 		}
@@ -304,11 +291,13 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 	switch (event.GetId()) {
 	case SENTENCE_RECEIVED_EVENT:
-		PushNMEABuffer(event.GetString());
-		// If the preference dialog is open and the debug tab is toggled, display the NMEA 183 sentences
-		// Superfluous as they can be seen in the Connections tab.
-		if ((debugWindowActive) && (settingsDialog != NULL)) {
-			settingsDialog->txtDebug->AppendText(event.GetString());
+		if (isRunning) {
+			PushNMEABuffer(event.GetString());
+			// If the preference dialog is open and the debug tab is toggled, display the NMEA 183 sentences
+			// Superfluous as they can be seen in the Connections tab.
+			if ((debugWindowActive) && (settingsDialog != NULL)) {
+				settingsDialog->txtDebug->AppendText(event.GetString());
+			}
 		}
 		break;
 
@@ -390,7 +379,20 @@ void TwoCan::OnAutopilotCommand(wxCommandEvent &event) {
 
 // Display TwoCan preferences dialog
 void TwoCan::ShowPreferencesDialog(wxWindow* parent) {
+	
+	// BUG BUG Refactor duplicated code
+	// Assume settings have been changed so reload them
+	// But protect ourselves in case user still has not selected a driver !
+	if (canAdapter.CmpNoCase(_T("None")) != 0) {
+		StopDevice();
+	}
+
+	// Wait a little for the threads to complete and in the case of Windows. the driver dll to be unloaded
+	wxThread::Sleep(CONST_ONE_SECOND);
+
+
 	settingsDialog = new TwoCanSettings(parent);
+
 
 	if (settingsDialog->ShowModal() == wxID_OK) {
 
@@ -402,44 +404,35 @@ void TwoCan::ShowPreferencesDialog(wxWindow* parent) {
 			wxLogMessage(_T("TwoCan Plugin, Error Saving Settings"));
 		}
 
-		// BUG BUG Refactor duplicated code
-		// Assume settings have been changed so reload them
-		// But protect ourselves in case user still has not selected a driver !
-		if (canAdapter.CmpNoCase(_T("None")) != 0) {
-			StopDevice();
-		}
-		
-		// Wait a little for the threads to complete and in the case of Windows. the driver dll to be unloaded
-		wxThread::Sleep(CONST_ONE_SECOND);
-
-		if (LoadConfiguration()) {
-			// Start the TwoCan Device in it's own thread
-			if (canAdapter.CmpNoCase(_T("None")) != 0)  {
-				StartDevice();
-			}
-			else {
-				wxLogError(_T("TwoCan Plugin, No driver selected. Device not started"));
-			}
-			
-			// Only add the toolbar if it has not been added previously
-			if ((deviceMode == TRUE) && (autopilotMode != FLAGS_AUTOPILOT_NONE) && (autopilotToolbar == 0)) {
-				autopilotToolbar = InsertPlugInToolSVG(_T(""), normalIcon, rolloverIcon, toggledIcon, wxITEM_CHECK,_("TwoCan Autopilot"), _T(""), NULL, -1, 0, this);
-				twoCanAutopilot = new TwoCanAutopilot(autopilotMode);
-			}
-			// or if it was added previously and no we are no longer an autopilot
-			else if (((deviceMode == FALSE) || (autopilotMode == FLAGS_AUTOPILOT_NONE)) && (autopilotToolbar != 0)) {
-				RemovePlugInTool(autopilotToolbar);
-				autopilotToolbar = 0;
-				delete twoCanAutopilot;
-			}
-		}
-		else {
-			wxLogError(_T("TwoCan Plugin, Load Configuration Error. Device not started"));
-		}
 	}
 
+	if (LoadConfiguration()) {
+		// Start the TwoCan Device in it's own thread
+		if (canAdapter.CmpNoCase(_T("None")) != 0)  {
+			StartDevice();
+		}
+		else {
+			wxLogError(_T("TwoCan Plugin, No driver selected. Device not started"));
+		}
+			
+			// Only add the toolbar if it has not been added previously
+		if ((deviceMode == TRUE) && (autopilotMode != FLAGS_AUTOPILOT_NONE) && (autopilotToolbar == 0)) {
+			autopilotToolbar = InsertPlugInToolSVG(_T(""), normalIcon, rolloverIcon, toggledIcon, wxITEM_CHECK,_("TwoCan Autopilot"), _T(""), NULL, -1, 0, this);
+			twoCanAutopilot = new TwoCanAutopilot(autopilotMode);
+		}
+		// or if it was added previously and no we are no longer an autopilot
+		else if (((deviceMode == FALSE) || (autopilotMode == FLAGS_AUTOPILOT_NONE)) && (autopilotToolbar != 0)) {
+			RemovePlugInTool(autopilotToolbar);
+			autopilotToolbar = 0;
+			delete twoCanAutopilot;
+		}
+	}
+	else {
+		wxLogError(_T("TwoCan Plugin, Load Configuration Error. Device not started"));
+	}
+	
 	delete settingsDialog;
-	settingsDialog = NULL;
+	settingsDialog = nullptr;;
 }
 
 // Loads a previously saved configuration
@@ -519,6 +512,25 @@ void TwoCan::StopDevice(void) {
 					}
 				#endif
 				delete twoCanDevice;
+				twoCanDevice = nullptr;
+
+				// If the autopilot is enabled, cleanup
+				if ((deviceMode == TRUE) && (autopilotMode != FLAGS_AUTOPILOT_NONE) && (autopilotToolbar != 0)) {
+					RemovePlugInTool(autopilotToolbar);
+					if (twoCanAutopilot != nullptr) {
+						delete twoCanAutopilot;
+						twoCanAutopilot = nullptr;
+					}
+				}
+
+				// If the gateway is enabled, cleanup
+				if ((deviceMode == TRUE) && (enableGateway == TRUE)) {
+					if (twoCanEncoder != nullptr) {
+						delete twoCanEncoder;
+						twoCanEncoder = nullptr;
+					}
+				}
+
 			}
 			else {
 				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Error: %d"), threadError);
@@ -536,11 +548,23 @@ void TwoCan::StartDevice(void) {
 	else {
 		wxLogMessage(_T("TwoCan Plugin, TwoCan Device Initialized"));
 		int threadResult = twoCanDevice->Run();
-		if (threadResult == wxTHREAD_NO_ERROR)    {
-			wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Created"));
+		if (threadResult != wxTHREAD_NO_ERROR)    {
+			wxLogError(_T("TwoCan Plugin, TwoCan Device Thread Creation Error: %d"), threadResult);
 		}
 		else {
-			wxLogError(_T("TwoCan Plugin, TwoCan Device Thread Creation Error: %d"), threadResult);
+			wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Created"));	
+		
+			// If the autopilotMode is enabled, add the autopilot toolbar and initialize the autopilot class
+			if ((deviceMode == TRUE) && (autopilotMode != FLAGS_AUTOPILOT_NONE)) {
+				autopilotToolbar = InsertPlugInToolSVG(_T(""), normalIcon, rolloverIcon, toggledIcon, wxITEM_CHECK,_("TwoCan Autopilot"), _T(""), NULL, -1, 0, this);
+				twoCanAutopilot = new TwoCanAutopilot(autopilotMode);
+				wxLogMessage(_T("TwoCan Plugin, Created Autpilot"));
+			}
+			// If the gateway is enabled, the plugin will convert NMEA 183 sentences to NMEA 2000 messages
+			if ((deviceMode == TRUE) && (enableGateway == TRUE)) {
+				twoCanEncoder = new TwoCanEncoder();
+				wxLogMessage(_T("TwoCan Plugin, Created Bi-Directional Gateway"));
+			}
 		}
 	}
 }

@@ -31,6 +31,7 @@
 
 
 TwoCanEncoder::TwoCanEncoder(void) {
+	aisDecoder = new TwoCanAis();
 }
 
 TwoCanEncoder::~TwoCanEncoder(void) {
@@ -182,7 +183,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("BOD")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_RTE)) {
-				// BUG BUG ToDo
+				// BUG BUG Not implemented
 				}
 			}
 			else {

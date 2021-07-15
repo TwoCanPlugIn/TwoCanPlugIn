@@ -234,12 +234,14 @@ IF(UNIX AND NOT APPLE)
     LIST(APPEND SOURCES 
 	src/twocansocket.cpp
         src/twocanlogreader.cpp
-        src/twocaninterface.cpp)
+        src/twocaninterface.cpp
+        src/twocanpcap.cpp)
 
     LIST(APPEND HEADERS
         inc/twocansocket.h
         inc/twocanlogreader.h
-        inc/twocaninterface.h)
+        inc/twocaninterface.h
+        inc/twocanpcap.h)
 
 ENDIF(UNIX AND NOT APPLE)
 
@@ -249,13 +251,17 @@ IF(APPLE)
         src/twocanlogreader.cpp
         src/twocanmacserial.cpp
         src/twocanmactoucan.cpp
-        src/twocaninterface.cpp)
+        src/twocanmackvaser.cpp
+        src/twocaninterface.cpp
+        src/twocanpcap.cpp)
 
     LIST(APPEND HEADERS
         inc/twocanlogreader.h
         inc/twocanmacserial.h
         inc/twocanmactoucan.h
-        inc/twocaninterface.h)
+        inc/twocanmackvaser.h
+        inc/twocaninterface.h
+        inc/twocanpcap.h)
 
     # For Rusoku Toucan, Assumes the MacCan Rusoku headers have been installed in the default location
     SET(RUSOKU_HEADER "../rusokuCAN/Includes")
