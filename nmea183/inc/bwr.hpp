@@ -30,46 +30,42 @@
  */
 
 
-#if ! defined( BOD_CLASS_HEADER )
-#define BOD_CLASS_HEADER
+#if ! defined( BWR_CLASS_HEADER )
 
-/*
-** Author: Samuel R. Blackburn
-** CI$: 76300,326
-** Internet: sammy@sed.csc.com
-**
-** You can use it any way you like.
-*/
+#define BWR_CLASS_HEADER
 
-class BOD : public RESPONSE
+
+class BWR : public RESPONSE
 {
    public:
 
-      BOD();
-      ~BOD();
-      
+	   BWR();
+	   ~BWR();
+
       /*
       ** Data
       */
 
+      wxString UTCTime;
       double      BearingTrue{ 0.0 };
       double      BearingMagnetic{ 0.0 };
-      wxString    To;
-      wxString    From;
+      double      NauticalMiles{ 0.0 };
+      wxString To;
+      LATLONG     Position;
 
       /*
       ** Methods
       */
 
-      virtual void Empty( void );
+      virtual void Empty( void ) ;
       virtual bool Parse( SENTENCE const& sentence );
       virtual bool Write( SENTENCE& sentence );
 
       /*
       ** Operators
       */
-	  
-      virtual const BOD& operator = ( const BOD& source );
+
+      virtual BWR const& operator = ( BWR const& source );
 };
 
-#endif // BOD_CLASS_HEADER
+#endif // BWR_CLASS_HEADER

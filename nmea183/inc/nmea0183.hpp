@@ -69,9 +69,9 @@
 #include "apb.hpp"
 //#include "ASD.hpp"
 //#include "BEC.hpp"
-//#include "BOD.hpp"
+#include "bod.hpp"
 //#include "BWC.hpp"
-//#include "BWR.hpp"
+#include "bwr.hpp"
 //#include "BWW.hpp"
 #include "dbt.hpp"
 //#include "DCN.hpp"
@@ -115,7 +115,7 @@
 #include "vlw.hpp"
 //#include "VPW.hpp"
 //#include "VTG.hpp"
-//#include "WCV.hpp"
+#include "wcv.hpp"
 //#include "WNC.hpp"
 #include "xdr.hpp"
 #include "xte.hpp"
@@ -160,9 +160,9 @@ class NMEA0183
    APB Apb;
    //ASD Asd;
    //BEC Bec;
-   //BOD Bod;
+   BOD Bod;
    //BWC Bwc;
-   //BWR Bwr;
+   BWR Bwr;
    //BWW Bww;
    DBT Dbt;
    //DCN Dcn;
@@ -202,7 +202,7 @@ class NMEA0183
    VLW Vlw;
    //VPW Vpw;
    VTG Vtg;
-   //WCV Wcv;
+   WCV Wcv;
    //WNC Wnc;
    WPL Wpl;
    GPWPL GPwpl;	  

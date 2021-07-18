@@ -39,7 +39,8 @@
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20/08/2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // 1.91 - 20/10/2020 Add PGN 129540, Bug Fixes (random position - missing break, socket & queue timeouts)
-// 2.0 - 01/12/2020 Bi-directional gateway, Autopilot control
+// 1.92 - 10/04/2021 Fix for fast message assembly & SID generation
+// 2.0 - 11/04/2021 Bi-directional gateway, Autopilot control
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //
@@ -64,6 +65,12 @@ TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_JOINABLE) 
 	transmittedFrames = 0;
 	droppedFrames = 0;
 	
+	// Initialise persisted values for constructed sentences such as RMC and GLL
+	gpsTimeOffset = 0;
+	magneticVariation = SHRT_MAX;
+	vesselCOG = USHRT_MAX;
+	vesselSOG = USHRT_MAX;
+
 	// Timer to send PGN126993 heartbeats and a monotonically incrementing counter
 	heartbeatTimer = nullptr;
 	heartbeatCounter = 0;
@@ -197,10 +204,7 @@ int TwoCanDevice::Init(wxString driverPath) {
 #if defined (__WXMSW__) 
 	// Load the CAN Adapter DLL
 	returnCode = LoadWindowsDriver(driverPath);
-	if (returnCode != TWOCAN_RESULT_SUCCESS) {
-		wxLogError(_T("TwoCan Device, Error loading driver %s: %lu"), driverPath, returnCode);
-	}
-	else {
+	if (returnCode == TWOCAN_RESULT_SUCCESS) {
 		wxLogMessage(_T("TwoCan Device, Loaded driver %s"), driverPath);
 		// If we are an active device, claim an address on the network (PGN 60928)  and send our product info (PGN 126996)
 		if (deviceMode == TRUE) {
@@ -231,6 +235,16 @@ int TwoCanDevice::Init(wxString driverPath) {
 			}
 		}
 	}
+	else if (((returnCode & 0xFF0000) >> 16) == TWOCAN_ERROR_INVALID_WRITE_FUNCTION) {
+		wxLogMessage(_T("TwoCan Device, Loaded driver %s in listen only mode"), driverPath);
+		// If we have no write function, we can't be in Active Mode etc.
+		deviceMode = FALSE;
+		enableGateway = FALSE;
+		enableHeartbeat = FALSE;
+	}
+	else {
+		wxLogError(_T("TwoCan Device, Error loading driver %s: %lu"), driverPath, returnCode);
+	}
 #endif
 
 #if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
@@ -256,6 +270,11 @@ int TwoCanDevice::Init(wxString driverPath) {
 	else if (driverName.CmpNoCase("Rusoku") == 0) {
 		// Load the MAC interface for the Rusoku Toucan adapter
 		adapterInterface = new TwoCanMacToucan(canQueue);
+		returnCode = adapterInterface->Open(canAdapter);
+	}
+	else if (driverName.CmpNoCase("Kvaser") == 0) {
+		// Load the MAC interface for the Kvaser adapter
+		adapterInterface = new TwoCanMacKvaser(canQueue);
 		returnCode = adapterInterface->Open(canAdapter);
 	}
 #endif
@@ -543,19 +562,19 @@ int TwoCanDevice::LoadWindowsDriver(wxString driverPath) {
 				return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DEVICE,TWOCAN_ERROR_OPEN_DATA_RECEIVED_EVENT);
 			}
 
-			// Get and save the pointer to the write function if we are an active device
-			if (deviceMode == TRUE) {
-				writeFrame = (LPFNDLLWrite)GetProcAddress(dllHandle, "WriteAdapter");
+			// Get and save the pointer to the write function 
+			writeFrame = (LPFNDLLWrite)GetProcAddress(dllHandle, "WriteAdapter");
 
-				if (writeFrame == NULL)	{
-					// BUG BUG Log non fatal error, the plug-in can still receive data.
-					wxLogError(_T("TwoCan Device, Invalid Write function: %d\n"), GetLastError());
-					deviceMode = FALSE;
-					enableHeartbeat = FALSE;
-					//return SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_INVALID_WRITE_FUNCTION);
-				}
+			if (writeFrame == NULL)	{
+				// BUG BUG Log non fatal error, the plug-in can still receive data.
+				wxLogError(_T("TwoCan Device, Invalid Write function: %d\n"), GetLastError());
+				deviceMode = FALSE;
+				enableHeartbeat = FALSE;
+				enableGateway = FALSE;
+				return SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_INVALID_WRITE_FUNCTION);
 			}
-						
+
+
 			return TWOCAN_RESULT_SUCCESS;
 
 		}
@@ -774,7 +793,7 @@ bool TwoCanDevice::IsFastMessage(const CanHeader header) {
 	static const unsigned int nmeafastMessages[] = { 65240, 126208, 126464, 126996, 126998, 127233, 127237, 127489, 127496, 127506, 128275, 129029, 129038, \
 	129039, 129040, 129041, 129284, 129285, 129540, 129793, 129794, 129795, 129797, 129798, 129801, 129802, 129808, 129809, 129810, 130065, 130074, 130323, \
 	130577 };
-	for (int i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
+	for (size_t i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
 		if (nmeafastMessages[i] == header.pgn) {
 			return TRUE;
 		}
@@ -788,14 +807,26 @@ void TwoCanDevice::AssembleFastMessage(const CanHeader header, const byte *paylo
 
 	if (IsFastMessage(header) == TRUE) {
 		int position;
-		position = MapFindMatchingEntry(header);
+		position = MapFindMatchingEntry(header, payload[0]);
+		// No existing fast message 
 		if (position == NOT_FOUND) {
-			MapInsertEntry(header, payload, MapFindFreeEntry());
+			// Find a free slot
+			position = MapFindFreeEntry();
+			// No free slots, exit
+			if (position == NOT_FOUND) {
+				return;
+			}
+			// Insert the first frame of the fast message
+			else {
+				MapInsertEntry(header, payload, position);
+			}
 		}
+		// An existing fast message is present, append the frame
 		else {
 			MapAppendEntry(header, payload, position);
 		}
 	}
+	// This is a single frame message, parse it
 	else {
 		ParseMessage(header, payload);
 	}
@@ -804,7 +835,7 @@ void TwoCanDevice::AssembleFastMessage(const CanHeader header, const byte *paylo
 // Initialize each entry in the Fast Message Map
 void TwoCanDevice::MapInitialize(void) {
 	for (int i = 0; i < CONST_MAX_MESSAGES; i++) {
-		fastMessages[i].IsFree = TRUE;
+		fastMessages[i].isFree = TRUE;
 		fastMessages[i].data = NULL;
 	}
 }
@@ -814,8 +845,8 @@ void TwoCanDevice::MapInitialize(void) {
 void TwoCanDevice::MapLockRange(const int start, const int end) {
 	if (start < end)  {
 		for (int i = start; i < end; i++) {
-			fastMessages[i].IsFree = FALSE;
-			fastMessages[i].timeArrived = time(0);
+			fastMessages[i].isFree = FALSE;
+			fastMessages[i].timeArrived = TwoCanUtils::GetTimeInMicroseconds();
 		}
 	}
 
@@ -824,11 +855,11 @@ void TwoCanDevice::MapLockRange(const int start, const int end) {
 // Find first free entry in fastMessages
 int TwoCanDevice::MapFindFreeEntry(void) {
 	for (int i = 0; i < CONST_MAX_MESSAGES; i++) {
-		if (fastMessages[i].IsFree == TRUE) {
+		if (fastMessages[i].isFree == TRUE) {
 			return i;
 		}
 	}
-	// Could also run the garbageCollection routine in a separate thread, would require locking etc.
+	// Could also run the Garbage Collection routine in a separate thread, would require locking etc.
 	// But this will look for stale entries in case there are no free entries
 	// If there are no free entries, then indicative that we are receiving more Fast messages
 	// than I anticipated. As someone said, "Assumptions are the mother of all fuckups"
@@ -851,20 +882,25 @@ void TwoCanDevice::MapInsertEntry(const CanHeader header, const byte *data, cons
 	// data[1] Length of data bytes
 	// data[2..7] 6 data bytes
 
-	int totalDataLength; // will also include padding as we memcpy all of the frame, because I'm lazy
-	totalDataLength = (unsigned int)data[1];
-	totalDataLength += 7 - ((totalDataLength - 6) % 7);
+	// Ensure that this is indeed the first frame of a fast message
+	if ((data[0] & 0x1F) == 0) {
+		int totalDataLength; // will also include padding as we memcpy all of the frame, because I'm lazy
+		totalDataLength = (unsigned int)data[1];
+		totalDataLength += 7 - ((totalDataLength - 6) % 7);
 
-	fastMessages[position].sid = (unsigned int)data[0];
-	fastMessages[position].expectedLength = (unsigned int)data[1];
-	fastMessages[position].header = header;
-	fastMessages[position].timeArrived = time(NULL);
-	fastMessages[position].IsFree = FALSE;
-	// Remember to free after we have processed the final frame
-	fastMessages[position].data = (byte *)malloc(totalDataLength);
-	memcpy(&fastMessages[position].data[0], &data[2], 6);
-	// First frame of a multi-frame Fast Message contains six data bytes, position the cursor ready for next message
-	fastMessages[position].cursor = 6; 
+		fastMessages[position].sid = (unsigned int)data[0];
+		fastMessages[position].expectedLength = (unsigned int)data[1];
+		fastMessages[position].header = header;
+		fastMessages[position].timeArrived = TwoCanUtils::GetTimeInMicroseconds();;
+		fastMessages[position].isFree = FALSE;
+		// Remember to free after we have processed the final frame
+		fastMessages[position].data = (byte *)malloc(totalDataLength);
+		memcpy(&fastMessages[position].data[0], &data[2], 6);
+		// First frame of a multi-frame Fast Message contains six data bytes, position the cursor ready for next message
+		fastMessages[position].cursor = 6;
+	}
+	// No further processing is performed if this is not a start frame. 
+	// A start frame may have been dropped and we received a subsequent frame	 
 }
 
 // Append subsequent messages of a sequence of fast messages
@@ -876,7 +912,6 @@ int TwoCanDevice::MapAppendEntry(const CanHeader header, const byte *data, const
 	if ((fastMessages[position].sid + 1) == data[0]) { 
 		memcpy(&fastMessages[position].data[fastMessages[position].cursor], &data[1], 7);
 		fastMessages[position].sid = data[0];
-		fastMessages[position].timeArrived = time(NULL);
 		// Subsequent messages contains seven data bytes (last message may be padded with 0xFF)
 		fastMessages[position].cursor += 7; 
 		// Is this the last message ?
@@ -885,17 +920,37 @@ int TwoCanDevice::MapAppendEntry(const CanHeader header, const byte *data, const
 			ParseMessage(header, fastMessages[position].data);
 			// Clear the entry
 			free(fastMessages[position].data);
-			fastMessages[position].IsFree = TRUE;
+			fastMessages[position].isFree = TRUE;
 			fastMessages[position].data = NULL;
 		}
 		return TRUE;
 	}
+	else if ((data[0] & 0x1F) == 0) {
+		// We've found a matching entry, however this is a start frame, therefore
+		// we've missed an end frame, and now we have a start frame with the same id (top 3 bits). 
+		// The id has obviously rolled over. Should really double check that (data[0] & 0xE0) 
+		// Clear the entry as we don't want to leak memory, prior to inserting a start frame
+		free(fastMessages[position].data);
+		fastMessages[position].isFree = TRUE;
+		fastMessages[position].data = NULL;
+		// And now insert it
+		MapInsertEntry(header, data, position);
+		// BUG BUG Should update the dropped frame stats
+		return TRUE;
+	}
 	else {
-
-		// This is not the next message in the sequence. Must have dropped a message ?
+		// This is not the next frame in the sequence and not a start frame
+		// We've dropped an intermedite frame, so free the slot and do no further processing
+		free(fastMessages[position].data);
+		fastMessages[position].isFree = TRUE;
+		fastMessages[position].data = NULL;
+		// Dropped Frame Statistics
 		if (droppedFrames == 0) {
 			droppedFrameTime = wxDateTime::Now();
-			droppedFrames++;
+			droppedFrames += 1;
+		}
+		else {
+			droppedFrames += 1;
 		}
 		if ((droppedFrames > CONST_DROPPEDFRAME_THRESHOLD) && (wxDateTime::Now() < (droppedFrameTime + wxTimeSpan::Seconds(CONST_DROPPEDFRAME_PERIOD) ) ) ) {
 			wxLogError(_T("TwoCan Device, Dropped Frames rate exceeded"));
@@ -907,10 +962,11 @@ int TwoCanDevice::MapAppendEntry(const CanHeader header, const byte *data, const
 	}
 }
 
-// Determine whether an entry with a matching header exists. If not, then assume this is the first frame of a multi-frame Fast Message
-int TwoCanDevice::MapFindMatchingEntry(const CanHeader header) {
+// Determine whether an entry with a matching header & sequence ID exists. 
+// If not, then assume this is the first frame of a multi-frame Fast Message
+int TwoCanDevice::MapFindMatchingEntry(const CanHeader header, const byte sid) {
 	for (int i = 0; i < CONST_MAX_MESSAGES; i++) {
-		if ((fastMessages[i].IsFree == FALSE) && (fastMessages[i].header.pgn == header.pgn) && \
+		if (((sid & 0xE0) == (fastMessages[i].sid & 0xE0)) && (fastMessages[i].isFree == FALSE) && (fastMessages[i].header.pgn == header.pgn) && 
 			(fastMessages[i].header.source == header.source) && (fastMessages[i].header.destination == header.destination)) {
 			return i;
 		}
@@ -920,21 +976,17 @@ int TwoCanDevice::MapFindMatchingEntry(const CanHeader header) {
 
 // BUG BUG if this gets run in a separate thread, need to lock the fastMessages 
 int TwoCanDevice::MapGarbageCollector(void) {
-	time_t now = time(0);
 	int staleEntries;
 	staleEntries = 0;
 	for (int i = 0; i < CONST_MAX_MESSAGES; i++) {
-		if ((fastMessages[i].IsFree == FALSE) && (difftime(now, fastMessages[i].timeArrived) > CONST_TIME_EXCEEDED)) {
+		if ((fastMessages[i].isFree == FALSE) && (TwoCanUtils::GetTimeInMicroseconds() - fastMessages[i].timeArrived > CONST_TIME_EXCEEDED)) {
 			staleEntries++;
 			free(fastMessages[i].data);
-			fastMessages[i].IsFree = TRUE;
+			fastMessages[i].isFree = TRUE;
 		}
 	}
 	return staleEntries;
 }
-
-
-
 
 void TwoCanDevice::LogReceivedFrames(const CanHeader *header, const byte *frame) {
 	// TwoCan Raw format 0x01,0x01,0xF8,0x09,0x64,0xD9,0xDF,0x19,0xC7,0xB9,0x0A,0x04
@@ -992,7 +1044,6 @@ void TwoCanDevice::LogReceivedFrames(const CanHeader *header, const byte *frame)
 			rawLogFile.Write(wxString::Format("(%010ld.%06ld)",seconds,microseconds));
 #endif
 
-			//rawLogFile.Write(" can0 ");
 			rawLogFile.Write(wxString::Format(" %s ", canAdapter));
 			// Note CanId must be written LSB
 			// BUG BUG What about the Extended Frame bit 0x80000000 ??
@@ -1402,6 +1453,12 @@ case 127237: // Heading/Track control
 	case 129285: // Route & Waypoint Information
 		if (supportedPGN & FLAGS_RTE) {
 			result = DecodePGN129285(payload, &nmeaSentences);
+		}
+		break;
+
+	case 129539: // GNSS DOP's
+		if (supportedPGN & FLAGS_GGA) {
+			result = DecodePGN129539(payload, &nmeaSentences);
 		}
 		break;
 
@@ -2113,6 +2170,9 @@ bool TwoCanDevice::DecodePGN127258(const byte *payload, std::vector<wxString> *n
 		short variation;
 		variation = payload[4] | (payload[5] << 8);
 
+		// Persist variation for use by other constructed sentences such as RMC
+		magneticVariation = variation;
+
 		variation = RADIANS_TO_DEGREES((float)variation / 10000);
 
 		// BUG BUG Needs to be added to other sentences such as HDG and RMC conversions
@@ -2547,10 +2607,10 @@ bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *n
 
 			// BUG BUG Verify S & W values are indeed negative
 			// BUG BUG Mode & Status are not available in PGN 129025
-			// BUG BUG UTC Time is not available in  PGN 129025
+			// BUG BUG UTC Time is not available in PGN 129025
 
-			wxDateTime tm;
-			tm = wxDateTime::Now();
+			wxDateTime now = wxDateTime::Now();
+			wxDateTime tm = now - gpsTimeOffset;
 
 			nmeaSentences->push_back(wxString::Format("$IIGLL,%02d%07.4f,%c,%03d%07.4f,%c,%s,%c,%c", abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', \
 				abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', tm.Format("%H%M%S.00",wxDateTime::UTC).ToAscii(), gpsMode, ((gpsMode == 'A') || (gpsMode == 'D')) ? 'A' : 'V'));
@@ -2582,6 +2642,10 @@ bool TwoCanDevice::DecodePGN129026(const byte *payload, std::vector<wxString> *n
 
 		unsigned short speedOverGround;
 		speedOverGround = (payload[4] | (payload[5] << 8));
+
+		// Persist SOG & COG for other constructed sentences
+		vesselCOG = courseOverGround;
+		vesselSOG = speedOverGround;
 
 		// BUG BUG if Heading Ref = True (0), then ignore %.2f,M and vice versa if Heading Ref = Magnetic (1), ignore %.2f,T
 		// BUG BUG GPS Mode should be obtained rather than assumed
@@ -2653,6 +2717,10 @@ bool TwoCanDevice::DecodePGN129026(const byte *payload, std::vector<wxString> *n
 //                                             |  |        Alt
 //                                             | sats
 //                                           fix Qualty
+
+// $--RMC,hhmmss.ss,A,ddmm.mm,a,dddmm.mm,a,x.x,x.x,xxxx,x.x,a,m,s*hh<CR><LF>
+//                  |                       |   |        |  | status
+//                Validity                 SOG COG Variation FAA Mode
 
 bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
@@ -2736,6 +2804,18 @@ bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *n
 				fabs(longitudeDegrees), fabs(longitudeMinutes), longitudeDegrees >= 0 ? 'E' : 'W', \
 				fixType, numberOfSatellites, (double)hDOP * 0.01f, (double)altitude * 1e-6, \
 				(double)geoidalSeparation * 0.01f));
+
+			// Construct a NMEA 183 RMC sentence
+			/*
+			if ((TwoCanUtils::IsDataValid(vesselCOG)) && (TwoCanUtils::IsDataValid(vesselSOG)) && (TwoCanUtils::IsDataValid(magneticVariation))) {
+				nmeaSentences->push_back(wxString::Format("$IIRMC,%s,%c,%02.0f%07.4f,%c,%03.0f%07.4f,%c,%.2f,%.2f,%s,%.2f,%c,%c,", \
+					tm.Format("%H%M%S").ToAscii(), GPS_STATUS_VALID, fabs(latitudeDegrees), fabs(latitudeMinutes), latitudeDegrees >= 0 ? 'N' : 'S', \
+					fabs(longitudeDegrees), fabs(longitudeMinutes), longitudeDegrees >= 0 ? 'E' : 'W', \
+					(float)vesselSOG * CONVERT_MS_KNOTS / 100, RADIANS_TO_DEGREES((float)vesselCOG) * 0.0001f, tm.Format("%d%m%y").ToAscii(), \
+					RADIANS_TO_DEGREES((float)magneticVariation) * 0.0001f, FAA_MODE_AUTONOMOUS, GPS_MODE_AUTONOMOUS));
+					
+			}
+			*/
 			return TRUE;
 
 			// BUG BUG for the time being ignore reference stations, too lazy to code this
@@ -2770,6 +2850,10 @@ bool TwoCanDevice::DecodePGN129033(const byte *payload, std::vector<wxString> *n
 		tm.ParseDateTime("00:00:00 01-01-1970");
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
+
+		// save the time offset between the computer time & the received gps time for use in constructed sentences such as RMC
+		gpsTimeOffset = wxDateTime::Now() - tm; 
+
 		if ((TwoCanUtils::IsDataValid(daysSinceEpoch))  && (TwoCanUtils::IsDataValid(secondsSinceMidnight))) {
 			nmeaSentences->push_back(wxString::Format("$IIZDA,%s,%d,%d", tm.Format("%H%M%S,%d,%m,%Y"), (int)localOffset / 60, localOffset % 60));
 			return TRUE;
@@ -2831,7 +2915,7 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		speedOverGround = payload[16] | (payload[17] << 8);
 
 		unsigned int communicationState;
-		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
+		communicationState = payload[18] | (payload[19] << 8) | ((payload[20] & 0x07) << 16);
 
 		byte transceiverInformation; 
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
@@ -2861,7 +2945,7 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		reservedForRegionalApplications = (payload[26] & 0xF8) >> 3;
 
 		byte sequenceID;
-		sequenceID = (payload[26] & 0xC0) >> 6;
+		sequenceID = payload[27];
 
 		// Encode correct AIS rate of turn from sensor data as per ITU M.1371 standard
 		// BUG BUG fix this up to remove multiple calculations. 
@@ -2954,7 +3038,7 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		timeStamp = (payload[13] & 0xFC) >> 2;
 
 		unsigned short courseOverGround;
-		courseOverGround =payload[14] | (payload[15] << 8);
+		courseOverGround = payload[14] | (payload[15] << 8);
 
 		unsigned short  speedOverGround;
 		speedOverGround = payload[16] | (payload[17] << 8);
@@ -3111,20 +3195,20 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 		
 		std::string shipName;
 		for (int i = 0; i < 20; i++) {
-			shipName.append(1,(char)payload[32 + i]);
+			shipName.append(1, (char)payload[32 + i]);
 		}
 		
 		byte dteFlag;
 		dteFlag = payload[52] & 0x01;
 
 		byte assignedModeFlag;
-		assignedModeFlag = payload[52] & 0x02 >> 1;
+		assignedModeFlag = (payload[52] & 0x02) >> 1;
 
 		byte spare;
-		spare = (payload[52] & 0x04) >> 2;
+		spare = (payload[52] & 0x3C) >> 2;
 
 		byte transceiverInformation;
-		transceiverInformation = (payload[52] & 0xF8) >> 3;
+		transceiverInformation = ((payload[52] & 0xC0) >> 6) | ((payload[53] & 0x07) << 2);
 
 		char aisChannel;
 		aisChannel = (transceiverInformation & 0x01) ? 'B' : 'A';
@@ -3238,16 +3322,16 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		refBow = payload[20] | (payload[21] << 8);
 		
 		byte AToNType;
-		AToNType = (payload[22] & 0xF8) >> 3;
+		AToNType = payload[22] & 0x1F;
 
 		byte offPositionFlag;
-		offPositionFlag = (payload[22]  & 0x04) >> 2;
+		offPositionFlag = (payload[22] & 0x20) >> 5;
 
 		byte virtualAToN;
-		virtualAToN = (payload[22] & 0x02) >> 1;;
+		virtualAToN = (payload[22] & 0x40) >> 6;;
 
 		byte assignedModeFlag;
-		assignedModeFlag = payload[22] & 0x01;
+		assignedModeFlag = (payload[22] & 0x80) >> 7;
 
 		byte spare;
 		spare = payload[23] & 0x01;
@@ -3262,30 +3346,30 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		AToNStatus = payload[24];
 
 		byte transceiverInformation;
-		transceiverInformation = (payload[25] & 0xF8) >> 3;
+		transceiverInformation = payload[25] & 0x1F;
 
 		char aisChannel;
 		aisChannel = (transceiverInformation & 0x01) ? 'B' : 'A';
 
 		byte reservedB;
-		reservedB = payload[25] & 0x07;
+		reservedB = (payload[25] & 0xE0) >> 5;
 
 		// BUG BUG This is variable up to 20 + 14 (34) characters
 		std::string AToNName;
 		int AToNNameLength = payload[26];
 		if (payload[27] == 1) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
-			for (int i = 0; i < AToNNameLength - 1; i++) {
-				AToNName.append(1, payload[28 + i]);
+			for (size_t i = 0; i < AToNNameLength - 2; i++) {
+				AToNName.append(1, (char)payload[28 + i]);
 			}
 		} 
-								
+
 		// Encode VDM Message using 6bit ASCII
 
 		AISInsertInteger(binaryData, 0, 6, messageID);
 		AISInsertInteger(binaryData, 6, 2, repeatIndicator);
 		AISInsertInteger(binaryData, 8, 30, userID);
 		AISInsertInteger(binaryData, 38, 5, AToNType);
-		AISInsertString(binaryData, 43, 120, AToNNameLength <= 20 ? AToNName.c_str() : AToNName.substr(0,20).c_str());
+		AISInsertString(binaryData, 43, 120, AToNNameLength <= 20 ? AToNName : AToNName.substr(0,20));
 		AISInsertInteger(binaryData, 163, 1, positionAccuracy);
 		AISInsertInteger(binaryData, 164, 28, (int)(longitude * 600000));
 		AISInsertInteger(binaryData, 192, 27, (int)(latitude * 600000));
@@ -3308,7 +3392,7 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 			// Add the AToN's name extension characters if necessary
 			// BUG BUG Should check that shipName.length is not greater than 34
 			AISInsertString(binaryData, 272, (AToNName.length() - 20) * 6,AToNName.substr(20,AToNName.length() - 20));
-			fillBits = (272 + ((AToNName.length() - 20) * 6)) % 6;
+			fillBits = 6 - ((272 + ((AToNName.length() - 20) * 6)) % 6);
 			// Add padding to align on 6 bit boundary
 			if (fillBits > 0) {
 				AISInsertInteger(binaryData, 272 + (AToNName.length() - 20) * 6, fillBits, 0);
@@ -3316,15 +3400,23 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		}
 		else {
 			// Add padding to align on 6 bit boundary
-			fillBits = 272 % 6;
+			fillBits = 6 - (272 % 6);
+			binaryData.resize(272 + fillBits);
 			if (fillBits > 0) {
 				AISInsertInteger(binaryData, 272, fillBits, 0);
 			}
 		}
 		
 		wxString encodedVDMMessage = AISEncodePayload(binaryData);
-		
+		if (transceiverInformation & 0x04) {
+			nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,,%c,%s,%d", 1, 1, aisChannel, encodedVDMMessage, fillBits));
+		}
+		else {
+			nmeaSentences->push_back(wxString::Format("!AIVDM,%d,%d,,%c,%s,%d", 1, 1, aisChannel, encodedVDMMessage, fillBits));
+		}
+
 		// Send the VDM message
+		/*
 		int numberOfVDMMessages = ((int)encodedVDMMessage.Length() / 28) + ((encodedVDMMessage.Length() % 28) >  0 ? 1 : 0);
 
 		for (int i = 0; i < numberOfVDMMessages; i++) {
@@ -3350,7 +3442,7 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		if (AISsequentialMessageId == 10) {
 			AISsequentialMessageId = 0;
 		}
-		
+		*/
 		return TRUE;
 	}
 	else {
@@ -3403,25 +3495,25 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 		sid = payload[0];
 
 		unsigned short distance;
-		distance = payload[1] | (payload[2] << 8);
+		distance = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		byte bearingRef; // Magnetic or True
-		bearingRef = payload[3] & 0xC0;
+		bearingRef = payload[5] & 0xC0;
 
 		byte perpendicularCrossed; // Yes or No
-		perpendicularCrossed = payload[3] & 0x30;
+		perpendicularCrossed = payload[5] & 0x30;
 
 		byte circleEntered; // Yes or No
-		circleEntered = payload[3] & 0x0C;
+		circleEntered = payload[5] & 0x0C;
 
 		byte calculationType; //Great Circle or Rhumb Line
-		calculationType = payload[3] & 0x3C;
+		calculationType = payload[5] & 0x3C;
 
 		unsigned int secondsSinceMidnight;
-		secondsSinceMidnight = payload[4] | (payload[5] << 8) | (payload[6] << 16) | (payload[7] << 24);
+		secondsSinceMidnight = payload[6] | (payload[7] << 8) | (payload[8] << 16) | (payload[9] << 24);
 
 		unsigned short daysSinceEpoch;
-		daysSinceEpoch = payload[8] | (payload[9] << 8);
+		daysSinceEpoch = payload[10] | (payload[11] << 8);
 
 		wxDateTime tm;
 		tm.ParseDateTime("00:00:00 01-01-1970");
@@ -3429,31 +3521,31 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
 		unsigned short bearingOrigin;
-		bearingOrigin = (payload[10] | (payload[11] << 8)) * 0.001;
+		bearingOrigin = (payload[12] | (payload[13] << 8)) * 0.001;
 
 		unsigned short bearingPosition;
-		bearingPosition = (payload[12] | (payload[13] << 8)) * 0.001;
+		bearingPosition = (payload[14] | (payload[15] << 8)) * 0.001;
 
 		int originWaypointId;
-		originWaypointId = payload[14] | (payload[15] << 8) | (payload[16] << 16) | (payload[17] << 24);
+		originWaypointId = payload[16] | (payload[17] << 8) | (payload[18] << 16) | (payload[19] << 24);
 
 		int destinationWaypointId;
-		destinationWaypointId = payload[18] | (payload[19] << 8) | (payload[20] << 16) | (payload[21] << 24);
+		destinationWaypointId = payload[20] | (payload[21] << 8) | (payload[22] << 16) | (payload[23] << 24);
 
 		double latitude;
-		latitude = ((payload[22] | (payload[23] << 8) | (payload[24] << 16) | (payload[25] << 24))) * 1e-7;
+		latitude = ((payload[24] | (payload[25] << 8) | (payload[26] << 16) | (payload[27] << 24))) * 1e-7;
 
 		int latitudeDegrees = trunc(latitude);
 		double latitudeMinutes = (fabs(latitude) - abs(latitudeDegrees)) * 60;
 
 		double longitude;
-		longitude = ((payload[26] | (payload[27] << 8) | (payload[28] << 16) | (payload[29] << 24))) * 1e-7;
+		longitude = ((payload[28] | (payload[29] << 8) | (payload[30] << 16) | (payload[31] << 24))) * 1e-7;
 
 		int longitudeDegrees = trunc(longitude);
 		double longitudeMinutes = (fabs(longitude) - abs(longitudeDegrees)) * 60;
 
 		int waypointClosingVelocity;
-		waypointClosingVelocity = (payload[30] | (payload[31] << 8)) * 0.01;
+		waypointClosingVelocity = (payload[32] | (payload[33] << 8)) * 0.01;
 
 		wxDateTime timeNow;
 		timeNow = wxDateTime::Now();
@@ -3613,6 +3705,50 @@ bool TwoCanDevice::DecodePGN129285(const byte * payload, std::vector<wxString> *
 	}
 }
 
+// Decode PGN 129539 GNSS DOP's
+//        1 2 3                        14 15  16  17  18
+//        | | |                         |  |   |   |   |
+//$--GSA,a,a,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x.x,x.x,x.x*hh<CR><LF>
+// 1. Selection mode: M=Manual, forced to operate in 2D or 3D, A=Automatic, 2D/3D
+// 2. Mode (1 = no fix, 2 = 2D fix, 3 = 3D fix)
+// 3..14 Satellite ID's
+// 15, 16, 17 PDOP, HDOP, VDOP
+bool TwoCanDevice::DecodePGN129539(const byte *payload, std::vector<wxString> *nmeaSentences) {
+	if (payload != NULL) {
+
+		byte sid;
+		sid = payload[0];
+
+		byte desiredMode;
+		desiredMode = payload[1] & 0x07;
+
+		byte actualMode;
+		actualMode = (payload[1] & 0x38) >> 3;
+		// 0 = 1D, 1 =2D, 2 = 3D, 3 =Auto
+
+		byte reserved;
+		reserved = (payload[1] & 0xC0) >> 6;
+
+		short hDOP; // * 0.01
+		hDOP = payload[2] | (payload[3] << 8);
+
+		short vDOP;
+		vDOP = payload[4] | (payload[5] << 8);
+
+		short tDOP;
+		tDOP = payload[6] | (payload[7] << 8);
+
+		//nmeaSentences->push_back(wxString::Format("$IIGSA,GSA,A,,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x.x,x.x,x.x));
+		// Looks like we'll need to construct this sentence
+
+		return FALSE;
+	}
+	else {
+		return FALSE;
+	}
+
+}
+
 // Decode PGN 129540 NMEA Satellites in View
 // $--GSV,x,x,x,x,x,x,x,...*hh<CR><LF>
 //        | | | | | | snr
@@ -3740,7 +3876,7 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 		secondsSinceMidnight = payload[14] | (payload[15] << 8) | (payload[16] << 16) | (payload[17] << 24);
 
 		unsigned int communicationState;
-		communicationState = (payload[18] | (payload[19] << 8) | (payload[20] << 16)) & 0x7FFFF;
+		communicationState = payload[18] | (payload[19] << 8) | ((payload[20] & 0x07) << 16);
 
 		byte transceiverInformation;
 		transceiverInformation = (payload[20] & 0xF8) >> 3;
@@ -4015,10 +4151,10 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 89, 27, (int)(latitude * 600000));
 		AISInsertInteger(binaryData, 116, 12, TwoCanUtils::IsDataValid(courseOverGround) ? RADIANS_TO_DEGREES((float)courseOverGround) * 0.001f : 3600);
 		AISInsertInteger(binaryData, 128, 6, timeStamp);
-		AISInsertInteger(binaryData, 134, 8, reservedForRegionalApplications); // 1 bit altitide sensor
+		AISInsertInteger(binaryData, 134, 1, altitudeSensor);
+		AISInsertInteger(binaryData, 135, 7, reservedForRegionalApplications);
 		AISInsertInteger(binaryData, 142, 1, dteFlag);
 		AISInsertInteger(binaryData, 143, 3, spare);
-		// BUG BUG just guessing
 		AISInsertInteger(binaryData, 146, 1, assignedModeFlag);
 		AISInsertInteger(binaryData, 147, 1, raimFlag);
 		AISInsertInteger(binaryData, 148, 1, sotdmaFlag);
@@ -4186,7 +4322,7 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 38, 2, 0); //spare
 		int l = safetyMessage.size();
 		// Remember 6 bits per character
-		AISInsertString(binaryData, 40, l * 6, safetyMessage.c_str());
+		AISInsertString(binaryData, 40, l * 6, safetyMessage);
 
 		// Calculate fill bits as safetyMessage is variable in length
 		// According to ITU, maximum length of safetyMessage is 966 6bit characters
@@ -4492,8 +4628,8 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 8, 30, userID);
 		AISInsertInteger(binaryData, 38, 2, 0x01); // Part B = 1
 		AISInsertInteger(binaryData, 40, 8, shipType);
-		AISInsertString(binaryData, 48, 42, vendorId.c_str());
-		AISInsertString(binaryData, 90, 42, callSign.c_str());
+		AISInsertString(binaryData, 48, 42, vendorId);
+		AISInsertString(binaryData, 90, 42, callSign);
 		AISInsertInteger(binaryData, 132, 9, refBow / 10);
 		AISInsertInteger(binaryData, 141, 9, (shipLength / 10) - (refBow / 10));
 		AISInsertInteger(binaryData, 150, 6, (shipBeam / 10) - (refStarboard / 10));
@@ -5367,8 +5503,13 @@ int TwoCanDevice::TransmitFrame(unsigned int id, byte *data) {
 	int returnCode;
 	const std::lock_guard<std::mutex> lock(writeMutex);
 
-	#if defined (__WXMSW__)
+#if defined (__WXMSW__)
+	if (writeFrame != NULL) {
 		returnCode = writeFrame(id, CONST_PAYLOAD_LENGTH, &data[0]);
+	}
+	else {
+		returnCode = SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DEVICE, TWOCAN_ERROR_INVALID_WRITE_FUNCTION);
+	}
 #endif
 	
 #if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)

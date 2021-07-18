@@ -121,6 +121,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
   
 	// BUG BUG Localization & version numbers
 	txtAbout->SetLabel(_T("TwoCan PlugIn for OpenCPN\nEnables some NMEA2000\xae data to be directly integrated with OpenCPN.\nSend bug reports to twocanplugin@hotmail.com"));
+	txtAbout->Wrap(txtAbout->GetClientSize().x);
 
 	// Debug Tab
 	// BUG BUG Localization
@@ -128,10 +129,10 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 
 	// Network Tab
 	// Resize the grid to fit the width and not expand vertically
-	// BUG BUG Should be seme defualt values to achieve this
+	// BUG BUG Should be seme default values to achieve this
 	wxSize gridSize;
 	gridSize = this->GetClientSize();
-	gridSize.SetHeight(gridSize.GetHeight() * 0.75f);
+	gridSize.SetHeight(gridSize.GetHeight());
 	gridSize.SetWidth(gridSize.GetWidth());
 	dataGridNetwork->SetMinSize(gridSize);
 	dataGridNetwork->SetMaxSize(gridSize);
@@ -179,7 +180,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
 	labelModelId->SetLabel(wxString::Format("Model ID: %s", PLUGIN_COMMON_NAME));
 	labelManufacturer->SetLabel("Manufacturer: TwoCan");
-	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %d.%d", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR));
+	labelSoftwareVersion->SetLabel(wxString::Format("Software Version: %d.%d.%d", PLUGIN_VERSION_MAJOR, PLUGIN_VERSION_MINOR, PLUGIN_VERSION_PATCH));
 	labelDevice->SetLabel(wxString::Format("Device Class: %d", CONST_DEVICE_CLASS));
 	labelFunction->SetLabel(wxString::Format("Device Function: %d", CONST_DEVICE_FUNCTION));
 
@@ -203,7 +204,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 }
 
 // BUG BUG Should prevent the user from shooting themselves in the foot if they select a driver that is not present
-void TwoCanSettings::OnChoice(wxCommandEvent &event) {
+void TwoCanSettings::OnChoiceInterfaces(wxCommandEvent &event) {
 	// BUG BUG should only set the dirty flag if we've actually selected a different driver
 	this->settingsDirty = TRUE;
 }
@@ -416,6 +417,7 @@ wxString driversFolder = pluginDataFolder +  _T("drivers") + wxFileName::GetPath
 	adapters["Log File Reader"] = "Log File Reader";
 	adapters["Pcap File Reader"] = "Pcap File Reader";
 	adapters["Cantact"] = "Cantact";
+	adapters["Kvaser"] = "Kvaser";
 	adapters["Rusoku"] = "Rusoku";
 #endif
 

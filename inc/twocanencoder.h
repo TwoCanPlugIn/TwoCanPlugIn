@@ -27,14 +27,8 @@
 #include <wx/wx.h>
 #endif
 
-// Error constants and macros
-#include "twocanerror.h"
-
-// Constants, typedefs and utility functions for bit twiddling and array manipulation for NMEA 2000 messages
-#include "twocanutils.h"
-
-// NMEA 183 Parsing (for gateway & autopilot functions)
-#include "nmea0183.h"
+// AIS Decoding/Encoding (also includes the usual twocan & nmea183 includes)
+#include "twocanais.h"
 
 // NMEA 183 GNSS Satellite information
 #include "satinfo.h"
@@ -131,18 +125,6 @@ public:
 	// Encode PGN 129033 NMEA Date & Time
 	bool EncodePGN129033(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
-	// Encode PGN 129038 AIS Class A Position Report
-	bool EncodePGN129038(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
-	// Encode PGN 129039 AIS Class B Position Report
-	bool EncodePGN129039(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
-	// Encode PGN 129040 AIS Class B Extended Position Report
-	bool EncodePGN129040(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
-	// Encode PGN 129041 AIS Aids To Navigation (AToN) Report
-	bool EncodePGN129041(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
 	// Encode PGN 129283 NMEA Cross Track Error (XTE)
 	bool EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
@@ -155,38 +137,11 @@ public:
 	// Encode PGN 129540 GNSS Satellites in View
 	bool EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
-	// Encode PGN 129793 AIS Date and Time report
-	bool EncodePGN129793(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
-	// Encode PGN 129794 AIS Class A  Data
-	bool EncodePGN129794(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
 	// Encode PGN 129796 AIS Acknowledge 
 	// Encode PGN 129797 AIS Binary Broadcast Message 
 
-	//	Encode PGN 129798 AIS SAR Aircraft Position Report
-	bool EncodePGN129798(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
-	//	Encode PGN 129801 AIS Addressed Safety Related Message
-	bool EncodePGN129801(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
-	// Encode PGN 129802 AIS Safety Related Broadcast Message 
-	bool EncodePGN129802(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
-	// Encode PGN 129803 AIS Interrogation
-	// Encode PGN 129804 AIS Assignment Mode Command 
-	// Encode PGN 129805 AIS Data Link Management Message 
-	// Encode PGN 129806 AIS Channel Management
-	// Encode PGN 129807 AIS Group Assignment
-
 	// Encode PGN 129808 DSC Message
 	bool EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
-	// Encode PGN 129809 AIS Class B  Data Report, Part A 
-	bool EncodePGN129809(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
-
-	// Encode PGN 129810 AIS Class B  Data Report, Part B 
-	bool EncodePGN129810(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
 	// Encode PGN 130306 NMEA Wind
 	bool EncodePGN130306(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
@@ -216,11 +171,8 @@ public:
 	// GNSS Satellites in use
 	SAT_INFO gpsSatelites[12];
 
-	// AIS stuff
-	std::vector<bool> AISDecoden2kMessage(wxString SixBitData);
-	char AISDecodeCharacter(char value);
-	std::string AISDecodeString(std::vector<bool> &binaryData, int start, int length);
-	int AISDecodeInteger(std::vector<bool> &binaryData, int start, int length);
+	// AIS Decoding
+	TwoCanAis *aisDecoder;
 	
 
 };

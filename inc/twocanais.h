@@ -119,7 +119,6 @@ private:
 
 	// PGN 129038 has its own Sequence Id, however this is not related to
 	// the AIS VDM Sequence Id, as AIS Message Types 1,2,3 are only single sentence messages
-	// This sequenceID is used to identify multi-sentence AIS messages
 	byte aisSequenceID;
 
 };

@@ -20,9 +20,9 @@
  *   You should have received a copy of the GNU General Public License     *
  *   along with this program; if not, write to the                         *
  *   Free Software Foundation, Inc.,                                       *
- *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,  USA.         *
+ *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,  USA.             *
  ***************************************************************************
- *                                                                         *
+ *
  *   S Blackburn's original source license:                                *
  *         "You can use it any way you like."                              *
  *   More recent (2010) license statement:                                 *
@@ -30,46 +30,39 @@
  */
 
 
-#if ! defined( BOD_CLASS_HEADER )
-#define BOD_CLASS_HEADER
 
-/*
-** Author: Samuel R. Blackburn
-** CI$: 76300,326
-** Internet: sammy@sed.csc.com
-**
-** You can use it any way you like.
-*/
+#if ! defined( WCV_CLASS_HEADER )
 
-class BOD : public RESPONSE
+#define WCV_CLASS_HEADER
+
+
+class WCV : public RESPONSE
 {
    public:
 
-      BOD();
-      ~BOD();
-      
+	   WCV();
+	   ~WCV();
+
       /*
       ** Data
       */
 
-      double      BearingTrue{ 0.0 };
-      double      BearingMagnetic{ 0.0 };
-      wxString    To;
-      wxString    From;
+      double      Velocity{ 0.0 };
+      wxString To;
 
       /*
       ** Methods
       */
 
       virtual void Empty( void );
-      virtual bool Parse( SENTENCE const& sentence );
+	  virtual bool Parse(SENTENCE const& sentence);
       virtual bool Write( SENTENCE& sentence );
 
       /*
       ** Operators
       */
-	  
-      virtual const BOD& operator = ( const BOD& source );
+
+      virtual WCV const& operator = ( WCV const& source ) ;
 };
 
-#endif // BOD_CLASS_HEADER
+#endif // WCV_CLASS_HEADER

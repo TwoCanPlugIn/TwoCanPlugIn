@@ -3,3 +3,5 @@ img
 data/drivers/*.dylib
 inc/twocanversion.h
 .DS_Store
+po/POTFILES.in
+po/POTFILES.in.test

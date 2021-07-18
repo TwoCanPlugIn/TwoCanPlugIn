@@ -40,7 +40,7 @@ set(VERSION_MAJOR "2")
 set(VERSION_MINOR "0")
 set(VERSION_PATCH "0")
 set(VERSION_TWEAK "0")
-set(VERSION_DATE "20/11/2020")
+set(VERSION_DATE "10/04/2021")
 set(OCPN_MIN_VERSION "ov50")
 set(OCPN_API_VERSION_MAJOR "1")
 set(OCPN_API_VERSION_MINOR "16")
@@ -60,7 +60,7 @@ set(CLOUDSMITH_USER "steven-adler")
 # set this if your cloudsmith repository name does not match your git repository name 
 set(CLOUDSMITH_BASE_REPOSITORY "twocanplugin")
 
-set(XML_INFO_URL "https://opencpn.org/wiki/dokuwiki/doku.php?id=opencpn:developer_manual:plugins:beta_plugins:twocan_pi")
+set(XML_INFO_URL "https://opencpn.org/wiki/dokuwiki/doku.php?id=opencpn:opencpn_user_manual:plugins:other:twocan_pi")
 set(XML_SUMMARY ${SHORT_DESCRIPTION})
 set(XML_DESCRIPTION ${LONG_DESCRIPTION})
 
@@ -95,13 +95,15 @@ message(STATUS "${CMLOC}Build type: ${CMAKE_BUILD_TYPE}")
 
 project(${PACKAGE})
 
-include("cmake/PluginSetup.cmake")
+## Provide path to additional CMAKE files (extension is assumed to be .cmake)
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include("PluginSetup")
 
 ##
 ## ----- Modify section below if there are special requirements for the plugin ----- ##
 ##
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_VERBOSE_MAKEFILE "Activate verbose mode for make files" ON)
 
 option(Plugin_CXX11 "Use c++11" OFF)
 
@@ -110,7 +112,7 @@ option(Plugin_CXX11 "Use c++11" OFF)
 ## ----- do not change next section - needed to configure build process ----- ##
 ##
 
-include("cmake/PluginConfigure.cmake")
+include("PluginConfigure")
 
 ##
 ## ----- Change below to match project requirements for source, headers, etc. ----- ##
@@ -144,7 +146,8 @@ SET(SOURCES src/twocanerror.cpp
             src/twocanencoder.cpp
             src/twocanautopilot.cpp
             src/twocanautopilotdialog.cpp
-            src/twocanautopilotdialogbase.cpp)
+            src/twocanautopilotdialogbase.cpp
+            src/twocanais.cpp)
 
 SET(HEADERS inc/twocanerror.h
             inc/twocandevice.h
@@ -156,9 +159,12 @@ SET(HEADERS inc/twocanerror.h
             inc/twocanencoder.h
             inc/twocanautopilot.h
             inc/twocanautopilotdialog.h
-            inc/twocanautopilotdialogbase.h)
+            inc/twocanautopilotdialogbase.h
+            inc/twocanais.h)
 
 SET(NMEA183_SRC nmea183/src/apb.cpp
+                nmea183/src/bod.cpp
+                nmea183/src/bwr.cpp
                 nmea183/src/dbt.cpp
                 nmea183/src/dpt.cpp
                 nmea183/src/expid.cpp
@@ -190,12 +196,15 @@ SET(NMEA183_SRC nmea183/src/apb.cpp
                 nmea183/src/vhw.cpp
                 nmea183/src/vlw.cpp
                 nmea183/src/vtg.cpp
+                nmea183/src/wcv.cpp
                 nmea183/src/wpl.cpp
                 nmea183/src/xdr.cpp
                 nmea183/src/xte.cpp
                 nmea183/src/zda.cpp)
 
 SET(NMEA183_INC nmea183/inc/apb.hpp
+                nmea183/inc/bod.hpp
+                nmea183/inc/bwr.hpp
                 nmea183/inc/dbt.hpp
                 nmea183/inc/dpt.hpp
                 nmea183/inc/gga.hpp
@@ -224,6 +233,7 @@ SET(NMEA183_INC nmea183/inc/apb.hpp
                 nmea183/inc/vhw.hpp
                 nmea183/inc/vlw.hpp
                 nmea183/inc/vtg.hpp
+                nmea183/inc/wcv.hpp
                 nmea183/inc/wpl.hpp
                 nmea183/inc/xdr.hpp
                 nmea183/inc/xte.hpp
@@ -263,15 +273,17 @@ IF(APPLE)
         inc/twocaninterface.h
         inc/twocanpcap.h)
 
-    # For Rusoku Toucan, Assumes the MacCan Rusoku headers have been installed in the default location
-    SET(RUSOKU_HEADER "../rusokuCAN/Includes")
-    INCLUDE_DIRECTORIES(AFTER ${RUSOKU_HEADER})
+    # For Rusoku Toucan & Kvaser interfaces, The MacCan Rusoku & Kvaser headers have been manually copied to this location
+    # refer to ci/circleci-build-macos.sh under the Rusoku section
+    SET(MACCAN_HEADER "/usr/local/include")
+    INCLUDE_DIRECTORIES(AFTER ${MACCAN_HEADER})
 
 ENDIF(APPLE)
 
 ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SOURCES} ${HEADERS} ${NMEA183_INC} ${NMEA183_SRC})
 
 IF(WIN32)
+# This library is used to obtain a MAC address and hence derive a NMEA 2000 Unique Id
 	TARGET_LINK_LIBRARIES(${PACKAGE_NAME} iphlpapi)
 ENDIF(WIN32)
 
@@ -279,30 +291,41 @@ IF(APPLE)
     # use runtime paths
     set(CMAKE_MACOSX_RPATH TRUE)
     
-    # Refer to circleci_build-macos as we build the Toucan library and copy the dylib to data/drivers
-    # So that is the location where will link, but will also need to specify the rpath
+    # Refer to ci/circleci_build-macos.sh as we build the Toucan & Kvaser library and copy the dylib to data/drivers
+    # So that is the location where it will be dynamically linked, but will also need to specify the rpath
 
     FIND_LIBRARY(RUSOKU_LIBRARY
     NAMES libTouCAN.dylib
     PATHS usr/local/lib
     )
 
-    TARGET_LINK_LIBRARIES(${PACKAGE_NAME} ${RUSOKU_LIBRARY})
+    FIND_LIBRARY(KVASER_LIBRARY
+    NAMES libKvaserCAN.dylib
+    PATHS usr/local/lib
+    )
+
+    TARGET_LINK_LIBRARIES(${PACKAGE_NAME} ${RUSOKU_LIBRARY} ${KVASER_LIBRARY})
 
     # As we install the Rusoku library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
     ADD_CUSTOM_COMMAND( POST_BUILD
       TARGET ${PACKAGE_NAME} 
       COMMAND install_name_tool -add_rpath "@loader_path/./../SharedSupport/plugins/${PACKAGE_NAME}/data/drivers" "lib${PACKAGE_NAME}.dylib"
-      COMMAND install_name_tool -change libTouCAN.0.1.dylib @rpath/libTouCAN.0.1.dylib lib${PACKAGE_NAME}.dylib
+      COMMAND install_name_tool -change libTouCAN.0.2.dylib @rpath/libTouCAN.0.2.dylib lib${PACKAGE_NAME}.dylib
     )
     
+    # Similarly we install the Kvaser library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
+    ADD_CUSTOM_COMMAND( POST_BUILD
+    TARGET ${PACKAGE_NAME} 
+    COMMAND install_name_tool -change libKvaserCAN.0.1.dylib @rpath/libKvaserCAN.0.1.dylib lib${PACKAGE_NAME}.dylib
+    )
+
 ENDIF(APPLE)
 
 ##
 ## ----- do not change next section - needed to configure build process ----- ##
 ##
 
-include("cmake/PluginInstall.cmake")
-include("cmake/PluginLocalization.cmake")
-include("cmake/PluginPackage.cmake")
+include("PluginInstall")
+include("PluginLocalization")
+include("PluginPackage")
 

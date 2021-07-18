@@ -176,7 +176,7 @@ void TwoCanMacToucan::Read() {
 
 	while (!TestDestroy()) {
 			
-		if (toucanInterface.ReadMessage(message, CANREAD_INFINITE) == CMacCAN::NoError) {
+		if (toucanInterface.ReadMessage(message, CONST_TEN_MILLIS) == CMacCAN::NoError) {
 			//wxLogMessage(_T("%0x,%c,%i"), message.id, message.xtd ? 'X' : 'S', message.dlc);
 
 			// Copy the CAN Header										

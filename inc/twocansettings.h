@@ -218,7 +218,7 @@ public:
 protected:
 	//overridden methods from the base class
 	void OnInit(wxInitDialogEvent& event);
-	void OnChoice(wxCommandEvent &event);
+	void OnChoiceInterfaces(wxCommandEvent &event);
 	void OnCheckPGN(wxCommandEvent &event);
 	void OnLogging(wxCommandEvent &event);
 	void OnCheckMode(wxCommandEvent &event);

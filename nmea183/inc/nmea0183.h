@@ -133,12 +133,19 @@ typedef enum _transducertype
    VolumeTransducer              = 'V'
 } TRANSDUCER_TYPE;
 
-typedef enum
+typedef enum _routetype
 {
       RouteUnknown = 0,
       CompleteRoute,
       WorkingRoute
 } ROUTE_TYPE;
+
+typedef enum _aischannel
+{
+   ChannelA = 'A',
+   ChannelB = 'B',
+   ChannelNone
+} AIS_CHANNEL;
 
 /*
 ** Misc Function Prototypes

@@ -35,6 +35,11 @@
 #include <iphlpapi.h>
 #endif
 
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+	// For Apple & Linux logging and for Fast Message assembly to get time values
+	#include <sys/time.h>
+#endif
+
 // For wxWidgets Pi
 #include <wx/math.h>
 
@@ -139,6 +144,21 @@
 #define GPS_MODE_SIMULATED 'S'
 #define GPS_MODE_INVALID 'N' 
 
+// NMEA 183 GPS FAA Modes
+#define FAA_MODE_AUTONOMOUS 'A'
+#define FAA_MODE_DIFFERENTIAL 'D'
+#define FAA_MODE_ESTIMATED 'E'
+#define FAA_MODE_RTK_FLOAT 'F'
+#define FAA_MODE_MANUAL 'M'
+#define FAA_MODE_INVALID 'N'
+#define FAA_MODE_PRECISE 'P'
+#define FAA_MODE_RTK_INTEGER 'R'
+#define FAA_MODE_SIMULATED 'S'
+
+//GPS Fix status
+#define GPS_STATUS_VALID 'A'
+#define GPS_STATUS_INVALID 'V'
+
 // Some defintions used in NMEA 2000 PGN's
 
 #define HEADING_TRUE 0
@@ -197,7 +217,7 @@
 #define TANK_LIVEWELL 3
 #define TANK_OIL 4
 #define TANK_BLACKWATER 5
-#define QUARTER_PERCENT 250 // Fluid levels are defined in qurater percent intervals
+#define QUARTER_PERCENT 250 // Fluid levels are defined in quarter percent intervals
 
 
 // Bit values to determine what NMEA 2000 PGN's are converted to their NMEA 0183 equivalent
@@ -316,6 +336,10 @@ public:
 	static int EncodeCanHeader(unsigned int *id, const CanHeader *header);
 	// Convert a string of hex characters to the corresponding byte array
 	static int ConvertHexStringToByteArray(const byte *hexstr, const unsigned int len, byte *buf);
+	// Generates the ID for Fast Messages. 3 high bits are ID, lower 5 bits are the sequence number
+	static byte GenerateID(unsigned char previousSID);
+	// Calculate the number of microsoeconds since Posix Epoch
+	static unsigned long long GetTimeInMicroseconds(void);
 	// BUG BUG Any other conversion functions required ??
 
 	// Used to generate the unique id for Windows versions (Note the Linux version is defined in twocansocket

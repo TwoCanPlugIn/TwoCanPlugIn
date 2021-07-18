@@ -169,8 +169,8 @@ typedef int(*LPFNDLLWrite)(const unsigned int id, const int length, const byte *
 
 // Buffer used to re-assemble sequences of multi frame Fast Packet messages
 typedef struct FastMessageEntry {
-	byte IsFree; // indicate whether this entry is free
-	time_t timeArrived; // time of last message. garbage collector will remove stale entries
+	byte isFree; // indicate whether this entry is free
+	unsigned long long timeArrived; // time of last message in microseconds.
 	CanHeader header; // the header of the message. Used to "map" the incoming fast message fragments
 	unsigned int sid; // message sequence identifier, used to check if a received message is the next message in the sequence
 	unsigned int expectedLength; // total data length obtained from first frame
@@ -241,6 +241,15 @@ private:
 	void OnHeartbeat(wxEvent &event);
 	byte heartbeatCounter;
 
+	// The following are stored for use in constructing NMEA 183 sentences from disparate NMEA 2000 messages
+	// Difference between computer time and gps time, used to calculate NMEA 183 RMC sentences
+	wxTimeSpan gpsTimeOffset;
+	// Compass variation, also used in NMEA 183 RMC sentence
+	short magneticVariation;
+	// COG, SOG, again used in NMEA 183 RMC sentence
+	unsigned short vesselCOG;
+	unsigned short vesselSOG;
+
 	// Statistics
 	int receivedFrames;
 	int transmittedFrames;
@@ -287,7 +296,7 @@ private:
 	int MapFindFreeEntry(void);
 	void MapInsertEntry(const CanHeader header, const byte *data, const int position);
 	int MapAppendEntry(const CanHeader header, const byte *data, const int position);
-	int MapFindMatchingEntry(const CanHeader header);
+	int MapFindMatchingEntry(const CanHeader header, const byte sid);
 	int MapGarbageCollector(void);
 	
 	// Log received frames
@@ -384,10 +393,13 @@ private:
 	bool DecodePGN129283(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129284 Navigation Data
-	bool DecodePGN129284(const byte * payload, std::vector<wxString> *nmeaSentences);
+	bool DecodePGN129284(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129285 Navigation Route/WP Information
-	bool DecodePGN129285(const byte * payload, std::vector<wxString> *nmeaSentences);
+	bool DecodePGN129285(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode PGN 129539 GNSS DOP's
+	bool DecodePGN129539(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129540 NMEA GNSS Satellites in view
 	bool DecodePGN129540(const byte *payload, std::vector<wxString> *nmeaSentences);

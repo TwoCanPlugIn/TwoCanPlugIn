@@ -29,69 +29,78 @@
  *         "It is BSD license, do with it what you will"                   *
  */
 
-
 #include "nmea0183.h"
 
-BOD::BOD()
+BWR::BWR()
 {
-   Mnemonic = _T("BOD");
-   Empty();
+	Mnemonic = _T("BWR");
+	Empty();
 }
 
-BOD::~BOD()
+BWR::~BWR()
 {
-   Mnemonic.Empty();
-   Empty();
+	Mnemonic.Empty();
+	Empty();
 }
 
-void BOD::Empty( void ) 
+void BWR::Empty( void ) 
 {
+   UTCTime.clear();
    BearingTrue     = 0.0;
    BearingMagnetic = 0.0;
-   To = wxEmptyString;
-   From = wxEmptyString;
+   NauticalMiles   = 0.0;
+   To.clear();
+   Position.Empty();
 }
 
-bool BOD::Parse( SENTENCE const& sentence ) 
+bool BWR::Parse( SENTENCE const& sentence )
 {
    /*
-   ** BOD - Bearing - Origin Waypoint to Destination Waypoint
+   ** BWR - Bearing and Distance to Waypoint - Rhumb Line
+   ** Latitude, N/S, Longitude, E/W, UTC, Status
+   **                                                       11
+   **        1         2       3 4        5 6   7 8   9 10  | 12   13
+   **        |         |       | |        | |   | |   | |   | |    |
+   ** $--BWR,hhmmss.ss,llll.ll,a,yyyyy.yy,a,x.x,T,x.x,M,x.x,N,c--c*hh<CR><LF>
    **
-   **        1   2 3   4 5    6    7
-   **        |   | |   | |    |    |
-   ** $--BOD,x.x,T,x.x,M,c--c,c--c*hh<CR><LF>
-   **
-   ** Field Number: 
-   **  1) Bearing Degrees, TRUE
-   **  2) T = True
-   **  3) Bearing Degrees, Magnetic
-   **  4) M = Magnetic
-   **  5) TO Waypoint
-   **  6) FROM Waypoint
-   **  7) Checksum
+   **  1) UTCTime
+   **  2) Waypoint Latitude
+   **  3) N = North, S = South
+   **  4) Waypoint Longitude
+   **  5) E = East, W = West
+   **  6) Bearing, True
+   **  7) T = True
+   **  8) Bearing, Magnetic
+   **  9) M = Magnetic
+   ** 10) Nautical Miles
+   ** 11) N = Nautical Miles
+   ** 12) Waypoint ID
+   ** 13) FAA Mode
+   ** 14) Checksum
    */
 
    /*
    ** First we check the checksum...
    */
 
-   NMEA0183_BOOLEAN check = sentence.IsChecksumBad( 7 );
-   
-   if ( check == NTrue )
+	NMEA0183_BOOLEAN check = sentence.IsChecksumBad( 14 );
+	if ( check == NTrue )
    {
-      SetErrorMessage( _T("Invalid Checksum") );
-      return( FALSE );
+       SetErrorMessage(_T("Invalid Checksum"));
+       return( false );
    } 
 
-   BearingTrue     = sentence.Double( 1 );
-   BearingMagnetic = sentence.Double( 3 );
-   To              = sentence.Field( 5 );
-   From            = sentence.Field( 6 );
+   UTCTime         = sentence.Field( 1 );
+   Position.Parse( 2, 3, 4, 5, sentence );
+   BearingTrue     = sentence.Double( 6 );
+   BearingMagnetic = sentence.Double( 8 );
+   NauticalMiles   = sentence.Double( 10 );
+   To              = sentence.Field( 12 );
 
-   return( TRUE );
+   return( true );
 }
 
-bool BOD::Write( SENTENCE& sentence ) 
+bool BWR::Write( SENTENCE& sentence ) 
 {
    /*
    ** Let the parent do its thing
@@ -99,25 +108,29 @@ bool BOD::Write( SENTENCE& sentence )
    
    RESPONSE::Write( sentence );
 
+   sentence += UTCTime;
+   sentence += Position;
    sentence += BearingTrue;
    sentence += "T";
    sentence += BearingMagnetic;
    sentence += "M";
+   sentence += NauticalMiles;
+   sentence += "N";
    sentence += To;
-   sentence += From;
 
    sentence.Finish();
 
    return( TRUE );
 }
 
-
-const BOD& BOD::operator = (const BOD& source ) 
+const BWR& BWR::operator = ( const BWR& source )
 {
+   UTCTime         = source.UTCTime;
+   Position        = source.Position;
    BearingTrue     = source.BearingTrue;
    BearingMagnetic = source.BearingMagnetic;
+   NauticalMiles   = source.NauticalMiles;
    To              = source.To;
-   From            = source.From;
 
    return( *this );
 }

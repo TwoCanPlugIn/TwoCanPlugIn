@@ -95,11 +95,12 @@ void TwoCanLogReader::ParseTwoCan(std::string str) {
 	return;
 }
 
+// Fix included for V2.0 supports matching of slcan, vcan or can
 void TwoCanLogReader::ParseCanDump(std::string str) {
 	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
-		unsigned long temp = std::strtoul(twoCanRegEx.GetMatch(str,1), NULL, 16);
+		unsigned long temp = std::strtoul(twoCanRegEx.GetMatch(str,2), NULL, 16);
 		memcpy(&canFrame[0],&temp, 4);
-		wxString tmpString = twoCanRegEx.GetMatch(str,2).c_str();
+		wxString tmpString = twoCanRegEx.GetMatch(str,3).c_str();
 		byte tmpChar[tmpString.size()];
         memcpy(&tmpChar[0], tmpString,tmpString.size());
        	TwoCanUtils::ConvertHexStringToByteArray(&tmpChar[0], 8, &canFrame[4]);

@@ -24,7 +24,7 @@
 
 
 #define CONST_TWOCAN_REGEX "^0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2}),0x([0-9A-Fa-f]{2})"
-#define CONST_CANDUMP_REGEX "^\\([0-9]+.[0-9]+\\)\\scan[0-9]\\s([0-9A-F]{8})#([0-9A-F]{16})"
+#define CONST_CANDUMP_REGEX "^\\([0-9]+.[0-9]+\\)\\s(slcan|vcan|can)[0-9]\\s([0-9A-F]{8})#([0-9A-F]{16})"
 #define CONST_KEES_REGEX "^[0-9]{4}-[0-9]{2}-[0-9]{2}[TZ][0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3},([0-9]),([0-9]{5,6}),([0-9]+),([0-9]+),([0-9]),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2})"
 #define CONST_YACHTDEVICES_REGEX "^[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}\\sR\\s([0-9A-F]{8})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})"
 enum LogFileFormat { Undefined, TwoCanRaw, CanDump, Kees, YachtDevices};
