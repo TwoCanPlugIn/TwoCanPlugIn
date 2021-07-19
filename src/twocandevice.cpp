@@ -3356,7 +3356,7 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 
 		// BUG BUG This is variable up to 20 + 14 (34) characters
 		std::string AToNName;
-		int AToNNameLength = payload[26];
+		size_t AToNNameLength = payload[26];
 		if (payload[27] == 1) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
 			for (size_t i = 0; i < AToNNameLength - 2; i++) {
 				AToNName.append(1, (char)payload[28 + i]);

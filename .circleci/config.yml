@@ -16,7 +16,7 @@ parameters:
         default: true
     run_build_trusty:
         type: boolean
-        default: false
+        default: true
     run_build_xenial:
         type: boolean
         default: true
@@ -37,7 +37,7 @@ parameters:
         default: true
     run_build_flatpack:
         type: boolean
-        default: false
+        default: true
     run_build_flatpak_x86_1808:
         type: boolean
         default: true
@@ -49,20 +49,19 @@ parameters:
         default: true
     run_build_fedora:
         type: boolean
-        default: false
+        default: true
     run_build_mingw:
         type: boolean
         default: true
     run_build_macos:
         type: boolean
         default: true
-    # twocan is not supported on android
-    #run_build_android_arm64:
-    #    type: boolean
-    #    default: true
-    #run_build_android_armhf:
-    #    type: boolean
-    #    default: true
+    run_build_android_arm64:
+        type: boolean
+        default: true
+    run_build_android_armhf:
+        type: boolean
+        default: true
 
 orbs:
     cloudsmith: cloudsmith/cloudsmith@1.0.4
@@ -70,7 +69,7 @@ orbs:
 jobs:
     build-armhf-stretch:
         machine:
-            image: ubuntu-2004:202104-01
+        image: ubuntu-2004:202104-01
         environment:
         - OCPN_TARGET=stretch-armhf
         - DOCKER_IMAGE=balenalib/raspberry-pi-debian:stretch
@@ -91,7 +90,7 @@ jobs:
             - run: ci/cloudsmith-upload.sh
     build-armhf-buster:
         machine:
-            image: ubuntu-2004:202104-01
+        image: ubuntu-2004:202104-01
         environment:
         - OCPN_TARGET=buster-armhf
         - DOCKER_IMAGE=balenalib/raspberry-pi-debian:buster
@@ -114,8 +113,7 @@ jobs:
         machine:
             image: ubuntu-2004:202104-01
         environment:
-        - OCPN_TARGET=bionic-arm64
-        - OCPN_BRANCH=master
+        - OCPN_TARGET=bionic-armh64
         - DOCKER_IMAGE=arm64v8/ubuntu:18.04
         - BUILD_FLAGS=-j3
         - BUILD_ENV=ubuntu
@@ -246,9 +244,11 @@ jobs:
         steps:
         - checkout
         - run: >
-            echo "deb-src http://us.archive.ubuntu.com/ubuntu/ focal main" | sudo tee -a /etc/apt/sources.list
+            echo "deb-src http://us.archive.ubuntu.com/ubuntu/ focal main"
+            | sudo tee -a /etc/apt/sources.list
         - run: >
-            echo "deb-src http://us.archive.ubuntu.com/ubuntu/ focal-updates main" | sudo tee -a /etc/apt/sources.list
+            echo "deb-src http://us.archive.ubuntu.com/ubuntu/ focal-updates main"
+            | sudo tee -a /etc/apt/sources.list
         - run: cat /etc/apt/sources.list
         - run: chmod a+x ci/*.sh
         - run: ci/circleci-build-debian.sh
@@ -483,31 +483,29 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
-# Currently circleci does not build armf64 correctly due to no suitable docker image
-#    build_3:
-#        when: <<pipeline.parameters.run_build_armhf_bionic_64>>
-#        jobs:
-#        - build-armhf-bionic-64:
-#            filters:
-#                branches:
-#                    ignore:
-#                    - devel
-#                    - tmp
-#                tags:
-#                    only: /.*/
-# Trusty is depricated so will not be built
-#    build_4:
-#        when: <<pipeline.parameters.run_build_trusty>>
-#        jobs:
-#        - build-trusty:
-#            filters:
-#                branches:
-#                    ignore:
-#                    - devel
-#                    - tmp
-#                tags:
-#                    only: /.*/
-    build_5:
+    build_3:
+        when: <<pipeline.parameters.run_build_armhf_bionic_64>>
+        jobs:
+        - build-armhf-bionic-64:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
+    build_4:
+        when: <<pipeline.parameters.run_build_trusty>>
+        jobs:
+        - build-trusty:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
+   build_5:
         when: <<pipeline.parameters.run_build_xenial>>
         jobs:
         - build-xenial:
@@ -574,22 +572,10 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
-# Removed as replaced by following flatpack builds
-#    build_11:
-#        when: <<pipeline.parameters.run_build_flatpack>>
-#        jobs:
-#        - build-flatpak:
-#            filters:
-#                branches:
-#                    ignore:
-#                    - devel
-#                    - tmp
-#                tags:
-#                    only: /.*/
-    build_12:
-        when: <<pipeline.parameters.run_build_flatpack-arm64>>
+    build_11:
+        when: <<pipeline.parameters.run_build_flatpack>>
         jobs:
-        - build-flatpak-arm64:
+        - build-flatpak:
             filters:
                 branches:
                     ignore:
@@ -597,30 +583,8 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
-    build_13:
-        when: <<pipeline.parameters.run_build_flatpak_x86_2008>>
-        jobs:
-        - build-flatpak-x86-2008:
-            filters:
-                branches:
-                    ignore:
-                    - devel
-                    - tmp
-                tags:
-                    only: /.*/
-    build_14:
-        when: <<pipeline.parameters.run_build_flatpak_x86_1808>>
-        jobs:
-        - build-flatpak-x86-1808:
-            filters:
-                branches:
-                    ignore:
-                    - devel
-                    - tmp
-                tags:
-                    only: /.*/
-# Fedora is being removed from the supplied list of environments so don't build
-#    build_15:
+    # Fedora is being removed from the supplied list of environments so don't build
+#    build_12:
 #        when: <<pipeline.parameters.run_build_fedora>>
 #        jobs:
 #        - build-fedora:
@@ -631,6 +595,39 @@ workflows:
 #                    - tmp
 #                tags:
 #                    only: /.*/
+    build_13:
+        when: <<pipeline.parameters.run_build_flatpack-arm64>>
+        jobs:
+        - build-flatpak-arm64:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
+    build_14:
+        when: <<pipeline.parameters.run_build_flatpak_x86_2008>>
+        jobs:
+        - build-flatpak-x86-2008:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
+    build_15:
+        when: <<pipeline.parameters.run_build_flatpak_x86_1808>>
+        jobs:
+        - build-flatpak-x86-1808:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
     build_16:
         when: <<pipeline.parameters.run_build_mingw>>
         jobs:

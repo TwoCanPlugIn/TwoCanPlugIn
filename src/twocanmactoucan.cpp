@@ -24,6 +24,7 @@
 // Date: 10/5/2020
 // Version History:
 // 1.8 - Initial Release, Mac OSX support
+// 2.1 - Updated to refelect RusokuCAN 0.2.2 
 //
 // Refer to https://github.com/mac-can/RusokuCAN/blob/master/Examples/can_test/Sources/main.cpp
 
@@ -43,15 +44,15 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 	MacCAN_Return_t returnCode;
 
 	// Initialize the Toucan interface
-	returnCode = CMacCAN::Initializer();
+	//returnCode = CMacCAN::Initializer();
 	// BUG BUG What is the difference ?? returnCode = toucanInterface.Initializer();
-	if ((returnCode == CMacCAN::NoError) || (returnCode == CMacCAN::AlreadyInitialized)) {
-		wxLogMessage(_T("TwoCan Mac Rusoku, Successfully Initialized Toucan Driver"));
-	}
-	else {
-		wxLogMessage(_T("TwoCan Mac Rusoku, Error Initializing Toucan Driver: %d"), returnCode);
-		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER, TWOCAN_ERROR_DRIVER_NOT_FOUND);
-	}
+	//if ((returnCode == CMacCAN::NoError) || (returnCode == CMacCAN::AlreadyInitialized)) {
+	//	wxLogMessage(_T("TwoCan Mac Rusoku, Successfully Initialized Toucan Driver"));
+	//}
+	//else {
+	//	wxLogMessage(_T("TwoCan Mac Rusoku, Error Initializing Toucan Driver: %d"), returnCode);
+	//	return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER, TWOCAN_ERROR_DRIVER_NOT_FOUND);
+	//}
 
 	// Assumes we use Channel 0
 	int32_t channel = 0;
@@ -59,13 +60,13 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 	MacCAN_OpMode_t opMode = {};
 	opMode.byte = CANMODE_DEFAULT;
 
-	CMacCAN::EChannelState state;
+	CCanApi::EChannelState state;
 
     // Probe the interface, perhaps unnecessary, we assumes channel 0.
     returnCode = toucanInterface.ProbeChannel(channel, opMode, state);
     
 	if (returnCode == CMacCAN::NoError) {
-    	if (state == CTouCAN::ChannelAvailable)  {
+    	if (state == CCCanApi::ChannelAvailable)  {
 			wxLogMessage(_T("TwoCan Mac Rusoku, Channel %d is available"), channel);
 		}
 		else {
@@ -157,14 +158,14 @@ int TwoCanMacToucan::Close(void) {
 		wxLogMessage(_T("TwoCan Mac Rusoku, Error retrieving CAN Bus status %d"), returnCode);
 	}
 
-	returnCode = toucanInterface.Finalizer();
+	//returnCode = toucanInterface.Finalizer();
 	// BUG BUG What is the difference ?? returnCode = toucanInterface.Finalizer();
-	if (returnCode == CMacCAN::NoError) {
-		wxLogMessage(_T("TwoCan Mac Rusoku, Successfully closed Toucan driver"));
-	}
-	else {
-		wxLogMessage(_T("TwoCan Mac Rusoku, Error closing Toucan driver: %d"), returnCode);
-	}
+	//if (returnCode == CMacCAN::NoError) {
+	//	wxLogMessage(_T("TwoCan Mac Rusoku, Successfully closed Toucan driver"));
+	//}
+	//else {
+	//	wxLogMessage(_T("TwoCan Mac Rusoku, Error closing Toucan driver: %d"), returnCode);
+	//}
 		
 	return TWOCAN_RESULT_SUCCESS;
 }

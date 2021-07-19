@@ -24,6 +24,7 @@
 // Date: 10/04/2021
 // Version History:
 // 2.0 - Initial Release of Kvaser Mac OSX interface
+// 2.1 - Updated for KvaserCAN 0.1.1 - No Initializer or Finalizer, change to EChannelState
 //
 // Refer to https://github.com/mac-can/kvaserCAN
 
@@ -43,15 +44,15 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
 	MacCAN_Return_t returnCode;
 
 	// Initialize the Kvaser interface
-	returnCode = CMacCAN::Initializer();
+	//returnCode = CMacCAN::Initializer();
 	// BUG BUG What is the difference ?? returnCode = kvaserInterface.Initializer();
-	if ((returnCode == CMacCAN::NoError) || (returnCode == CMacCAN::AlreadyInitialized)) {
-		wxLogMessage(_T("TwoCan Mac Kvaser, Successfully Initialized Kvaser Driver"));
-	}
-	else {
-		wxLogMessage(_T("TwoCan Mac Kvaser, Error Initializing Kvaser Driver: %d"), returnCode);
-		return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER, TWOCAN_ERROR_DRIVER_NOT_FOUND);
-	}
+	//if ((returnCode == CMacCAN::NoError) || (returnCode == CMacCAN::AlreadyInitialized)) {
+	//	wxLogMessage(_T("TwoCan Mac Kvaser, Successfully Initialized Kvaser Driver"));
+	//}
+	//else {
+	//	wxLogMessage(_T("TwoCan Mac Kvaser, Error Initializing Kvaser Driver: %d"), returnCode);
+	//	return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER, TWOCAN_ERROR_DRIVER_NOT_FOUND);
+	//}
 
 	// Assumes we use Channel 0
 	int32_t channel = 0;
@@ -59,13 +60,13 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
 	MacCAN_OpMode_t opMode = {};
 	opMode.byte = CANMODE_DEFAULT;
 
-	CMacCAN::EChannelState state;
+	CCanApi::EChannelState state;
 
     // Probe the interface, perhaps unnecessary, we assumes channel 0.
     returnCode = kvaserInterface.ProbeChannel(channel, opMode, state);
     
 	if (returnCode == CMacCAN::NoError) {
-    	if (state == CKvaserCAN::ChannelAvailable)  {
+    	if (state == CCanApi::::ChannelAvailable)  {
 			wxLogMessage(_T("TwoCan Mac Kvaser, Channel %d is available"), channel);
 		}
 		else {
@@ -157,14 +158,14 @@ int TwoCanMacKvaser::Close(void) {
 		wxLogMessage(_T("TwoCan Mac Kvaser, Error retrieving CAN Bus status %d"), returnCode);
 	}
 
-	returnCode = kvaserInterface.Finalizer();
+	//returnCode = kvaserInterface.Finalizer();
 	// BUG BUG What is the difference ?? returnCode = kvaserInterface.Finalizer();
-	if (returnCode == CMacCAN::NoError) {
-		wxLogMessage(_T("TwoCan Mac Kvaser, Successfully closed Kvaser driver"));
-	}
-	else {
-		wxLogMessage(_T("TwoCan Mac Kvaser, Error closing Kvaser driver: %d"), returnCode);
-	}
+	//if (returnCode == CMacCAN::NoError) {
+	//	wxLogMessage(_T("TwoCan Mac Kvaser, Successfully closed Kvaser driver"));
+	//}
+	//else {
+	//	wxLogMessage(_T("TwoCan Mac Kvaser, Error closing Kvaser driver: %d"), returnCode);
+	//}
 		
 	return TWOCAN_RESULT_SUCCESS;
 }
