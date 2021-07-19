@@ -28,6 +28,8 @@ cd rusokucan
 make all
 # perhaps unnecessary
 sudo make install
+# copy include files 
+sudo cp Includes/*.h /usr/local/include
 # back to the project build directory
 cd ..
 # copy the resulting Toucan library to the plugin data/drivers directory
@@ -52,6 +54,8 @@ cd MacCAN-KvaserCAN
 make all
 # perhaps unnecessary
 sudo make install
+# copy include files
+sudo cp Includes/*.h /usr/local/include
 # back to the project build directory
 cd ..
 # copy the resulting Toucan library to the plugin data/drivers directory
