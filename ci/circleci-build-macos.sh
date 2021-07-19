@@ -21,12 +21,10 @@ for pkg in cairo cmake gettext libarchive libexif python wget; do
 done
 
 # Build the Rusoku Toucan Library
-git clone https://github.com/rusoku/RusokuCAN
-cd RusokuCAN/Sources
+git clone https://github.com/mac-can/rusokucan
+cd rusokucan
 # generates the build/version number for the Toucan library
 ./build_no.sh
-# back to the rusokucan directory
-cd ..
 make all
 # perhaps unnecessary
 sudo make install
@@ -36,12 +34,36 @@ cd ..
 # We will include the dylib file so that users do not have to compile/install 
 # the dylibs themselves.
 # It also allows the rpath to be correctly generated in the plugin dylib linker
-for f in $(find RusokuCAN/Library/TouCAN  -name '*.dylib')
+for f in $(find rusokucan/Libraries/TouCAN  -name '*.dylib')
 do
   echo $f
   cp $f data/drivers 
    # create a symbolic link to the library file
    ln -s "data/drivers/${f##*/}" data/drivers/libTouCAN.dylib
+   # there should only be one file, but in anycase exit after the first
+  break
+done
+
+# Build the Kvaser Library
+git clone https://github.com/mac-can/MacCAN-KvaserCAN
+cd MacCAN-KvaserCAN
+# generates the build/version number for the Toucan library
+./build_no.sh
+make all
+# perhaps unnecessary
+sudo make install
+# back to the project build directory
+cd ..
+# copy the resulting Toucan library to the plugin data/drivers directory
+# We will include the dylib file so that users do not have to compile/install 
+# the dylibs themselves.
+# It also allows the rpath to be correctly generated in the plugin dylib linker
+for f in $(find MacCAN-KvaserCAN/Libraries/KvaserCAN  -name '*.dylib')
+do
+  echo $f
+  cp $f data/drivers 
+   # create a symbolic link to the library file
+   ln -s "data/drivers/${f##*/}" data/drivers/libKvaserCAN.dylib
    # there should only be one file, but in anycase exit after the first
   break
 done
