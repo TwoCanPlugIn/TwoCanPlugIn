@@ -20,7 +20,7 @@ for pkg in cairo cmake gettext libarchive libexif python wget; do
     brew link --overwrite $pkg || brew install $pkg
 done
 
-# Build the Rusoku Toucan Library
+    # Build the Rusoku Toucan Library
 git clone https://github.com/mac-can/rusokucan
 cd rusokucan
 # generates the build/version number for the Toucan library
@@ -55,7 +55,7 @@ make all
 # perhaps unnecessary
 sudo make install
 # copy include files
-sudo cp Includes/*.h /usr/local/include
+sudo cp -n Includes/*.h /usr/local/include
 # back to the project build directory
 cd ..
 # copy the resulting Toucan library to the plugin data/drivers directory
