@@ -4,11 +4,6 @@
 # Build the  MacOS artifacts
 #
 
-# Fix broken ruby on the CircleCI image:
-if [ -n "$CIRCLECI" ]; then
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-fi
-
 set -xe
 
 set -o pipefail
@@ -20,7 +15,7 @@ for pkg in cairo cmake gettext libarchive libexif python wget; do
     brew link --overwrite $pkg || brew install $pkg
 done
 
-    # Build the Rusoku Toucan Library
+# Build the Rusoku Toucan Library
 git clone https://github.com/mac-can/rusokucan
 cd rusokucan
 # generates the build/version number for the Toucan library
@@ -54,8 +49,9 @@ cd MacCAN-KvaserCAN
 make all
 # perhaps unnecessary
 sudo make install
-# copy include files
-sudo cp -n Includes/*.h /usr/local/include
+# copy include files - note not overwriting the headers from the rusoku driver
+# suppress error code and exit
+sudo cp -n Includes/*.h /usr/local/include 2>/dev/null || :
 # back to the project build directory
 cd ..
 # copy the resulting Toucan library to the plugin data/drivers directory
@@ -105,4 +101,6 @@ cmake \
 make -sj2
 make package
 
-make create-pkg
+# removed as fails to build
+# make create-pkg
+
