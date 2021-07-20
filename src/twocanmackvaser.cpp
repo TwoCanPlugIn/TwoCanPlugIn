@@ -60,13 +60,13 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
 	MacCAN_OpMode_t opMode = {};
 	opMode.byte = CANMODE_DEFAULT;
 
-	CCanApi::EChannelState state;
+	CKvaserCAN::EChannelState state;
 
     // Probe the interface, perhaps unnecessary, we assumes channel 0.
     returnCode = kvaserInterface.ProbeChannel(channel, opMode, state);
     
 	if (returnCode == CMacCAN::NoError) {
-		if (state == CCanApi::ChannelAvailable)  {
+		if (state == CKvaserCAN::ChannelAvailable)  {
 			wxLogMessage(_T("TwoCan Mac Kvaser, Channel %d is available"), channel);
 		}
 		else {

@@ -48,7 +48,7 @@ if(WIN32)
     set(CPACK_NSIS_PACKAGE_NAME "${PACKAGE_NAME}")
 
     # Let cmake find NSIS.template.in
-    list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/buildwin")
+    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/buildwin")
 
     # These lines set the name of the Windows Start Menu shortcut and the icon that goes with it
     set(CPACK_NSIS_DISPLAY_NAME "OpenCPN ${PACKAGE_NAME}")
@@ -65,10 +65,10 @@ else(WIN32)
 endif(WIN32)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CPACK_STRIP_FILES FALSE)
+    set(CPACK_STRIP_FILES "")
     message(STATUS "${CMLOC}Not stripping debug information from module")
 else(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-    set(CPACK_STRIP_FILES TRUE)
+    set(CPACK_STRIP_FILES "${PACKAGE_NAME}")
     message(STATUS "${CMLOC}Stripping debug information from module")
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
@@ -113,7 +113,7 @@ if(NOT STANDALONE MATCHES "BUNDLED")
 
         configure_file(${PROJECT_SOURCE_DIR}/cmake/gpl.txt ${CMAKE_CURRENT_BINARY_DIR}/license.txt COPYONLY)
 
-        configure_file(${PROJECT_SOURCE_DIR}/buildosx/InstallOSX/pkg_background.jpg ${CMAKE_CURRENT_BINARY_DIR}/pkg_background.jpg COPYONLY)
+        #configure_file(${PROJECT_SOURCE_DIR}/buildosx/InstallOSX/pkg_background.jpg ${CMAKE_CURRENT_BINARY_DIR}/pkg_background.jpg COPYONLY)
 
         # Patch the pkgproj.in file to make the output package name conform to Xxx-Plugin_x.x.pkg format Key is: <key>NAME</key> <string>${VERBOSE_NAME}-Plugin_${VERSION_MAJOR}.${VERSION_MINOR}</string>
 
@@ -158,7 +158,7 @@ if(NOT STANDALONE MATCHES "BUNDLED")
 
 
     set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/PluginCPackOptions.cmake")
-    message(STATUS "${CMLOC}CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}, PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}, CPACK_PROJECT_CONFIG_FILE: ${CPACK_PROJECT_CONFIG_FILE}")
+    message(STATUS "${CMLOC}CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}, CPACK_PROJECT_CONFIG_FILE: ${CPACK_PROJECT_CONFIG_FILE}")
 
     include(CPack)
 

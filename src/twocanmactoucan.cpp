@@ -60,13 +60,13 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 	MacCAN_OpMode_t opMode = {};
 	opMode.byte = CANMODE_DEFAULT;
 
-	CCanApi::EChannelState state;
+	CTouCAN::EChannelState state;
 
     // Probe the interface, perhaps unnecessary, we assumes channel 0.
     returnCode = toucanInterface.ProbeChannel(channel, opMode, state);
     
 	if (returnCode == CMacCAN::NoError) {
-    	if (state == CCCanApi::ChannelAvailable)  {
+    	if (state == CTouCAN::ChannelAvailable)  {
 			wxLogMessage(_T("TwoCan Mac Rusoku, Channel %d is available"), channel);
 		}
 		else {
