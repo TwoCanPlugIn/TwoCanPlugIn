@@ -20,6 +20,7 @@ else
 fi
 
 docker run --privileged -d -ti -e "container=docker"  -v $(pwd):/ci-source:rw $DOCKER_IMAGE /bin/bash
+docker ps
 DOCKER_CONTAINER_ID=$(docker ps | grep $BUILD_ENV | awk '{print $1}')
 
 docker exec -ti $DOCKER_CONTAINER_ID apt-get update

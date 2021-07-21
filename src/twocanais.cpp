@@ -414,26 +414,31 @@ bool TwoCanAis::EncodePGN129038(const std::vector<bool> binaryData, std::vector<
 		payload->push_back((trueHeading >> 8) & 0xFF);
 
 		short n2krot;
+		short rotDirection = 1; // Need to keep the sign of the rate of turn as it would be lost when squaring the value
 
-		if (rateOfTurn == 128) {
-			n2krot = SHRT_MAX;
+		if (rateOfTurn == 128) { // Data not available should have be coded as -128
+			rateOfTurn = -128;
+		}
+		else if ((rateOfTurn & 0x80) == 0x80) { // Two's complement for negative values
+			rateOfTurn = rateOfTurn - 256;
+			rotDirection = -1;
+		}
+
+		// Now the actual Rate Of Turn conversions
+		if (rateOfTurn == -128) {
+			n2krot = USHRT_MAX;
 		}
 		else if (rateOfTurn == 127) { // Maximum rate is 709 degrees per minute
-			n2krot = 3.125e5 * (DEGREES_TO_RADIANS(pow((709 / 4.733), 2)) / 60);
+			n2krot = DEGREES_TO_RADIANS(pow((709 / 4.733), 2) / 60) / 3.125e-05;
 		}
 		else if (rateOfTurn == -127) { // Minimum rate is -709 degrees per minute
-			n2krot = 3.125e5 * (DEGREES_TO_RADIANS(pow((-709 / 4.733), 2)) / 60);
+			n2krot = -1 * DEGREES_TO_RADIANS(pow((-709 / 4.733), 2) / 60) / 3.125e-05;
 		}
 		else {
-			double degreesPerMinute = pow((rateOfTurn / 4.733), 2);
-
+			double degreesPerMinute = rotDirection * (pow((rateOfTurn / 4.733), 2));
 			double radiansPerMinute = DEGREES_TO_RADIANS(degreesPerMinute);
-
 			double radiansPerSecond = radiansPerMinute / 60.0f;
-
-			n2krot = round(radiansPerSecond / 3.125e-05);
-
-			// BUG BUG Negative values, should this be the two's complement ??
+			n2krot = radiansPerSecond / 3.125e-05;
 		}
 
 		payload->push_back(n2krot & 0xFF);
