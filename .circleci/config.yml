@@ -86,7 +86,7 @@ jobs:
         - run: cat /etc/apt/sources.list
         - run: chmod a+x ci/*.sh
         - run: ci/circleci-build-debian.sh
-         - run: sudo apt update
+        - run: sudo apt update
         - run: sudo apt-get install software-properties-common
         - run: sudo add-apt-repository ppa:deadsnakes/ppa -y
         - run: sudo apt install -y python3.7
