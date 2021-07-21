@@ -4,10 +4,10 @@ jobs:
     build-armhf-stretch:
         machine: true
         environment:
-        - OCPN_TARGET=stretch-armhf
-        - DOCKER_IMAGE=circleci/buildpack-deps:stretch-scm
-        - BUILD_FLAGS=-j3
-        - BUILD_ENV=raspbian
+        - OCPN_TARGET: stretch-armhf
+        - DOCKER_IMAGE: circleci/buildpack-deps:stretch-scm
+        - BUILD_FLAGS: -j3
+        - BUILD_ENV: raspbian
         steps:
         - checkout
         - run: chmod a+x ./ci/*.sh
@@ -18,10 +18,10 @@ jobs:
     build-armhf-buster:
         machine: true
         environment:
-        - OCPN_TARGET=buster-armhf
-        - DOCKER_IMAGE=circleci/buildpack-deps:buster-scm
-        - BUILD_FLAGS=-j3
-        - BUILD_ENV=raspbian
+        - OCPN_TARGET: buster-armhf
+        - DOCKER_IMAGE: circleci/buildpack-deps:buster-scm
+        - BUILD_FLAGS: -j3
+        - BUILD_ENV: raspbian
         steps:
         - checkout
         - run: chmod a+x ./ci/*.sh
@@ -63,6 +63,7 @@ jobs:
         - run: sudo apt update
         - run: sudo apt-get install software-properties-common
         - run: sudo add-apt-repository ppa:deadsnakes/ppa -y
+        - run: sudo apt update
         - run: sudo apt install -y python3.7
         - run: sudo rm /usr/bin/python3
         - run: sudo ln -s /usr/bin/python3.7 /usr/bin/python3
@@ -89,6 +90,7 @@ jobs:
         - run: sudo apt update
         - run: sudo apt-get install software-properties-common
         - run: sudo add-apt-repository ppa:deadsnakes/ppa -y
+        - run: sudo apt update
         - run: sudo apt install -y python3.7
         - run: sudo rm /usr/bin/python3
         - run: sudo ln -s /usr/bin/python3.7 /usr/bin/python3
