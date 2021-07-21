@@ -274,7 +274,7 @@ IF(APPLE)
         inc/twocanpcap.h)
 
     # For Rusoku Toucan & Kvaser interfaces, The MacCan Rusoku & Kvaser headers have been manually copied to this location
-    # refer to ci/circleci-build-macos.sh under the Rusoku section
+    # refer to ci/circleci-build-macos.sh under the Rusoku & Kvaser sections
     SET(MACCAN_HEADER "/usr/local/include")
     INCLUDE_DIRECTORIES(AFTER ${MACCAN_HEADER})
 
@@ -292,7 +292,8 @@ IF(APPLE)
     set(CMAKE_MACOSX_RPATH TRUE)
     
     # Refer to ci/circleci_build-macos.sh as we build the Toucan & Kvaser library and copy the dylib to data/drivers
-    # So that is the location where it will be dynamically linked, but will also need to specify the rpath
+    # That script also creates a symbolic link, which is used both for the dynamic linking  and also for creating te correct 
+    # runtime path. Note that using a symbolic link isolates the plugin from any version changes to the Rusolu & Kvaser libraries 
 
     FIND_LIBRARY(RUSOKU_LIBRARY
     NAMES libTouCAN.dylib
@@ -308,15 +309,17 @@ IF(APPLE)
 
     # As we install the Rusoku library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
     ADD_CUSTOM_COMMAND( POST_BUILD
-      TARGET ${PACKAGE_NAME} 
-      COMMAND install_name_tool -add_rpath "@loader_path/./../SharedSupport/plugins/${PACKAGE_NAME}/data/drivers" "lib${PACKAGE_NAME}.dylib"
-      COMMAND install_name_tool -change libTouCAN.0.2.2.dylib @rpath/libTouCAN.0.2.2.dylib lib${PACKAGE_NAME}.dylib
+        TARGET ${PACKAGE_NAME}
+        # Add the drivers directory as a runtime path to the plugin 
+        COMMAND install_name_tool -add_rpath "@loader_path/./../SharedSupport/plugins/${PACKAGE_NAME}/data/drivers" "lib${PACKAGE_NAME}.dylib"
+        # Add the runtime path to the symbolic link for the Rusoku library
+        COMMAND install_name_tool -change libTouCAN.dylib @rpath/libTouCAN.dylib lib${PACKAGE_NAME}.dylib
     )
     
-    # Similarly we install the Kvaser library in the plugin's data/drivers directory we need to "patch" the dylib  with the correct runtime paths.
+    # Similarly we add the runtime path to the symbolic link for the Kvaser library 
     ADD_CUSTOM_COMMAND( POST_BUILD
-    TARGET ${PACKAGE_NAME} 
-    COMMAND install_name_tool -change libKvaserCAN.0.1.1.dylib @rpath/libKvaserCAN.0.1.1.dylib lib${PACKAGE_NAME}.dylib
+        TARGET ${PACKAGE_NAME} 
+        COMMAND install_name_tool -change libKvaserCAN.dylib @rpath/libKvaserCAN.dylib lib${PACKAGE_NAME}.dylib
     )
 
 ENDIF(APPLE)
