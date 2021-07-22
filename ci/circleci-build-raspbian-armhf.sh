@@ -41,7 +41,13 @@ docker exec -ti $DOCKER_CONTAINER_ID /bin/bash -xec \
     export TRAVIS_REPO_SLUG=\"$TRAVIS_REPO_SLUG\";
     export TRAVIS_BRANCH=\"$TRAVIS_BRANCH\";
     export TRAVIS_TAG=\"$TRAVIS_TAG\";
-    rm -rf ci-source/build; mkdir ci-source/build; cd ci-source/build; cmake ..; make $BUILD_FLAGS; make package; chmod -R a+rw ../build;"
+    sudo rm -rf ci-source/build; 
+    sudo mkdir ci-source/build; 
+    cd ci-source/build; 
+    cmake ..; 
+    make $BUILD_FLAGS; 
+    make package; 
+    chmod -R a+rw ../build;"
 
 echo "Stopping"
 docker ps -a
