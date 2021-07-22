@@ -130,7 +130,7 @@ void TwoCanPcap::Read() {
                 unsigned int seconds = readBuffer[0] | (readBuffer[1] << 8) | (readBuffer[2] << 16) | (readBuffer[3] << 24);
                 unsigned int microSeconds = readBuffer[4] | (readBuffer[5] << 8) | (readBuffer[6] << 16) | (readBuffer[7] << 24);
                 capturePacketLength = readBuffer[8] | (readBuffer[9] << 8) | (readBuffer[10] << 16) | (readBuffer[11] << 24);
-                unsigned int actualPacketLength = readBuffer[12] | (readBuffer[13] << 8) | (readBuffer[14] << 16) | (readBuffer[15] << 24);
+                int actualPacketLength = readBuffer[12] | (readBuffer[13] << 8) | (readBuffer[14] << 16) | (readBuffer[15] << 24);
 
                 // Read packet data
                 readBuffer.clear();
