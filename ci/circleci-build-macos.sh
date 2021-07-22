@@ -4,11 +4,6 @@
 # Build the  MacOS artifacts
 #
 
-# Fix broken ruby on the CircleCI image:
-if [ -n "$CIRCLECI" ]; then
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-fi
-
 set -xe
 
 set -o pipefail
@@ -54,9 +49,8 @@ cd MacCAN-KvaserCAN
 make all
 # perhaps unnecessary
 sudo make install
-# copy include files - note not overwriting the headers from the rusoku driver
-# suppress error code and exit
-sudo cp -n Includes/*.h /usr/local/include 2>/dev/null || :
+# copy include files
+sudo cp Includes/*.h /usr/local/include
 # back to the project build directory
 cd ..
 # copy the resulting Toucan library to the plugin data/drivers directory
@@ -106,4 +100,6 @@ cmake \
 make -sj2
 make package
 
-make create-pkg
+# removed as fails to build
+# make create-pkg
+
