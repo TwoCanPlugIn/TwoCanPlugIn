@@ -44,9 +44,9 @@ docker exec -ti $DOCKER_CONTAINER_ID /bin/bash -xec \
     sudo rm -rf ci-source/build; 
     sudo mkdir ci-source/build; 
     cd ci-source/build; 
-    cmake ..; 
-    make $BUILD_FLAGS; 
-    make package; 
+    sudo cmake ..; 
+    sudo make $BUILD_FLAGS; 
+    sudo make package; 
     chmod -R a+rw ../build;"
 
 echo "Stopping"
