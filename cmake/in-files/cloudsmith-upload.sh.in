@@ -64,9 +64,13 @@ if [ "$CIRCLECI" ] || [ "$TRAVIS" ]; then
     if pyenv versions 2>&1 >/dev/null; then
         pyenv versions
         if ! pyenv global 3.9.4 2>&1 >/dev/null; then
-            if ! pyenv global 3.7.1 2>&1 >/dev/null; then
-                if ! pyenv global 3.7.0 2>&1>/dev/null; then
-                    pyenv global 3.5.2
+            if ! pyenv global 3.9.1 2>&1 >/dev/null; then
+                if ! pyenv global 3.8.5 2>&1 >/dev/null; then
+                    if ! pyenv global 3.7.1 2>&1 >/dev/null; then
+                        if ! pyenv global 3.7.0 2>&1>/dev/null; then
+                            pyenv global 3.5.2
+                        fi
+                    fi
                 fi
             fi
         fi
