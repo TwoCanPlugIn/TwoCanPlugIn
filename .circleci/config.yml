@@ -86,9 +86,16 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
+            - run: sudo apt install software-properties-common
+            - run: sudo add-apt-repository ppa:deadsnakes/ppa -y
+            - run: sudo apt update
+            - run: sudo apt install -y python3.7
+            - run: ls -la /usr/bin/python*
+            - run: sudo rm /usr/bin/python3
+            - run: sudo ln -s /usr/bin/python3.7 /usr/bin/python3
+            - run: ls -la /usr/bin/python*
             - cloudsmith/ensure-api-key
             - cloudsmith/install-cli
-            - run: pip install --upgrade pip
             - run: ci/cloudsmith-upload.sh
     build-armhf-buster:
         machine:
@@ -108,9 +115,16 @@ jobs:
         - when:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
+            - run: sudo apt install software-properties-common
+            - run: sudo add-apt-repository ppa:deadsnakes/ppa -y
+            - run: sudo apt update
+            - run: sudo apt install -y python3.7
+            - run: ls -la /usr/bin/python*
+            - run: sudo rm /usr/bin/python3
+            - run: sudo ln -s /usr/bin/python3.7 /usr/bin/python3
+            - run: ls -la /usr/bin/python*
             - cloudsmith/ensure-api-key
             - cloudsmith/install-cli
-            - run: pip install --upgrade pip
             - run: ci/cloudsmith-upload.sh
     build-armhf-bionic-64:
         machine:
