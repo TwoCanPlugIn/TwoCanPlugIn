@@ -361,7 +361,7 @@ jobs:
             image: ubuntu-2004:202010-01
         environment:
         - OCPN_TARGET:  flatpak
-        - FLATPAK_BRANCH: beta
+        - FLATPAK_BRANCH: stable
         - CLOUDSMITH_PKG_EXT: gz
         - SDK_VER: 20.08
         - DEPLOY_USE_ORB: true
@@ -383,7 +383,7 @@ jobs:
         resource_class: arm.medium
         environment:
         - OCPN_TARGET:  flatpak-arm64
-        - FLATPAK_BRANCH: beta
+        - FLATPAK_BRANCH: stable
         - CLOUDSMITH_PKG_EXT: gz
         - SDK_VER: 20.08
         - DEPLOY_USE_ORB: true
