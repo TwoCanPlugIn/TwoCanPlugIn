@@ -22,7 +22,7 @@
 // Description: NMEA 2000 plugin for OpenCPN
 // Unit: TwoCanAIS - Decodes NMEA 183 AIS VDM sentences and converts to NMEA 2000 messages
 // Owner: twocanplugin@hotmail.com
-// Date: 01/05/2021
+// Date: 04/07/2021
 // Version History: 
 // 1.0 Initial Release of AIS decoding for Bi-directional Gateway
  

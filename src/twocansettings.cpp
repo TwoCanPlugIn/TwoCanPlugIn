@@ -30,8 +30,8 @@
 // 1.6 - 10/10/2019 Flags for Rudder, Engine and Fluid levels
 // 1.7 - 10/12/2019 Flags for Battery
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
-// 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
-// 2.0 - 11-04-2021 Bi-directional gateway, PCAP log files
+// 1.9 - 20/08/2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
+// 2.0 - 04/07/2021 Bi-directional gateway, PCAP log files
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !

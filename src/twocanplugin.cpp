@@ -28,7 +28,7 @@
 // 1.4 - 25/4/2019. Active Mode implemented. 
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
-// 2.0 - 01-12-2020 Bi-Directional Gateway, Kvaser support on Mac OSX, Fast Message Assembly & SID generation fix, PCAP log file support 
+// 2.0 - 04/07/2021 Bi-Directional Gateway, Kvaser support on Mac OSX, Fast Message Assembly & SID generation fix, PCAP log file support 
 // Outstanding Features: 
 // 1. Localization ??
 //

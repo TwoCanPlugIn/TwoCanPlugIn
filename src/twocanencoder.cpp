@@ -25,7 +25,7 @@
 // Date: 01/12/2020
 // Version History: 
 // 1.0 Initial Release of Bi-directional Gateway
-// 1.1 Add AIS conversion
+// 1.1 - 04/07/2021 Add AIS conversion
  
 #include "twocanencoder.h"
 

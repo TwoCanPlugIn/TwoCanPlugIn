@@ -21,7 +21,7 @@
 // Description: NMEA 2000 plugin for OpenCPN
 // Unit: TwoCanPcap - Reads pcap log files (Eg. Wireshark, log format from Navico chartplotters)
 // Owner: twocanplugin@hotmail.com
-// Date: 10/7/2021
+// Date: 04/07/2021
 // Version History: 
 // 1.0 Initial Release
 

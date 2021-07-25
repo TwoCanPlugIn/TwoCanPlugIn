@@ -40,7 +40,7 @@
 // 1.9 - 20/08/2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // 1.91 - 20/10/2020 Add PGN 129540, Bug Fixes (random position - missing break, socket & queue timeouts)
 // 1.92 - 10/04/2021 Fix for fast message assembly & SID generation
-// 2.0 - 11/04/2021 Bi-directional gateway, Autopilot control
+// 2.0 - 04/07/2021 Bi-directional gateway (incl AIS), Autopilot control
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //

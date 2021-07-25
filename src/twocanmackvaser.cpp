@@ -24,7 +24,7 @@
 // Date: 10/04/2021
 // Version History:
 // 2.0 - Initial Release of Kvaser Mac OSX interface
-// 2.1 - Updated for KvaserCAN 0.1.1 - No Initializer or Finalizer, change to EChannelState
+// 2.1 - 04-07-2021 Updated for KvaserCAN 0.1.1 - Change read timeout value,  No Initializer or Finalizer API's, change to EChannelState
 //
 // Refer to https://github.com/mac-can/kvaserCAN
 

@@ -25,6 +25,7 @@
 // Version History: 
 // 1.0 Initial Release
 // 1.8 - 10/05/2020 Derived from abstract class, support for Mac OSX
+// 2.0 - 04-07-2921 Support slcan, vcan and can socketCAN interfaces in log file
 
 #include <twocanlogreader.h>
 

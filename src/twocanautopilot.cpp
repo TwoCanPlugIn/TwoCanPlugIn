@@ -24,7 +24,7 @@
 // Owner: twocanplugin@hotmail.com
 // Date: 01/12/2020
 // Version History: 
-// 1.0 Initial Release of Autopilot Control
+// 1.0 Initial Release of Autopilot Control - Not actually exposed or used yet....
 
 #include "twocanautopilot.h"
 

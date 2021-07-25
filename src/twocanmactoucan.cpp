@@ -24,9 +24,9 @@
 // Date: 10/5/2020
 // Version History:
 // 1.8 - Initial Release, Mac OSX support
-// 2.1 - Updated to refelect RusokuCAN 0.2.2 
+// 2.1 - 04-07-2021 Updated for TouCan 0.2.1 - Change read timeout value,  No Initializer or Finalizer API's, change to EChannelState
 //
-// Refer to https://github.com/mac-can/RusokuCAN/blob/master/Examples/can_test/Sources/main.cpp
+// Refer to https://github.com/mac-can/RusokuCAN
 
 #include <twocanmactoucan.h>
 
