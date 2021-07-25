@@ -62,7 +62,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	sizerLabelDevices->Add( lblNetwork, 0, wxALL, 5 );
 
 
-	sizerPanelNetwork->Add( sizerLabelDevices, 0, wxEXPAND, 5 );
+	sizerPanelNetwork->Add( sizerLabelDevices, 0, 0, 5 );
 
 	wxBoxSizer* sizerGridDevices;
 	sizerGridDevices = new wxBoxSizer( wxHORIZONTAL );
@@ -97,10 +97,10 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 
 	// Cell Defaults
 	dataGridNetwork->SetDefaultCellAlignment( wxALIGN_LEFT, wxALIGN_TOP );
-	sizerGridDevices->Add( dataGridNetwork, 0, wxALL | wxEXPAND, 5 );
+	sizerGridDevices->Add( dataGridNetwork, 0, wxALL, 5 );
 
 
-	sizerPanelNetwork->Add( sizerGridDevices, 1, wxEXPAND, 5 );
+	sizerPanelNetwork->Add( sizerGridDevices, 1, 0, 5 );
 
 
 	panelNetwork->SetSizer( sizerPanelNetwork );
@@ -158,7 +158,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	sizerDetails->Add( labelFunction, 0, wxALL, 5 );
 
 
-	sizerPanelDevice->Add( sizerDetails, 1, wxEXPAND, 5 );
+	sizerPanelDevice->Add( sizerDetails, 0, wxEXPAND, 5 );
 
 	wxStaticBoxSizer* sizerRawLogging1;
 	sizerRawLogging1 = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("Raw Logging") ), wxHORIZONTAL );
@@ -169,7 +169,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	sizerRawLogging1->Add( cmbLogging, 0, wxALL, 5 );
 
 
-	sizerPanelDevice->Add( sizerRawLogging1, 1, wxEXPAND, 5 );
+	sizerPanelDevice->Add( sizerRawLogging1, 0, wxEXPAND, 5 );
 
 
 	panelDevice->SetSizer( sizerPanelDevice );
@@ -229,8 +229,8 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	wxBoxSizer* sizerTextAbout;
 	sizerTextAbout = new wxBoxSizer( wxHORIZONTAL );
 
-	txtAbout = new wxStaticText( panelAbout, wxID_ANY, wxT("About BlahBlah"), wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE );
-	txtAbout->Wrap( 400 );
+	txtAbout = new wxStaticText( panelAbout, wxID_ANY, wxT("About BlahBlah"), wxDefaultPosition, wxDefaultSize, 0 );
+	txtAbout->Wrap( 512 );
 	sizerTextAbout->Add( txtAbout, 0, wxALL, 5 );
 
 

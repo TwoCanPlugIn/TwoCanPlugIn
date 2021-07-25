@@ -121,22 +121,14 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
   
 	// BUG BUG Localization & version numbers
 	txtAbout->SetLabel(_T("TwoCan PlugIn for OpenCPN\nEnables some NMEA2000\xae data to be directly integrated with OpenCPN.\nSend bug reports to twocanplugin@hotmail.com"));
-	txtAbout->Wrap(txtAbout->GetClientSize().x);
+	txtAbout->Wrap(512);
 
 	// Debug Tab
 	// BUG BUG Localization
 	btnPause->SetLabel((debugWindowActive) ? _("Stop") : _("Start"));
 
 	// Network Tab
-	// Resize the grid to fit the width and not expand vertically
-	// BUG BUG Should be seme default values to achieve this
-	wxSize gridSize;
-	gridSize = this->GetClientSize();
-	gridSize.SetHeight(gridSize.GetHeight());
-	gridSize.SetWidth(gridSize.GetWidth());
-	dataGridNetwork->SetMinSize(gridSize);
-	dataGridNetwork->SetMaxSize(gridSize);
-
+	
 	for (int i = 0; i < CONST_MAX_DEVICES; i++) {
 		// Renumber row labels to match network address 0 - 253
 		dataGridNetwork->SetRowLabelValue(i, std::to_string(i));
@@ -199,8 +191,20 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 			cmbLogging->SetStringSelection(it->first);
 		}
 	}
+
+	// BUG BUG I really don't understand wxWidgets sizers, but this seems to do what I want
+	wxSize newSize = this->GetSize();
+	dataGridNetwork->SetMinSize(wxSize(512, 20 * dataGridNetwork->GetDefaultRowSize()));
+	dataGridNetwork->SetMaxSize(wxSize(-1, 20 * dataGridNetwork->GetDefaultRowSize()));
 		
 	Fit();
+
+	// After we've fitted in everything adjust the dataGrid column widths
+	int colWidth = (int)((dataGridNetwork->GetSize().GetWidth() - dataGridNetwork->GetRowLabelSize() - wxSystemSettings::GetMetric(wxSYS_VSCROLL_X, NULL)) / 3);
+	dataGridNetwork->SetColSize(0, colWidth);
+	dataGridNetwork->SetColSize(1, colWidth);
+	dataGridNetwork->SetColSize(2, colWidth);
+	
 }
 
 // BUG BUG Should prevent the user from shooting themselves in the foot if they select a driver that is not present

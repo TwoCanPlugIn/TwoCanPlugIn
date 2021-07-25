@@ -426,7 +426,7 @@ bool TwoCanAis::EncodePGN129038(const std::vector<bool> binaryData, std::vector<
 
 		// Now the actual Rate Of Turn conversions
 		if (rateOfTurn == -128) {
-			n2krot = USHRT_MAX;
+			n2krot = SHRT_MAX;
 		}
 		else if (rateOfTurn == 127) { // Maximum rate is 709 degrees per minute
 			n2krot = DEGREES_TO_RADIANS(pow((709 / 4.733), 2) / 60) / 3.125e-05;
