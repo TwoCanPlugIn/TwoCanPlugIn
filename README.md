@@ -7,7 +7,7 @@ TwoCan - An OpenCPN Plugin for integrating OpenCPN with NMEA2000® networks. It 
 
 Installation
 ------------
-Version 1.9 of the TwoCan plugin is included in the Master Catalog of the Plugin Manager which is now featured with OpenCPN 5.2. This makes for a simple and easy installation experience for most users.
+Versions 1.9 and newer are included in the Master Catalog of the Plugin Manager which is now featured with OpenCPN 5.2. This makes for a simple and easy installation experience for most users.
 
 Windows
 -------
@@ -22,7 +22,7 @@ Four hardware adapters are currently supported:
 |Axiomtek AX92903|http://www.axiomtek.com/Default.aspx?MenuId=Products&FunctionId=ProductView&ItemId=8270&upcat=318&C=AX92903|
 |Rusoku Toucan Marine|http://www.rusoku.com/products/toucan-marine|
 
-Four log file formats are currently supported (with examples of their file format):
+Five log file formats are currently supported (with examples of their file format):
 
 | Format | Format example|
 |--------|---------------|
@@ -30,19 +30,22 @@ Four log file formats are currently supported (with examples of their file forma
 |Candump (Linux utility)|(1542794025.315691) can0 1DEFFF03#A00FE59856050404|
 |Kees Verruijt's Canboat|2014-08-14T19:00:00.042,3,128267,1,255,8,0B,F5,0D,8D,24,01,00,00|
 |Yacht Devices|19:07:47.607 R 0DF80503 00 2B 2D 9E 44 5A A0 A1|
+|Packet Capture (Wireshark etc.)| binary format, refer to https://tools.ietf.org/id/draft-gharris-opsawg-pcap-00.html|
 
 Linux
 -----
 
-For Linux it does not use a "plug-in" driver model, rather it uses two "baked in" classes that support the SocketCAN interface and a generic Log File reader. Any CAN bus adapter that supports the SocketCAN interface "should" work. It has been tested with native interfaces (eg. can0), serial interfaces (eg. slcan0) and virtual interfaces (eg. vcan0). 
+For Linux it does not use a "plug-in" driver model, rather it uses three "baked in" classes that support the SocketCAN interface, PCAP packet capture format  and a generic Log File reader. Any CAN bus adapter that supports the SocketCAN interface "should" work. It has been tested with native interfaces (eg. can0), serial interfaces (eg. slcan0) and virtual interfaces (eg. vcan0). 
 
-I have successfully used three hardware adapters under Linux:
+I have successfully used several hardware adapters under Linux:
 
 Canable Cantact - (see above)
 
 Rusoku Toucan Marine - (see above)
 
 Waveshare CAN Hat for Raspberry PI - https://www.waveshare.com/rs485-can-hat.htm
+
+Pican-M NMEA 0183 & NMEA 2000 Hat for Raspberry Pi - https://copperhilltech.com/pican-m-nmea-0183-nmea-2000-hat-for-raspberry-pi/
 
 Another user is succesfully using the following adapter:
 
@@ -52,7 +55,7 @@ On Linux, the Rusoku Toucan Marine device requires an installable kernel module.
 
 For example if using the Raspberry Pi with the Rusoku Toucan Marine device, instructions for building an installable kernel module can be found at https://raspberrypi.stackexchange.com/questions/39845/how-compile-a-loadable-kernel-module-without-recompiling-kernel. In addition I found that I also needed to install bison & flex (eg. sudo apt-get install bison, sudo apt-get flex) to compile the installable kernel module. 
 
-For Linux, the generic Log File Reader automagically™ detects the four supported log file formats described above.
+For Linux, the generic Log File Reader automagically™ detects the four test text based log file formats described above whilst the PCAP Log File Reader will only parse packet capture log files containing SocketCAN data.
 
 Linux - SocketCAN
 -----------------
@@ -75,7 +78,7 @@ sudo ip link set up slcan0
 Mac OSX
 -------
 
-Similarly For Mac OSX it does not use a "plug-in" driver model, rather it also uses three "baked in" classes that support the generic Log File reader, a serial USB CAN interface such as the Canable Cantact adapter (see above) and the Rusoku Toucan adapter (see above). For the serial USB interface while it was only developed with the Canable Cantact device in mind, it may work with any serial USB CAN bus adapter that supports the SLCAN command set such the USBTin adapter (see above) and the Lawicell adapters. The TwoCan plugin will attempt to automagically detect the correct serial USB port name as it includes the USB VendorId's and Product Id's for the three listed serial USB CAN adapters. For the Rusoku Toucan adapter it uses the MacCAN API interface, the driver for which is included and installed by the TwoCan plugin. 
+Similarly For Mac OSX it does not use a "plug-in" driver model, rather it also uses five "baked in" classes that support the generic Log File reader, PCAP packet capture format, a serial USB CAN interface such as the Canable Cantact adapter (see above) the Rusoku Toucan adapter (see above) and Kvaser Leaf Light adapter (also see above). For the serial USB interface while it was only developed with the Canable Cantact device in mind, it may work with any serial USB CAN bus adapter that supports the SLCAN command set such the USBTin adapter (see above) and the Lawicell adapters. The TwoCan plugin will attempt to automagically detect the correct serial USB port name as it includes the USB VendorId's and Product Id's for the three listed serial USB CAN adapters. For the Rusoku Toucan adapter it uses the MacCAN API interface, the driver for which is included and installed by the TwoCan plugin. 
 
 Similar to Linux, the Mac OSX generic Log File Reader will also automagically™ detect the four supported log file formats.
 
@@ -100,6 +103,14 @@ sudo ifconfig can* txqueuelen 1000 (replace * with 0, 1 or whatever number your 
 For the Canable Cantact using the slcan firmware device it appears to drop frames (I may never have noticed this in previous TwoCan releases as the plugin never requested or received some of these NMEA 2000 fast message frames). The workaround is to reflash the Canable Cantact device with the candlelight firmware, which then enables the device to use the Native CAN interface rather than serial line CAN (slcan). It also requires the same command described above to increase the transmission queue length.
 
 For Mac OSX, the supported CAN adapters "should" support Active Mode.
+
+Bi Directional Gateway
+----------------------
+
+From version 2.0 onwards, TwoCan can operate as a bi-directional gateway, converting NMEA 183 sentences to their NMEA 2000 equivalents. The plugin receives NMEA 183 sentences from OpenCPN, converts them to NMEA 2000 and transmits them on the NMEA 2000 network. To determine what NMEA 183 sentences are converted, simply uncheck the corresponding PGN in the TwoCan options dialog. For example if you wish to convert depth data, enable the gateway feature and uncheck PGN 128267, which will then allow conversion of NMEA 183 DBT sentences to NMEA 2000 PGN 128267 messages. 
+
+Supported Parameter Group Numbers (PGN's)
+-----------------------------------------
 
 List of supported NMEA 2000 Parameter Group Numbers (PGN)
 ---------------------------------------------------------
@@ -136,6 +147,7 @@ List of supported NMEA 2000 Parameter Group Numbers (PGN)
 |129283| NMEA Cross Track Error|
 |129284| NMEA Navigation Data|
 |129285| NMEA Navigation Route/Waypoint Information|
+|129540| NMEA GNSS Satellites in View|
 |129793| AIS Date and Time Report|
 |129794| AIS Class A Static Data|
 |129798| AIS SAR Aircraft Position Report|
