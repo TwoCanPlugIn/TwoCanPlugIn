@@ -1,7 +1,7 @@
 site:
   title: Two Can Plugin Manual
   url:  https://nowhere.net
-  start_page: twocan:ROOT:twocan.adoc
+  start_page: twocan:ROOT:index.adoc
 content:
   sources:
     - url: ..
