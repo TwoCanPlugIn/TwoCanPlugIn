@@ -20,8 +20,8 @@ Four hardware adapters are currently supported:
 
 * https://www.kvaser.com/product/kvaser-leaf-light-hs-v2/[Kvaser
 Leaflight HS v2]
-* http://canable.io/[Canable Contact]
-* http://www.axiomtek.com/Default.aspx?MenuId=Products&FunctionId=ProductView&ItemId=8270&upcat=318&C=AX92903[Axiomtek
+* https://canable.io/[Canable Contact]
+* https://www.axiomtek.com/Default.aspx?MenuId=Products&FunctionId=ProductView&ItemId=8270&upcat=318&C=AX92903[Axiomtek
 AX92903]
 * http://www.rusoku.com/products/toucan-marine/[Rusoku Toucan Marine]
 
@@ -86,11 +86,10 @@ written to the user's home directory and named using the following
 convention: twocan-YYYY-MM-DD_HHmmSS.log
 
 The TwoCan Plugin source code is available at
-https://github.com/twocanplugin/twocanplugindrivers.git[https://github.com/twocanplugin/twocanplugin.git]
+https://github.com/TwoCanPlugIn/TwoCanPlugIn[]
 
 The TwoCan Plugin Windows drivers are available at
-https://github.com/twocanplugin/twocanplugindrivers.git
-
+https://github.com/TwoCanPlugIn/TwoCanPluginDrivers[]
 === Aim
 
 The aim of the TwoCan plugin is to allow OpenCPN to integrate with
@@ -100,7 +99,7 @@ such as position, speed, depth, wind and time can be incorporated into
 OpenCPN without the need for feeding legacy NMEA 0183 data via serial
 communications or TCP/IP.
 
-image::twocan_screen_2.png.[]
+image::twocan_screen_2.png[]
 
 The plug-in supports Position, Speed, Depth. Wind, Time, AIS, DSC,
 Engine, Fluid Levels, Battery Status and Environmental (temperature,
