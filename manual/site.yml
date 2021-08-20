@@ -4,8 +4,8 @@ site:
   start_page: twocan:ROOT:twocan.adoc
 content:
   sources:
-    - url: ../..
-      start_path: manual/twocan/
+    - url: ..
+      start_path: manual
       branches: HEAD
       edit_url: true
 ui:   
