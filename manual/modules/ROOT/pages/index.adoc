@@ -1,4 +1,4 @@
-== TwoCan
+= TwoCan
 
 image::twocan_64.png[]
 
@@ -90,7 +90,7 @@ https://github.com/TwoCanPlugIn/TwoCanPlugIn[]
 
 The TwoCan Plugin Windows drivers are available at
 https://github.com/TwoCanPlugIn/TwoCanPluginDrivers[]
-=== Aim
+== Aim
 
 The aim of the TwoCan plugin is to allow OpenCPN to integrate with
 modern NMEA2000® networks and use the data directly from those sensors
@@ -108,7 +108,7 @@ other plug-ins such as the Dashboard plug-in.
 
 image::twocan_screen_0.png[]
 
-=== Installation
+== Installation
 
 With version 1.9 and newer, the plugin is now directly supported by OpenCPN
 5.2 and the Plugin Manager. Once you have updated your Master Catalogue,
@@ -132,7 +132,7 @@ folder on your System drive.
 For example on a standard Windows system it may be: “c:\program
 files\opencpn\plugins\twocan_pi\drivers”
 
-=== Usage
+== Usage
 
 {empty}1. Enable the TwoCan Plugin from the OpenCPN Options dialog.
 
@@ -190,7 +190,7 @@ presence is also displayed on third party NMEA 2000® display devices.
 
 image::simrad-02.png[]]
 
-=== Bi-Directional gateways
+== Bi-Directional gateways
 
 From version 2.0 onwards, TwoCan can operate as a bi-directional gateway, 
 converting NMEA 183 sentences to their NMEA 2000 equivalents. The plugin 
@@ -202,7 +202,7 @@ to convert depth data, enable the gateway feature and uncheck PGN 128267,
 which will then allow conversion of NMEA 183 DBT sentences to NMEA 2000 
 PGN 128267 messages. 
 
-=== Configuration Settings
+== Configuration Settings
 
 The TwoCan plugin persists its configuration settings in the OpenCPN
 initialization file. Under Windows this file is named “opencpn.ini” and
@@ -219,7 +219,7 @@ Adapter=C:\\Program
 Files\\OpenCPN\\plugins\\twocan_pi\\drivers\\kvaser.dll +
 Mode=0
 
-=== Problems
+== Problems
 
 The TwoCan plugin has undergone very limited testing.
 
@@ -290,7 +290,7 @@ Files\OpenCPN\plugins\twocan_pi.dll +
 Please report any errors to either the forum or via email to
 twocanplugin@hotmail.com
 
-=== Trivia
+== Trivia
 
 Why the name “TwoCan” ? Firstly NMEA2000® is based on the Controller
 Area Network (CAN). Secondly, I recall that the Year 2000 rollover was
