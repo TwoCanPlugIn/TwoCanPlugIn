@@ -219,7 +219,7 @@ void TwoCanSettings::OnCheckPGN(wxCommandEvent &event) {
 } 
 
 // Enable Logging of Raw NMEA 2000 frames
-void TwoCanSettings::OnLogging(wxCommandEvent &event) {
+void TwoCanSettings::OnChoiceLogging(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
 

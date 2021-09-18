@@ -220,7 +220,7 @@ protected:
 	void OnInit(wxInitDialogEvent& event);
 	void OnChoiceInterfaces(wxCommandEvent &event);
 	void OnCheckPGN(wxCommandEvent &event);
-	void OnLogging(wxCommandEvent &event);
+	void OnChoiceLogging(wxCommandEvent &event);
 	void OnCheckMode(wxCommandEvent &event);
 	void OnCheckHeartbeat(wxCommandEvent &event);
 	void OnCheckGateway(wxCommandEvent &event);
