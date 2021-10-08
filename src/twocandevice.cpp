@@ -4391,7 +4391,6 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 
 // and
 // $--DSE
-
 bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
@@ -4401,113 +4400,252 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 		byte dscCategory;
 		dscCategory = payload[1];
 
-		char mmsiAddress[5];
-		sprintf(mmsiAddress, "%02d%02d%02d%02d%02d", payload[2], payload[3], payload[4], payload[5], payload[6]);
+		wxString mmsiAddress = wxEmptyString;
+		// BUG BUG Note appended zero
+		if (payload[6] != 0xFF) {
+			mmsiAddress = wxString::Format("%02d%02d%02d%02d%02d", payload[2], payload[3], payload[4], payload[5], payload[6]);
+		}
 
-		byte firstTeleCommand; // or Nature of Distress
-		firstTeleCommand = payload[7];
+		byte firstTelecommand; // or Nature of Distress
+		firstTelecommand = payload[7];
 
-		byte secondTeleCommand; // or Communication Mode
-		secondTeleCommand = payload[8];
+		byte secondTelecommand; // or Communication Mode
+		secondTelecommand = payload[8];
 
-		char receiveFrequency;
-		receiveFrequency = payload[9]; // Encoded of 9, 10, 11, 12, 13, 14
+		wxString receiveFrequency = wxEmptyString;
+		if (payload[9] != 0xFF) {
+			receiveFrequency = wxString::Format("%02d%02d%02d%02d%02d%02d", payload[9], payload[10], payload[11], payload[12], payload[13], payload[14]);
+		}
 
-		char transmitFrequency;
-		transmitFrequency = payload[15]; // Encoded of 15, 16, 17, 18, 19, 20
+		wxString transmitFrequency = wxEmptyString;
+		if (payload[20] != 0xFF) {
+			transmitFrequency = wxString::Format("%02d%02d%02d%02d%02d%02d", payload[15], payload[16], payload[17], payload[18], payload[19], payload[20]);
+		}
 
-		char telephoneNumber;
-		telephoneNumber = payload[21]; // encoded over 8 or 16 bytes
+		wxString telephoneNumber;
+		size_t telephoneNumberLength = payload[21];
+		if (payload[22] == 1) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
+			for (size_t i = 0; i < telephoneNumberLength - 2; i++) {
+				telephoneNumber.append(1, (char)payload[23 + i]);
+			}
+		}
 
-		int index = 0;
+		size_t index = 21 + telephoneNumberLength;
 
 		double latitude;
-		latitude = ((payload[index + 1] | (payload[index + 2] << 8) | (payload[index + 3] << 16) | (payload[index + 4] << 24))) * 1e-7;
+		latitude = 1e-7 * (payload[index] | (payload[index + 1] << 8) | (payload[index + 2] << 16) | (payload[index + 3] << 24));
+
+		index += 4;
+
+		double longitude;
+		longitude = 1e-7 * (payload[index] | (payload[index + 1] << 8) | (payload[index + 2] << 16) | (payload[index + 3] << 24));
 
 		index += 4;
 
 		int latitudeDegrees = trunc(latitude);
-		double latitudeMinutes = (fabs(latitude) - abs(latitudeDegrees)) * 60;
-
-		double longitude;
-		longitude = ((payload[index + 1] | (payload[index + 2] << 8) | (payload[index + 3] << 16) | (payload[index + 4] << 24))) * 1e-7;
+		double latitudeMinutes = fabs((latitude - latitudeDegrees) * 60);
 
 		int longitudeDegrees = trunc(longitude);
-		double longitudeMinutes = (fabs(longitude) - abs(longitudeDegrees)) * 60;
+		double longitudeMinutes = fabs((longitude - longitudeDegrees) * 60);
 
-		unsigned int secondsSinceMidnight;
-		secondsSinceMidnight = payload[2] | (payload[3] << 8) | (payload[4] << 16) | (payload[5] << 24);
+		wxString position;
+		position = wxString::Format("%02d%02d%03d%02d", abs(latitudeDegrees), (int)trunc(latitudeMinutes),
+			abs(longitudeDegrees), (int)trunc(longitudeMinutes));
 
-		// note payload index.....
-		char vesselInDistress[5];
-		sprintf(vesselInDistress, "%02d%02d%02d%02d%02d", payload[2], payload[3], payload[4], payload[5], payload[6]);
-
-		byte endOfSequence;
-		endOfSequence = payload[101]; // 1 byte
-
-		byte dscExpansionEnabled; // Encoded over two bits
-		dscExpansionEnabled = (payload[102] & 0xC0) >> 6;
-
-		byte reserved; // 6 bits
-		reserved = payload[102] & 0x3F;
-
-		byte callingRx; // 6 bytes
-		callingRx = payload[103];
-
-		byte callingTx; // 6 bytes
-		callingTx = payload[104];
-
-		unsigned int timeOfTransmission;
-		timeOfTransmission = payload[105] | (payload[106] << 8) | (payload[107] << 16) | (payload[108] << 24);
-
-		unsigned int dayOfTransmission;
-		dayOfTransmission = payload[109] | (payload[110] << 8);
-
-		unsigned int messageId;
-		messageId = payload[111] | (payload[112] << 8);
-
-		// The following pairs are repeated
-
-		byte dscExpansionSymbol;
-		dscExpansionSymbol = payload[113];
-
-		// Now iterate through the DSE Expansion data
-
-		for (size_t i = 120; i < sizeof(payload);) {
-			switch (payload[i]) {
-				// refer to ITU-R M.821 Table 1.
-			case 100: // enhanced position
-				// 4 characters (8 digits)
-				i += 4;
-				break;
-			case 101: // Source and datum of position
-				i += 9;
-				break;
-			case 102: // Current speed of the vessel - 4 bytes
-				i += 4;
-				break;
-			case 103: // Current course of the vessel - 4 bytes
-				i += 4;
-				break;
-			case 104: // Additional Station information - 10
-				i += 10;
-				break;
-			case 105: // Enhanced Geographic Area - 12
-				i += 12;
-				break;
-			case 106: // Numbr of persons onboard - 2 characters
-				i += 2;
-				break;
-
+		// quadrant 0 = North East, 1 North West, 2 South East, 3 South West,
+		if (latitude >= 0) {
+			if (longitude >= 0) {
+				position.insert(0, "0");
+			}
+			else {
+				position.insert(0, "1");
 			}
 		}
-		
-		return FALSE;
+		else {
+			if (longitude >= 0) {
+				position.insert(0, "2");
+			}
+			else {
+				position.insert(0, "3");
+			}
+		}
+
+		unsigned int secondsSinceMidnight;
+		secondsSinceMidnight = (unsigned int)payload[index] | ((unsigned int)payload[index + 1] << 8) | ((unsigned int)payload[index + 2] << 16) | ((unsigned int)payload[index + 3] << 24);
+
+
+		wxDateTime tm;
+		tm.ParseDateTime("00:00:00 01-01-1970");
+		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
+
+		wxString timeOfPosition = tm.Format("%H%M");
+
+		index += 4;
+
+		wxString vesselInDistress = wxEmptyString;
+
+		if (payload[index + 4] != 0xFF) {
+			vesselInDistress = wxString::Format("%02d%02d%02d%02d%02d", payload[index], payload[index + 1], payload[index + 2], payload[index + 3], payload[index + 4]);
+		}
+
+		index += 5;
+
+		byte endOfSequence;
+		endOfSequence = payload[index]; // 1 byte
+
+		byte dscExpansionEnabled; // Encoded over two bits
+		dscExpansionEnabled = payload[index] & 0x03;
+
+		wxString callingRx = wxEmptyString;
+		if (payload[index + 5] != 0xFF) {
+			callingRx = wxString::Format("%02d%02d%02d%02d%02d%02d", payload[index], payload[index + 1], payload[index + 2], payload[index + 3], payload[index + 4], payload[index + 5]);
+		}
+
+		index += 6;
+
+		wxString callingTx = wxEmptyString;
+		if (payload[index + 5] != 0xFF) {
+			callingTx = wxString::Format("%02d%02d%02d%02d%02d%02d", payload[index], payload[index + 1], payload[index + 2], payload[index + 3], payload[index + 4], payload[index + 5]);
+		}
+
+		index += 6;
+
+		int timeOfTransmission; // Not used in DSC sentence
+		timeOfTransmission = payload[index] | (payload[index + 1] << 8) | (payload[index + 2] << 16) | (payload[index + 3] << 24);
+
+		index += 4;
+
+		int dayOfTransmission; // Not used in DSC Sentence
+		dayOfTransmission = payload[index] | (payload[index + 1] << 8);
+
+		index += 2;
+
+		unsigned short messageId; // Not used in DSC Sentence
+		messageId = payload[index] | (payload[index + 1] << 8);
+
+		index += 2;
+
+		// $--DSC, xx,xxxxxxxxxx,xx,xx,xx,x.x,x.x,xxxxxxxxxx,xx,a,a
+		//          |     |       |  |  |  |   |  MMSI        | | Expansion Specifier
+		//          |   MMSI     Category  Position           | Acknowledgement        
+		//          Format Specifer  |  |      |Time          Nature of Distress
+		//                           |  Type of Communication or Second telecommand
+		//                           Nature of Distress or First Telecommand
+		wxString dscSentence;
+
+		dscSentence = wxString::Format("$CDDSC,%02d,%s", formatSpecifier - 100, mmsiAddress.ToAscii().data());
+
+		if (formatSpecifier == 112) { // If Format Specifier is Distress, DSC Category is NULL
+			dscSentence += wxString::Format(",,%02d,%02d,%s,%s,,,%c", firstTelecommand - 100, secondTelecommand - 100, position.ToAscii().data(),
+				timeOfPosition.ToAscii().data(), endOfSequence == 117 ? 'R' : endOfSequence == 122 ? 'B' : 'S');
+		}
+		else { // Format Specifier is All Ships, Group or Individual
+			//"$CDDSC,16,0112345670,12,12,09,1474712219,1234,9991212120,00,S,,", _
+			//"$CDDSC,16,0112345670,08,09,26,041250,,,,S,,*C9",
+			if (dscCategory == 112) { // Either a Distress Ack, Distres Relay or Distress Relay Ack
+				dscSentence += wxString::Format(",%02d,%02d,%02d,%s,%s,%s,%02d,%c", dscCategory - 100, firstTelecommand - 100, secondTelecommand - 100,
+					position.ToAscii().data(), timeOfPosition.ToAscii().data(), vesselInDistress.ToAscii().data(), secondTelecommand - 100,
+					endOfSequence == 117 ? 'R' : endOfSequence == 122 ? 'B' : 'S');
+			}
+			else { // 
+				dscSentence += wxString::Format(",%02d,%02d, %02d,%s,%s,,,%c", dscCategory - 100, firstTelecommand - 100, secondTelecommand - 100,
+					position.ToAscii().data(), timeOfPosition.ToAscii().data(), endOfSequence == 117 ? 'R' : endOfSequence == 122 ? 'B' : 'S');
+			}
+		}
+
+		if (dscExpansionEnabled == 0x01) {
+			dscSentence += ",E";
+		}
+		else {
+			dscSentence += ",";
+		}
+
+		nmeaSentences->push_back(dscSentence);
+
+		// If there is DSE Expansion Data, the following pairs are repeated
+
+		if (dscExpansionEnabled == 0x01) {
+
+			byte dscExpansionSymbol;
+			std::vector<byte> dseExpansionData;
+			wxString dseSentence;
+
+			dseSentence = wxString::Format("$CDDSE,1,1,A,%s,", mmsiAddress.ToAscii().data());
+			for (size_t j = 0; j < 2; j++) {
+
+				dscExpansionSymbol = payload[index];
+				index += 1;
+
+				size_t  dseExpansionDataLength = payload[index];
+				index += 1;
+
+				if ((payload[index] == 1) && (dseExpansionDataLength > 2)) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
+					index += 1; // past ascii/unicode 
+
+					std::vector<byte> dseRawExpansionData;
+					for (size_t k = 0; k < dseExpansionDataLength - 2; k++) {
+						dseRawExpansionData.push_back(payload[index]);
+						index += 1;
+					}
+
+					// Refer to ITU-R M.821 Table 1.
+					switch (dscExpansionSymbol) {
+
+					case 100: // enhanced position
+						dseSentence += ",00,";
+						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
+						break;
+					case 101: // Source and datum of position
+						dseSentence += ",01,";
+						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
+						break;
+					case 102: // Current speed of the vessel - 4 bytes
+						dseSentence += ",02,";
+						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
+						break;
+					case 103: // Current course of the vessel - 4 bytes
+						dseSentence += ",03,";
+						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
+						break;
+					case 104: // Additional Station information - 10
+						dseSentence += ",04,";
+						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
+						break;
+					case 105: // Enhanced Geographic Area - 12
+						dseSentence += ",05,";
+						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
+						break;
+					case 106: // Numbr of persons onboard - 2 characters
+						dseSentence += ",06,";
+						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
+						break;
+					case 0xFF:
+						break;
+					} // switch
+				} // ascii
+			} // pairs
+			nmeaSentences->push_back(dseSentence);
+		} // dse expansion
+
+		return TRUE;
 	}
 	else {
 		return FALSE;
 	}
+}
 
+// Decode table from ITU-R M.825
+wxString TwoCanDevice::DecodeDSEExpansionCharacters(std::vector<byte> dseData) {
+	wxString result;
+	char lookupTable[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '\'',
+		'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
+		'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+		'Y', 'Z', '.', ',', '-', '/', ' ' };
+
+	for (size_t i = 0; i < dseData.size(); i += 2) {
+		result.append(1, lookupTable[dseData.Mid(i, 2).data(), NULL, 0)]);
+	}
+	return result;
 }
 
 // Decode PGN 129809 AIS Class B Static Data Report, Part A 
@@ -4713,55 +4851,67 @@ bool TwoCanDevice::DecodePGN130065(const byte *payload, std::vector<wxString> *n
 bool TwoCanDevice::DecodePGN130074(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
-		byte startingWaypointId;
-		startingWaypointId = payload[0];
+		unsigned short startingWaypointId;
+		startingWaypointId = payload[0] | (payload[1] << 8);
 
-        byte items;
-		items = payload[1];
+		unsigned short items;
+		items = payload[2] | (payload[3] << 8);
 
-        unsigned short validItems;
-		validItems = payload[2] | (payload[3] << 8);
+		unsigned short validItems;
+		validItems = payload[4] | (payload[5] << 8);
 
-		byte databaseId;
-		databaseId = payload[4];
+		unsigned short databaseId;
+		databaseId = payload[6] | (payload[7] << 8);
 
-        byte reserved;
-		reserved = payload[5];
+		unsigned short reserved;
+		reserved = payload[8] | (payload[9] << 8);
 
 		unsigned int index;
-		index = 6;
+		index = 10;
 
-        for (size_t i = 0; i < items; i++) {
-			byte waypointId;
-			waypointId = payload[index];
+		// BUG BUG This is potentially broken, however I have never seen more than
+		// one waypoint sent, and I have never seen Unicode characters used.
+		for (size_t i = 0; i < validItems; i++) {
+			unsigned short waypointId;
+			waypointId = payload[index] | (payload[index + 1] << 8);
+			index += 2;
+
+			// Text with length & control byte
+			unsigned int wptNameLength;
+			wxString waypointName;
+
+			wptNameLength = payload[index];
 			index += 1;
+			if (payload[index] == 0x01) { // first byte of Wypoint Name indicates encoding; 0 for Unicode, 1 for ASCII
+				index += 1;
+				waypointName.clear();
+				for (size_t i = 0; i < wptNameLength - 2; i++) {
+					waypointName.append(1, (char)payload[index]);
+					index++;
+				}
 
-			// BUG BUG Is this NULL teminated ??
-			char waypointName[8];
-			memcpy(waypointName, &payload[index], 8);
-			index += 8;
+			}
 
 			double latitude;
-			latitude = (payload[index] | (payload[index +1] << 8) | (payload[index + 2] << 16) | (payload[index +3] << 24)) * 1e-7;
+			latitude = (payload[index] | (payload[index + 1] << 8) | (payload[index + 2] << 16) | (payload[index + 3] << 24)) * 1e-7;
 			int latitudeDegrees = trunc(latitude);
 			double latitudeMinutes = fabs(latitude - latitudeDegrees);
 			index += 4;
 
 			double longitude;
-			longitude = (payload[index] | (payload[index +1] << 8) | (payload[index + 2] << 16) | (payload[index +3] << 24)) * 1e-7;
+			longitude = (payload[index] | (payload[index + 1] << 8) | (payload[index + 2] << 16) | (payload[index + 3] << 24)) * 1e-7;
 			int longitudeDegrees = trunc(longitude);
 			double longitudeMinutes = fabs(longitude - longitudeDegrees);
-
 			index += 4;
 
-			// Generate the NMEA 183 WPL sentence, although it is not used by OpenCPN.
-			nmeaSentences->push_back(wxString::Format("$IIWPL,%02d%05.2f,%c,%03d%05.2f,%c,%d",
+			// Generate the NMEA 183 WPL sentence, even though it is not used by OpenCPN.
+			nmeaSentences->push_back(wxString::Format("$IIWPL,%02d%05.2f,%c,%03d%05.2f,%c,%s",
 				abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S',
 				abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W',
-				waypointId));
+				waypointName.ToAscii().data()));
 
 			// Insert the waypoint directly into OpenCPN as it does not parse WPL sentences.
-			// we can't retrieve waypoints, so no way to avoid duplication......
+			// we don't retrieve waypoints to compare, so no way to avoid duplication......
 			if (enableWaypoint) {
 				PlugIn_Waypoint waypoint;
 				waypoint.m_IsVisible = true;
@@ -4769,7 +4919,7 @@ bool TwoCanDevice::DecodePGN130074(const byte *payload, std::vector<wxString> *n
 				// BUG BUG Should have a UI thingy to specify the default symbol
 				waypoint.m_IconName = "Symbol_Triangle";
 				waypoint.m_GUID = GetNewGUID();
-				waypoint.m_lat = latitude; 
+				waypoint.m_lat = latitude;
 				waypoint.m_lon = longitude;
 				AddSingleWaypoint(&waypoint, true);
 			}
@@ -4780,7 +4930,6 @@ bool TwoCanDevice::DecodePGN130074(const byte *payload, std::vector<wxString> *n
 		return FALSE;
 	}
 }
-
 
 // Decode PGN 130306 NMEA Wind
 // $--MWV,x.x,a,x.x,a,A*hh<CR><LF>

@@ -179,6 +179,7 @@ SET(NMEA183_SRC nmea183/src/apb.cpp
                 nmea183/src/lat.cpp
                 nmea183/src/latlong.cpp
                 nmea183/src/long.cpp
+				nmea183/src/mob.cpp
                 nmea183/src/mtw.cpp
                 nmea183/src/mwv.cpp
                 nmea183/src/nmea0183.cpp
@@ -215,6 +216,7 @@ SET(NMEA183_INC nmea183/inc/apb.hpp
                 nmea183/inc/hdm.hpp
                 nmea183/inc/hdt.hpp
                 nmea183/inc/latlong.hpp
+				nmea183/inc/mob.hpp
                 nmea183/inc/mtw.hpp
                 nmea183/inc/mwv.hpp
                 nmea183/inc/nmea0183.h

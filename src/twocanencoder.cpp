@@ -26,6 +26,7 @@
 // Version History: 
 // 1.0 Initial Release of Bi-directional Gateway
 // 1.1 - 04/07/2021 Add AIS conversion
+// 1.2 - 10/10/2021 Add DSC & MOB conversion
  
 #include "twocanencoder.h"
 
@@ -135,8 +136,6 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 	// Parse the NMEA 183 sentence
 	nmeaParser << sentence;
 
-	// BUG BUG ToDo (if ever......)
-	// DSC and AIS
 	if (nmeaParser.PreParse()) {
 
 		// BUG BUG Should use a different priority based on the PGN
@@ -583,6 +582,24 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			return FALSE;
 		}
 
+		// MOB Man Overboard
+		else if (nmeaParser.LastSentenceIDReceived == _T("MOB")) {
+			if (nmeaParser.Parse()) {
+				if (!(supportedPGN & FLAGS_DSC)) {
+
+					if (EncodePGN127233(&nmeaParser, &payload)) {
+						header.pgn = 127233;
+						FragmentFastMessage(&header, &payload, canMessages);
+					}
+				}
+				return TRUE;
+			}
+			else {
+				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
+			}
+			return FALSE;
+		}
+
 		// MTW Water Temperature
 		else if (nmeaParser.LastSentenceIDReceived == _T("MTW")) {
 			if (nmeaParser.Parse()) {
@@ -937,7 +954,10 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("WPL")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_RTE)) {
-					// IGNORE
+					if (EncodePGN130074(&nmeaParser, &payload)) {
+						header.pgn = 130074;
+						FragmentFastMessage(&header, &payload, canMessages);
+					}
 
 				}
 			}
@@ -1583,6 +1603,88 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 		return TRUE;
 	}
 
+	return FALSE;
+}
+
+// Encode payload for PGN 127233 NMEA Man Overboard (MOB)
+bool TwoCanEncoder::EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	if (parser->LastSentenceIDParsed == _T("MOB")) {
+		n2kMessage->clear();
+
+		n2kMessage->push_back(sequenceId);
+
+		unsigned int emitterId = 12345678;
+		n2kMessage->push_back(emitterId & 0xFF);
+		n2kMessage->push_back((emitterId >> 8) & 0xFF);
+		n2kMessage->push_back((emitterId >> 16) & 0xFF);
+		n2kMessage->push_back((emitterId >> 24) & 0xFF);
+
+		byte mobStatus = 0;
+		n2kMessage->push_back((mobStatus & 0x07) | 0xF8);
+
+		unsigned int timeOfDay = 369000000; //seconds * 1e4
+		n2kMessage->push_back(timeOfDay & 0xFF);
+		n2kMessage->push_back((timeOfDay >> 8) & 0xFF);
+		n2kMessage->push_back((timeOfDay >> 16) & 0xFF);
+		n2kMessage->push_back((timeOfDay >> 24) & 0xFF);
+
+		byte positionSource = 1;
+		n2kMessage->push_back((positionSource & 0x07) | 0xFE);
+
+		wxDateTime now;
+		now = wxDateTime::Now();
+		wxDateTime epoch;
+		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxTimeSpan diff = now - epoch;
+
+		unsigned short daysSinceEpoch = diff.GetDays();
+		unsigned int secondsSinceMidnight = (unsigned int)(diff.GetSeconds().ToLong() - (diff.GetDays() * 24 * 60 * 60)) * 10000;
+
+		n2kMessage->push_back(daysSinceEpoch & 0xFF);
+		n2kMessage->push_back((daysSinceEpoch >> 8) & 0xFF);
+
+		n2kMessage->push_back(secondsSinceMidnight & 0xFF);
+		n2kMessage->push_back((secondsSinceMidnight >> 8) & 0xFF);
+		n2kMessage->push_back((secondsSinceMidnight >> 16) & 0xFF);
+		n2kMessage->push_back((secondsSinceMidnight >> 24) & 0xFF);
+
+		int latitude = static_cast<int>(41.158 * 1e7);
+		n2kMessage->push_back(latitude & 0xFF);
+		n2kMessage->push_back((latitude >> 8) & 0xFF);
+		n2kMessage->push_back((latitude >> 16) & 0xFF);
+		n2kMessage->push_back((latitude >> 24) & 0xFF);
+
+		// Field 10
+		int longitude = static_cast<int>(1.5 * 1e7);
+		n2kMessage->push_back(longitude & 0xFF);
+		n2kMessage->push_back((longitude >> 8) & 0xFF);
+		n2kMessage->push_back((longitude >> 16) & 0xFF);
+		n2kMessage->push_back((longitude >> 24) & 0xFF);
+
+		byte cogReference = 0;
+		n2kMessage->push_back((cogReference & 0x02) | 0xFC);
+
+		unsigned short courseOverGround = 90;
+		courseOverGround = DEGREES_TO_RADIANS(courseOverGround) * 10000;
+		n2kMessage->push_back(courseOverGround & 0xFF);
+		n2kMessage->push_back((courseOverGround >> 8) & 0xFF);
+
+		unsigned short speedOverGround = 2;
+		speedOverGround = (speedOverGround / CONVERT_MS_KNOTS) * 100;
+		n2kMessage->push_back(speedOverGround & 0xFF);
+		n2kMessage->push_back((speedOverGround >> 8) & 0xFF);
+
+		unsigned int mmsiNumber = 970201234;
+		n2kMessage->push_back(mmsiNumber & 0xFF);
+		n2kMessage->push_back((mmsiNumber >> 8) & 0xFF);
+		n2kMessage->push_back((mmsiNumber >> 16) & 0xFF);
+		n2kMessage->push_back((mmsiNumber >> 24) & 0xFF);
+
+		byte batteryStatus = 0;
+		n2kMessage->push_back((batteryStatus & 0x07) | 0xF8);
+
+		return TRUE;
+	}
 	return FALSE;
 }
 
@@ -2937,6 +3039,79 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 	*/
 	return FALSE;
 
+}
+
+// Encode payload for PGN030306 NMEA Waypoint Location
+bool TwoCanEncoder::EncodePGN130074(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+
+	if (parser->LastSentenceIDParsed == _T("WPL")) {
+
+		unsigned short startingWaypointId = 0;
+		n2kMessage->push_back(startingWaypointId & 0xFF);
+		n2kMessage->push_back((startingWaypointId >> 8) & 0xFF);
+
+		unsigned short items = 1;
+		n2kMessage->push_back(items & 0xFF);
+		n2kMessage->push_back((items << 8) & 0xFF);
+
+		unsigned short validItems = 1;
+		n2kMessage->push_back(validItems & 0xFF);
+		n2kMessage->push_back((validItems << 8) & 0xFF);
+
+		unsigned short databaseId = 0;
+		n2kMessage->push_back(databaseId & 0xFF);
+		n2kMessage->push_back((databaseId >> 8) & 0xFF);
+
+		// reserved;
+		n2kMessage->push_back(0xFF);
+		n2kMessage->push_back(0xFF);
+
+		// We'll make an id using the waypoint name
+		// Wouldn't it be nice if there was a unique GUID ?
+		unsigned short waypointId;
+		unsigned short pair1 = 0;
+		unsigned short pair2 = 0;
+		for (int i = 0; i < parser->Wpl.To.size(); i++) {
+			pair1 = pair1 ^ (unsigned short)parser->Wpl.To[i];
+		}
+		for (int i = parser->Wpl.To.size() - 1; i >= 0; i--) {
+			pair2 = pair2 ^ (unsigned short)parser->Wpl.To[i];
+		}
+		waypointId = (((pair1 + pair2) * (pair1 + pair2 + 1)) / 2) + pair2;
+
+		n2kMessage->push_back(waypointId & 0xFF);
+		n2kMessage->push_back((waypointId << 8) & 0xFF);
+
+		// Text with length & control byte
+		n2kMessage->push_back(parser->Wpl.To.size() + 2);
+		n2kMessage->push_back(0x01); // First byte of Waypoint Name indicates ASCII or UUnicode encoding
+		for (auto it = parser->Wpl.To.begin(); it != parser->Wpl.To.end(); ++it) {
+			n2kMessage->push_back(*it);
+		}
+
+		int latitude = parser->Wpl.Position.Latitude.Latitude * 1e7;
+
+		if (parser->Wpl.Position.Latitude.Northing == South) {
+			latitude = -latitude;
+		}
+		n2kMessage->push_back(latitude & 0xFF);
+		n2kMessage->push_back((latitude >> 8) & 0xFF);
+		n2kMessage->push_back((latitude >> 16) & 0xFF);
+		n2kMessage->push_back((latitude >> 24) & 0xFF);
+
+		int longitude = parser->Wpl.Position.Longitude.Longitude * 1e7;
+
+		if (parser->Wpl.Position.Longitude.Easting == West) {
+			longitude = -longitude;
+		}
+		n2kMessage->push_back(longitude & 0xFF);
+		n2kMessage->push_back((longitude >> 8) & 0xFF);
+		n2kMessage->push_back((longitude >> 16) & 0xFF);
+		n2kMessage->push_back((longitude >> 24) & 0xFF);
+
+		return TRUE;
+	}
+	return FALSE;
 }
 
 // Encode payload for PGN 130306 NMEA Wind

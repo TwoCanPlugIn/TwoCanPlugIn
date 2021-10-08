@@ -523,6 +523,9 @@ private:
 	// AIS VDM Sequential message ID, 0 - 9 used to distinguish multi-sentence NMEA 183 VDM messages
 	int AISsequentialMessageId;
 
+	// Decode table from ITU-R M.825 for DSE Sentences
+	wxString DecodeDSEExpansionCharacters(std::vector<byte> dseData);
+
 };
 
 #endif

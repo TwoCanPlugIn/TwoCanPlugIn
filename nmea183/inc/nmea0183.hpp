@@ -83,6 +83,7 @@
 //#include "GXA.hpp"
 //#include "HSC.hpp"
 ///#include "LCD.hpp"
+#include "mob.hpp"
 #include "mtw.hpp"
 #include "mwv.hpp"
 //#include "OLN.hpp"
@@ -178,6 +179,7 @@ class NMEA0183
    HDT Hdt;
    //HSC Hsc;
    //LCD Lcd;
+   MOB Mob;
    MTW Mtw;
    MWV Mwv;
    //OLN Oln;

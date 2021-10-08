@@ -83,6 +83,9 @@ public:
 	// Encode PGN 126992 NMEA System Time
 	bool EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
+	// Encode payload PGN 127233 NMEA Man Overboard (MOB)
+	bool EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
+
 	// Encode PGN 127245 NMEA Rudder Angle
 	bool EncodePGN127245(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
@@ -142,6 +145,9 @@ public:
 
 	// Encode PGN 129808 DSC Message
 	bool EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
+
+	// Encode PGN 130074 NMEA Route & Waypoint Service - Waypoint List
+	bool EncodePGN130074(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
 	// Encode PGN 130306 NMEA Wind
 	bool EncodePGN130306(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
