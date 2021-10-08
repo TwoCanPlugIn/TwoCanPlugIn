@@ -4643,7 +4643,7 @@ wxString TwoCanDevice::DecodeDSEExpansionCharacters(std::vector<byte> dseData) {
 		'Y', 'Z', '.', ',', '-', '/', ' ' };
 
 	for (size_t i = 0; i < dseData.size(); i += 2) {
-		result.append(1, lookupTable[dseData.Mid(i, 2).data(), NULL, 0)]);
+		result.append(1, lookupTable[dseData[i]]);
 	}
 	return result;
 }

@@ -85,7 +85,7 @@ bool MOB::Parse( const SENTENCE& sentence )
 	}
 
   EmitterID = sentence.Field( 1 );
-  MobStatus = sentence.MOBSTATUS( 2 );
+  MobStatus = (MOB_STATUS)std::atoi(sentence.Field(2));
   ActivationTime = sentence.Field(3);
   PositionReference = std::atoi(sentence.Field(4));
   Date = sentence.Field( 5 );
