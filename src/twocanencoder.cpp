@@ -2985,14 +2985,14 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 			// 1,2,3 MF/HF frequency encoded in 100Hz.
 			//9 VHF - second digit simplex, 
 
-			std::string receiveFrequency = parser->Dsc.positionOrFrequency.SubString(0, 6);
+			std::string receiveFrequency = parser->Dsc.positionOrFrequency.SubString(0, 6).ToStdString();
 
 			for (std::string::iterator it = receiveFrequency.begin(); it != receiveFrequency.end(); ++it) {
 				n2kMessage->push_back(*it);
 			}
 
 			// Field 7
-			std::string transmitFrequency = parser->Dsc.positionOrFrequency.SubString(6, 6);
+			std::string transmitFrequency = parser->Dsc.positionOrFrequency.SubString(6, 6).ToStdString();
 			for (std::string::iterator it = transmitFrequency.begin(); it != transmitFrequency.end(); ++it) {
 				n2kMessage->push_back(*it);
 			}
@@ -3006,7 +3006,7 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 
 		// Field 8 - Telephone Number 8 or 10 digits ??
 		if (parser->Dsc.timeOrTelephone.Length() != 4) {
-			std::string telephoneNumber = parser->Dsc.timeOrTelephone;
+			std::string telephoneNumber = parser->Dsc.timeOrTelephone.ToStdString();
 			// Encoded String with Length & Control Byte
 			n2kMessage->push_back(telephoneNumber.length() + 2);
 			n2kMessage->push_back(0x01); // indicate ASCII encoding

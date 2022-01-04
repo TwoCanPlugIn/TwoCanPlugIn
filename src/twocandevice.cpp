@@ -4756,23 +4756,25 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 			wxString dseSentence;
 
 			dseSentence = wxString::Format("$CDDSE,1,1,A,%s,", mmsiAddress.ToAscii().data());
+			
 			for (size_t j = 0; j < 2; j++) {
 
 				dscExpansionSymbol = payload[index];
+				dseSentence += wxString::Format("%02d,", dscExpansionSymbol - 100);
 				index += 1;
 
 				size_t  dseExpansionDataLength = payload[index];
 				index += 1;
 
 				if ((payload[index] == 1) && (dseExpansionDataLength > 2)) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
-					index += 1; // past ascii/unicode 
+					index += 1; // past ascii/unicode character
 
 					std::vector<byte> dseRawExpansionData;
 					for (size_t k = 0; k < dseExpansionDataLength - 2; k++) {
-						dseRawExpansionData.push_back(payload[index]);
+						dseSentence+=wxString::Format("%d",payload[index]));
 						index += 1;
 					}
-
+					/*
 					// Refer to ITU-R M.821 Table 1.
 					switch (dscExpansionSymbol) {
 
@@ -4807,6 +4809,7 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 					case 0xFF:
 						break;
 					} // switch
+					*/
 				} // ascii
 			} // pairs
 			nmeaSentences->push_back(dseSentence);
