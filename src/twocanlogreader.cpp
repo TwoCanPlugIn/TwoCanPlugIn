@@ -171,7 +171,7 @@ int TwoCanLogReader::TestFormat(std::string line) {
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT))  {
 		return Kees;
 	}
-	twoCanRegex.Compile(CONST_SIGNALK_RAW_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	twoCanRegex.Compile(CONST_SIGNALK_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (twoCanRegex.Matches(line, wxRE_DEFAULT) {
 		return Kees;
 	}
