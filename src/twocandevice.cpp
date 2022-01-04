@@ -4771,7 +4771,7 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 
 					std::vector<byte> dseRawExpansionData;
 					for (size_t k = 0; k < dseExpansionDataLength - 2; k++) {
-						dseSentence+=wxString::Format("%d",payload[index]));
+						dseSentence+=wxString::Format("%d",payload[index]);
 						index += 1;
 					}
 					/*
