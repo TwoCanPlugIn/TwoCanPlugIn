@@ -147,6 +147,15 @@ typedef enum _aischannel
    ChannelNone
 } AIS_CHANNEL;
 
+typedef enum _mobstatus
+{
+	Activated = 'A',
+	Test = 'T',
+	Manual = 'M',
+	Inactive = 'V',
+	Error = 'E'
+} MOB_STATUS;
+
 /*
 ** Misc Function Prototypes
 */

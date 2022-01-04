@@ -74,6 +74,8 @@
 #include "bwr.hpp"
 //#include "BWW.hpp"
 #include "dbt.hpp"
+#include "dsc.hpp"
+#include "dse.hpp"
 //#include "DCN.hpp"
 #include "dpt.hpp"
 //#include "FSI.hpp"
@@ -168,6 +170,8 @@ class NMEA0183
    DBT Dbt;
    //DCN Dcn;
    DPT Dpt;
+   DSC Dsc;
+   DSE Dse;
    //FSI Fsi;
    GGA Gga;
    //GLC Glc;

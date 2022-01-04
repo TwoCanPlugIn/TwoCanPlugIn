@@ -52,6 +52,12 @@
 // Frame received events
 #include <wx/event.h>
 
+//JSON
+#include <wx/json_defs.h>
+#include <wx/jsonval.h>
+#include <wx/jsonreader.h>
+#include <wx/jsonwriter.h>
+
 // Plugin receives FrameReceived events from the TwoCan device
 const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT = wxNewEventType();
 
@@ -91,6 +97,10 @@ unsigned long uniqueId;
 int networkAddress;
 // Maintain a map of the all of the NMEA 2000 devices on the network
 NetworkInformation networkMap[CONST_MAX_DEVICES];
+// TwoCanMedia is used to decode/encode Fusion Media Player NMEA 2000 messages
+// Works in conjunction with the Media Player plugin. Defined as a global because methods are invoked
+// from both TwoCanPlugin and TwoCanDevice
+TwoCanMedia *twoCanMedia;
 
 // The TwoCan plugin
 class TwoCan : public opencpn_plugin_116, public wxEvtHandler {
@@ -157,7 +167,7 @@ private:
 
 	// TwoCanEncoder is used to convert NMEA 183 sentences to NMEA 2000 messages 
 	TwoCanEncoder *twoCanEncoder;
-
+		
 	// BUG BUG Testing some failure on exit modes
 	bool isRunning;
 };

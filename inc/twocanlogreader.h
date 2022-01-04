@@ -27,6 +27,7 @@
 #define CONST_CANDUMP_REGEX "^\\([0-9]+.[0-9]+\\)\\s(slcan|vcan|can)[0-9]\\s([0-9A-F]{8})#([0-9A-F]{16})"
 #define CONST_KEES_REGEX "^[0-9]{4}-[0-9]{2}-[0-9]{2}[TZ][0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3},([0-9]),([0-9]{5,6}),([0-9]+),([0-9]+),([0-9]),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2})"
 #define CONST_YACHTDEVICES_REGEX "^[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}\\sR\\s([0-9A-F]{8})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})"
+#define CONST_SIGNALK_RAW_REGEX std::regex signalkRegex "^[0-9]{13};A;[0-9]{4}-[0-9]{2}-[0-9]{2}[TZ][0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z,([0-9]),([0-9]{5,6}),([0-9]+),([0-9]+),([0-9]),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2})"
 enum LogFileFormat { Undefined, TwoCanRaw, CanDump, Kees, YachtDevices};
 
 // Implements the generic log file reader on Linux & Mac OSX devices

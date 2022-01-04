@@ -26,6 +26,7 @@
 // 1.0 Initial Release
 // 1.8 - 10/05/2020 Derived from abstract class, support for Mac OSX
 // 2.0 - 04-07-2921 Support slcan, vcan and can socketCAN interfaces in log file
+// 2.1 - 20-12-2021 Support SignalK Server Raw Log Files
 
 #include <twocanlogreader.h>
 
@@ -109,6 +110,8 @@ void TwoCanLogReader::ParseCanDump(std::string str) {
 	return;	
 }
 
+// Parses both Kees format from Canboat and Raw format from SignalK Server
+// Only difference is the header/date time fields, the remaining fields are the same
 void TwoCanLogReader::ParseKees(std::string str) {
 	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
 		CanHeader header;
@@ -166,6 +169,10 @@ int TwoCanLogReader::TestFormat(std::string line) {
 	}
 	twoCanRegEx.Compile(CONST_KEES_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT))  {
+		return Kees;
+	}
+	twoCanRegex.Compile(CONST_SIGNALK_RAW_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	if (twoCanRegex.Matches(line, wxRE_DEFAULT) {
 		return Kees;
 	}
 	twoCanRegEx.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);

@@ -80,6 +80,8 @@ NMEA0183::NMEA0183()
    response_table.Append( (RESPONSE *) &Bwr );
    response_table.Append( (RESPONSE *) &Dbt );
    response_table.Append( (RESPONSE *) &Dpt );
+   response_table.Append( (RESPONSE *) &Dsc );
+   response_table.Append( (RESPONSE *) &Dse );
    response_table.Append( (RESPONSE *) &Gga );
    response_table.Append( (RESPONSE *) &Gll );
    response_table.Append( (RESPONSE *) &GPwpl );

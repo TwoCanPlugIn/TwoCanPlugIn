@@ -30,6 +30,9 @@
 // Defines all of the OpenCPN plugin virtual methods we need to override
 #include "ocpn_plugin.h"
 
+// Fusion Media Player
+#include "twocanmedia.h"
+
 // Error constants and macros
 #include "twocanerror.h"
 
@@ -153,6 +156,10 @@ extern unsigned long uniqueId;
 
 // The current NMEA 2000 network address of this device
 extern int networkAddress;
+
+// TwoCanMedia is used to decode/encode Fusion Media Player NMEA 2000 messages
+// Works in conjunction with the media player plugin
+extern TwoCanMedia *twoCanMedia;
 
 #if defined (__WXMSW__) 
 // NMEA 2000 imported driver function prototypes
@@ -326,6 +333,12 @@ private:
 	// Decode PGN 126996 NMEA Product Information
 	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
 
+	// Decode PGN 126998 NMEA Configuration Information
+	int DecodePGN126998(const byte *payload);
+
+	// Decode PGN 127233 NMEA Man Overboard 
+	bool DecodePGN127233(const byte *payload, std::vector<wxString> *nmeaSentences);
+
 	// Decode PGN 127237 NMEA Heading Track control 
 	bool DecodePGN127237(const byte *payload, std::vector<wxString> *nmeaSentences);
 
@@ -463,6 +476,9 @@ private:
 
 	// Decode PGN 130577 NMEA Direction Data
 	bool DecodePGN130577(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode Manufacturer Proprietary Fast Message (used by the Fusion Media Player thingy)
+	bool DecodePGN130820(const byte *payload, std::vector<wxString> *nmeaSentences);
 	
 	// Transmit an ISO Request
 	int SendISORequest(const byte destination, const unsigned int pgn);

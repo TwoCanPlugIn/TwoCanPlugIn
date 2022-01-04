@@ -72,6 +72,7 @@ class SENTENCE
       virtual void Finish( void );
       virtual int GetNumberOfDataFields( void ) const;
       virtual int Integer( int field_number ) const;
+	  virtual unsigned long long ULongLong(int field_number) const;
 	  
       // Added for AIS VDM
       //virtual wxString String(int field_number) const;
@@ -92,6 +93,7 @@ class SENTENCE
       virtual const SENTENCE& operator  = ( const wxString& source );
       virtual const SENTENCE& operator += ( const wxString& source );
       virtual const SENTENCE& operator += ( double value );
+	  virtual const SENTENCE& operator += (unsigned long long value);
       virtual const SENTENCE& operator += ( NORTHSOUTH northing );
       virtual const SENTENCE& operator += ( COMMUNICATIONS_MODE mode );
       virtual const SENTENCE& operator += ( int value );

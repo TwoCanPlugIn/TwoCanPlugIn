@@ -33,7 +33,6 @@
 // 1. Localization ??
 //
 
-
 #include "twocanplugin.h"
 
 // The class factories, used to create and destroy instances of the PlugIn
@@ -99,7 +98,7 @@ int TwoCan::Init(void) {
 	// which is what happens upon first startup. Bugger, there must be a better way.
 	twoCanDevice = nullptr;
 	twoCanEncoder = nullptr;
-
+	
 	// Toggles display of captured NMEA 2000 frames in the "debug" tab of the preferences dialog
 	debugWindowActive = FALSE;
 
@@ -109,7 +108,7 @@ int TwoCan::Init(void) {
 	// Load the configuration items
 	if (LoadConfiguration()) {
 		// Initialize and run the TwoCanDevice in it's own thread
-		// If the plugin has yet to be configured, the canAdapterName == "None", so do not start
+		// If the plugin has yet to be configured, the canAdapter Name == "None", so do not start
 		if (canAdapter.CmpNoCase(_T("None")) != 0)  {
 			StartDevice();
 		}
@@ -122,12 +121,13 @@ int TwoCan::Init(void) {
 	}
 
 	// Notify OpenCPN what events we want to receive callbacks for
-	return (WANTS_PREFERENCES | WANTS_CONFIG | WANTS_NMEA_SENTENCES | WANTS_TOOLBAR_CALLBACK | INSTALLS_TOOLBAR_TOOL);
+	return (WANTS_PREFERENCES | WANTS_CONFIG | WANTS_NMEA_SENTENCES | WANTS_TOOLBAR_CALLBACK | INSTALLS_TOOLBAR_TOOL | WANTS_PLUGIN_MESSAGING);
 }
 
 // OpenCPN is either closing down, or we have been disabled from the Preferences Dialog
 bool TwoCan::DeInit(void) {
-	// BUG BUG Testing failure modes
+
+	// Notify other threads to end their work cleanly
 	isRunning = FALSE;
 
 	// Persist our network address to prevent address claim conflicts next time we start
@@ -201,6 +201,7 @@ int TwoCan::GetToolbarItemId() {
 
 // Display the Autopilot Dialog
 // BUG BUG, Dialog or Window. If Window how do we veto closing of OpenCPN?
+// BUG BUG Implement using wxAUI, or perhaps a separate plugin...
 void TwoCan::OnToolbarToolCallback(int id) {
 	TwoCanAutopilotDialog *autopilotDialog = new TwoCanAutopilotDialog(parentWindow, this);
 	autopilotDialog->ShowModal();
@@ -252,7 +253,7 @@ void TwoCan::SetNMEASentence(wxString &sentence) {
 		if (twoCanEncoder->EncodeMessage(sentence, &nmeaMessages) == TRUE) {
 			unsigned int id;
 			// Some NMEA 183 sentences are converted to multipe NMEA 2000 PGN's
-			// Also if the PGN is a fast message, there will be multiple messages
+			// Also if the PGN is a fast message, there will be multiple frames
 			for (auto it : nmeaMessages) {
 				TwoCanUtils::EncodeCanHeader(&id,&it.header);
 				int returnCode;
@@ -271,17 +272,96 @@ void TwoCan::SetNMEASentence(wxString &sentence) {
 // Receive OCPN Plugin Messages
 // To control the autopilot, need to be alerted when a route is activated/deactivated
 void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
-	if ((deviceMode == TRUE) && (autopilotMode != FLAGS_AUTOPILOT_NONE)) {
-		if (message_id == _T("OCPN_RTE_ACTIVATED")) {
+	if (message_id == _T("OCPN_RTE_ACTIVATED")) {
+		if ((deviceMode == TRUE) && (autopilotMode != FLAGS_AUTOPILOT_NONE)) {
 			wxMessageOutputDebug().Printf("Route Activated");
 			// BUG BUG should query and determine the route name
 			twoCanAutopilot->ActivateRoute(_T("Route Name"));
 		}
-		if (message_id == _T("OCPN_RTE_DEACTIVATED")) {
+	}
+	if (message_id == _T("OCPN_RTE_DEACTIVATED")) {
+		if ((deviceMode == TRUE) && (autopilotMode != FLAGS_AUTOPILOT_NONE)) {
 			wxMessageOutputDebug().Printf("Route Deactivated");
 			twoCanAutopilot->DeactivateRoute();
 		}
-   
+	}
+	// BUG BUG Do we need a flag
+	// Receive MOB events from OpenCPN and generate corresponding NMEA 2000 message, PGN 127233
+	if (message_id == _T("OCPN_MAN_OVERBOARD")) {
+		if (deviceMode == TRUE) {
+			wxJSONValue root;
+			wxJSONReader reader;
+			if (reader.Parse(message_body, &root) > 0) {
+				// Log the error 
+			}
+			else {
+				wxString guid = root[_T("GUID")].AsString();
+				// Retrieve the route by the guid
+				std::unique_ptr<PlugIn_Route> mobRoute;
+				mobRoute = GetRoute_Plugin(guid);
+				// Now iterate the waypoints in the route to find the actual mob position
+				// What the fuck were the OpenCPN developers thinking, this is so fucking stupid
+				Plugin_WaypointList *pWaypointList = mobRoute->pWaypointList;
+				for (auto waypointIterator : *pWaypointList) {
+					// What a stupid way to identify the waypoint of a MOB mark.
+					if (waypointIterator->m_IconName.Lower() == _T("mob")) {
+
+						// BUG BUG DEBUG REMOVE
+						wxLogMessage(_T("Name: %s\nDesc: %s\nSymbol: %s\nGUID: %s\nLat: %f\nLon: %f"), waypointIterator->m_MarkName, waypointIterator->m_MarkDescription,
+							waypointIterator->m_IconName, waypointIterator->m_GUID, waypointIterator->m_lat, waypointIterator->m_lon);
+
+						// Encode it as NMEA 0183 and then parse it to the twocanencoder method
+						// to generate the the NMEA 2000 message
+						NMEA0183 nmea0183;
+						SENTENCE sentence;
+						nmea0183.TalkerID = "EC";
+						nmea0183.Mob.BatteryStatus = 0;
+						nmea0183.Mob.Position.Latitude.Latitude = waypointIterator->m_lat;
+						nmea0183.Mob.Position.Latitude.Northing = waypointIterator->m_lat >= 0 ? NORTHSOUTH::North : NORTHSOUTH::South;
+						nmea0183.Mob.Position.Longitude.Longitude = waypointIterator->m_lon;
+						nmea0183.Mob.Position.Longitude.Easting = waypointIterator->m_lon >= 0 ? EASTWEST::East : EASTWEST::West;
+						nmea0183.Mob.Write(sentence);
+
+						// BUG BUG DEBUG REMOVE
+						wxLogMessage(_T("TwoCan MOB: %s"), sentence.Sentence);
+
+						std::vector<CanMessage> messages;
+
+						if (twoCanEncoder->EncodeMessage(sentence, &messages) == TRUE) {
+							unsigned int id;
+							for (auto it : messages) {
+								TwoCanUtils::EncodeCanHeader(&id, &it.header);
+								int returnCode;
+								returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
+								if (returnCode != TWOCAN_RESULT_SUCCESS) {
+									wxLogMessage(_T("TwoCan Plugin, Error sending MOB message %lu"), returnCode);
+								}
+								wxThread::Sleep(CONST_TEN_MILLIS);
+							}
+						}
+
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	if (message_id == _T("TWOCAN_MEDIA_CONTROL")) {
+		if ((deviceMode == TRUE) && (enableMusic == TRUE)) {
+			std::vector<CanMessage> messages;
+			unsigned int id;
+			twoCanMedia->EncodeRequest(message_body, &messages);
+			for (auto it : messages) {
+				int returnCode;
+				TwoCanUtils::EncodeCanHeader(&id, &it.header);
+				returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
+				if (returnCode != TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage(_T("TwoCan Plugin, Error sending Media Controller command: %lu"), returnCode);
+				}
+				wxThread::Sleep(CONST_TEN_MILLIS);
+			}
+		}
 	}
 }
 
@@ -374,7 +454,6 @@ void TwoCan::OnAutopilotCommand(wxCommandEvent &event) {
 		event.Skip();
 		break;
 	}
-
 }
 
 // Display TwoCan preferences dialog
@@ -445,9 +524,9 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("Address"), &networkAddress, 0);
 		configSettings->Read(_T("Heartbeat"), &enableHeartbeat, FALSE);
 		configSettings->Read(_T("Gateway"), &enableGateway, FALSE);
+		configSettings->Read(_T("Waypoint"), &enableWaypoint, FALSE);
+		configSettings->Read(_T("Music"), &enableMusic, FALSE);
 		// Not ready to implement yet
-		//configSettings->Read(_T("Waypoint"), &enableWaypoint, FALSE);
-		//configSettings->Read(_T("Music"), &enableMusic, FALSE);
 		//configSettings->Read(_T("SignalK"), &enableSignalK, FALSE);
 		//configSettings->Read(_T("Autopilot"), &autopilotMode, FLAGS_AUTOPILOT_NONE);
 		return TRUE;
@@ -530,6 +609,13 @@ void TwoCan::StopDevice(void) {
 					}
 				}
 
+				// If the media player interface is enabled, cleanup
+				if ((deviceMode == TRUE) && (enableMusic == TRUE)) {
+					if (twoCanMedia != nullptr) {
+						delete twoCanMedia;
+						twoCanMedia = nullptr;
+					}
+				}
 			}
 			else {
 				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Error: %d"), threadError);
@@ -560,10 +646,16 @@ void TwoCan::StartDevice(void) {
 				twoCanEncoder = new TwoCanEncoder();
 				wxLogMessage(_T("TwoCan Plugin, Created Bi-Directional Gateway"));
 			}
+
+			// Fusion Media Player Integration
+			if ((deviceMode == TRUE) && (enableMusic == TRUE)) {
+				twoCanMedia = new TwoCanMedia();
+				wxLogMessage(_T("TwoCan Plugin, Created Fusion Media Player interface"));
+			}
+
 		}
 	}
 	else {
 		wxLogError(_T("TwoCan Plugin,  TwoCan Device Initialize Error: %lu"), returnCode);
 	}
-
 }

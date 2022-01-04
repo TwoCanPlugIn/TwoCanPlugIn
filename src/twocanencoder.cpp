@@ -585,7 +585,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		// MOB Man Overboard
 		else if (nmeaParser.LastSentenceIDReceived == _T("MOB")) {
 			if (nmeaParser.Parse()) {
-				if (!(supportedPGN & FLAGS_DSC)) {
+				if (!(supportedPGN & FLAGS_MOB)) {
 
 					if (EncodePGN127233(&nmeaParser, &payload)) {
 						header.pgn = 127233;
@@ -1613,22 +1613,26 @@ bool TwoCanEncoder::EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(sequenceId);
 
-		unsigned int emitterId = 12345678;
+		unsigned int emitterId = std::atoi(parser->Mob.EmitterID);
 		n2kMessage->push_back(emitterId & 0xFF);
 		n2kMessage->push_back((emitterId >> 8) & 0xFF);
 		n2kMessage->push_back((emitterId >> 16) & 0xFF);
 		n2kMessage->push_back((emitterId >> 24) & 0xFF);
 
-		byte mobStatus = 0;
+		byte mobStatus = parser->Mob.MobStatus;
 		n2kMessage->push_back((mobStatus & 0x07) | 0xF8);
 
-		unsigned int timeOfDay = 369000000; //seconds * 1e4
+		unsigned int hours = std::atoi(parser->Mob.ActivationTime.Mid(0, 2));
+		unsigned int minutes = std::atoi(parser->Mob.ActivationTime.Mid(2, 2));
+		unsigned int seconds = std::atoi(parser->Mob.ActivationTime.Mid(4, 2));
+
+		unsigned int timeOfDay = ((hours * 3600) + (minutes * 60) + seconds) * 1e4;
 		n2kMessage->push_back(timeOfDay & 0xFF);
 		n2kMessage->push_back((timeOfDay >> 8) & 0xFF);
 		n2kMessage->push_back((timeOfDay >> 16) & 0xFF);
 		n2kMessage->push_back((timeOfDay >> 24) & 0xFF);
 
-		byte positionSource = 1;
+		byte positionSource = parser->Mob.PositionReference;
 		n2kMessage->push_back((positionSource & 0x07) | 0xFE);
 
 		wxDateTime now;
@@ -1648,14 +1652,19 @@ bool TwoCanEncoder::EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n
 		n2kMessage->push_back((secondsSinceMidnight >> 16) & 0xFF);
 		n2kMessage->push_back((secondsSinceMidnight >> 24) & 0xFF);
 
-		int latitude = static_cast<int>(41.158 * 1e7);
+		int latitude = parser->Mob.Position.Latitude.Latitude * 1e7;
+		if (parser->Mob.Position.Latitude.Northing == South) {
+			latitude = -latitude;
+		}
 		n2kMessage->push_back(latitude & 0xFF);
 		n2kMessage->push_back((latitude >> 8) & 0xFF);
 		n2kMessage->push_back((latitude >> 16) & 0xFF);
 		n2kMessage->push_back((latitude >> 24) & 0xFF);
 
-		// Field 10
-		int longitude = static_cast<int>(1.5 * 1e7);
+		int longitude = parser->Mob.Position.Latitude.Latitude * 1e7;
+		if (parser->Mob.Position.Longitude.Easting == West) {
+			longitude = -longitude;
+		}
 		n2kMessage->push_back(longitude & 0xFF);
 		n2kMessage->push_back((longitude >> 8) & 0xFF);
 		n2kMessage->push_back((longitude >> 16) & 0xFF);
@@ -1664,23 +1673,23 @@ bool TwoCanEncoder::EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n
 		byte cogReference = 0;
 		n2kMessage->push_back((cogReference & 0x02) | 0xFC);
 
-		unsigned short courseOverGround = 90;
-		courseOverGround = DEGREES_TO_RADIANS(courseOverGround) * 10000;
+		unsigned short courseOverGround;
+		courseOverGround = DEGREES_TO_RADIANS(parser->Mob.CourseOverGround) * 10000;
 		n2kMessage->push_back(courseOverGround & 0xFF);
 		n2kMessage->push_back((courseOverGround >> 8) & 0xFF);
 
-		unsigned short speedOverGround = 2;
-		speedOverGround = (speedOverGround / CONVERT_MS_KNOTS) * 100;
+		unsigned short speedOverGround;
+		speedOverGround = (parser->Mob.SpeedOverGround / CONVERT_MS_KNOTS) * 100;
 		n2kMessage->push_back(speedOverGround & 0xFF);
 		n2kMessage->push_back((speedOverGround >> 8) & 0xFF);
 
-		unsigned int mmsiNumber = 970201234;
+		unsigned int mmsiNumber = std::atoi(parser->Mob.mmsiNumber);
 		n2kMessage->push_back(mmsiNumber & 0xFF);
 		n2kMessage->push_back((mmsiNumber >> 8) & 0xFF);
 		n2kMessage->push_back((mmsiNumber >> 16) & 0xFF);
 		n2kMessage->push_back((mmsiNumber >> 24) & 0xFF);
 
-		byte batteryStatus = 0;
+		byte batteryStatus = parser->Mob.BatteryStatus;
 		n2kMessage->push_back((batteryStatus & 0x07) | 0xF8);
 
 		return TRUE;
@@ -2929,114 +2938,280 @@ bool TwoCanEncoder::EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n
 // $--DSE
 
 bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
-/*	
-	byte formatSpecifier;
-	formatSpecifier = n2kMessage[0];
 
-	byte dscCategory;
-	dscCategory = n2kMessage[1];
+	if (parser->LastSentenceIDParsed == _T("DSC")) {
 
-	char mmsiAddress[5];
-	sprintf(mmsiAddress, "%02d%02d%02d%02d%02d", n2kMessage[2], n2kMessage[3], n2kMessage[4], n2kMessage[5], n2kMessage[6]);
+		// Field 1. Format Specifier
+		byte formatSpecifier = parser->Dsc.formatSpecifer + 100;
+		n2kMessage->push_back(formatSpecifier);
 
-	byte firstTeleCommand; // or Nature of Distress
-	firstTeleCommand = n2kMessage[7];
+		// Field 2. Categeory
+		// If Format Specifier is Distress value  is 0xFF
+		// Otherwise 112 = Distress 100  = Routine 108  = Safety 110  = Urgency
+		byte dscCategory = formatSpecifier == 112 ? 0xFF : parser->Dsc.category + 100;
+		n2kMessage->push_back(dscCategory);
 
-	byte secondTeleCommand; // or Communication Mode
-	secondTeleCommand = n2kMessage[8];
+		// Field 3. MMSI (or geographic area)
+		// If AllShips, is 0xFF
+		std::string sourceAddress = std::to_string(parser->Dsc.mmsiNumber);
+		for (size_t i = 0; i < sourceAddress.length(); i += 2) {
+			n2kMessage->push_back(strtol(sourceAddress.substr(i, 2).data(), NULL, 16));
+		}
+		
+		// Field 4. 
+		// If the Format Specifier is a Distress, then this field is nature of distress
+		// If the Format Specifier is All Ships, 
+		// if DSC Category is Distress, then this is either 
+		// Distress Relay 112, Distress Ack, or Distress Relay Ack, 
 
-	char receiveFrequency;
-	receiveFrequency = n2kMessage[9]; // Encoded of 9, 10, 11, 12, 13, 14
+		// Nature of Distress 100 Fire, 102 Collision 105 Sinking, 110 MOB, 112 EPIRB 
+		// First Telecommand 121 Position Updating
+		byte firstTelecommand = parser->Dsc.natureOfDistressOrFirstTelecommand + 100;
+		n2kMessage->push_back(firstTelecommand);
 
-	char transmitFrequency;
-	transmitFrequency = n2kMessage[15]; // Encoded of 15, 16, 17, 18, 19, 20
+		// Field 5. 
+		// If the Format Specifier is a Distress, then this field is the 
+		// proposed telecommunications 100 = Reply using F3E/G3E All Modes
+		// If the Format Specifier is All Ships and the  Category is Distress 
+		// this is the Nature of Distress
+		// Otherwise use 126 No info
+		byte secondTeleCommand = parser->Dsc.subsequentCommunicationsOrSecondTelecommand + 100;
+		n2kMessage->push_back(secondTeleCommand);
 
-	char telephoneNumber;
-	telephoneNumber = n2kMessage[21]; // encoded over 8 or 16 bytes
 
-	int index = 0;
+		if (parser->Dsc.positionOrFrequency.Length() == 12) {
 
-	double latitude;
-	latitude = ((n2kMessage[index + 1] | (n2kMessage[index + 2] << 8) | (n2kMessage[index + 3] << 16) | (n2kMessage[index + 4] << 24))) * 1e-7;
+			// Field 6 - Proposed Communications Frequencies
+			// 1,2,3 MF/HF frequency encoded in 100Hz.
+			//9 VHF - second digit simplex, 
 
-	index += 4;
+			std::string receiveFrequency = parser->Dsc.positionOrFrequency.SubString(0, 6);
 
-	int latitudeDegrees = (int)latitude;
-	double latitudeMinutes = (latitude - latitudeDegrees) * 60;
+			for (std::string::iterator it = receiveFrequency.begin(); it != receiveFrequency.end(); ++it) {
+				n2kMessage->push_back(*it);
+			}
 
-	double longitude;
-	longitude = ((n2kMessage[index + 1] | (n2kMessage[index + 2] << 8) | (n2kMessage[index + 3] << 16) | (n2kMessage[index + 4] << 24))) * 1e-7;
-
-	int longitudeDegrees = (int)longitude;
-	double longitudeMinutes = (longitude - longitudeDegrees) * 60;
-
-	unsigned int secondsSinceMidnight;
-	secondsSinceMidnight = n2kMessage[2] | (n2kMessage[3] << 8) | (n2kMessage[4] << 16) | (n2kMessage[5] << 24);
-
-	// note n2kMessage index.....
-	char vesselInDistress[5];
-	sprintf(vesselInDistress, "%02d%02d%02d%02d%02d", n2kMessage[2], n2kMessage[3], n2kMessage[4], n2kMessage[5], n2kMessage[6]);
-
-	byte endOfSequence;
-	endOfSequence = n2kMessage[101]; // 1 byte
-
-	byte dscExpansionEnabled; // Encoded over two bits
-	dscExpansionEnabled = (n2kMessage[102] & 0xC0) >> 6;
-
-	byte reserved; // 6 bits
-	reserved = n2kMessage[102] & 0x3F;
-
-	byte callingRx; // 6 bytes
-	callingRx = n2kMessage[103];
-
-	byte callingTx; // 6 bytes
-	callingTx = n2kMessage[104];
-
-	unsigned int timeOfTransmission;
-	timeOfTransmission = n2kMessage[105] | (n2kMessage[106] << 8) | (n2kMessage[107] << 16) | (n2kMessage[108] << 24);
-
-	unsigned int dayOfTransmission;
-	dayOfTransmission = n2kMessage[109] | (n2kMessage[110] << 8);
-
-	unsigned int messageId;
-	messageId = n2kMessage[111] | (n2kMessage[112] << 8);
-
-	// The following pairs are repeated
-
-	byte dscExpansionSymbol;
-	dscExpansionSymbol = n2kMessage[113];
-
-	// Now iterate through the DSE Expansion data
-
-	for (size_t i = 120; i < sizeof(n2kMessage);) {
-		switch (n2kMessage[i]) {
-			// refer to ITU-R M.821 Table 1.
-		case 100: // enhanced position
-			// 4 characters (8 digits)
-			i += 4;
-			break;
-		case 101: // Source and datum of position
-			i += 9;
-			break;
-		case 102: // Current speed of the vessel - 4 bytes
-			i += 4;
-			break;
-		case 103: // Current course of the vessel - 4 bytes
-			i += 4;
-			break;
-		case 104: // Additional Station information - 10
-			i += 10;
-			break;
-		case 105: // Enhanced Geographic Area - 12
-			i += 12;
-			break;
-		case 106: // Numbr of persons onboard - 2 characters
-			i += 2;
-			break;
+			// Field 7
+			std::string transmitFrequency = parser->Dsc.positionOrFrequency.SubString(6, 6);
+			for (std::string::iterator it = transmitFrequency.begin(); it != transmitFrequency.end(); ++it) {
+				n2kMessage->push_back(*it);
+			}
 
 		}
+		else {
+			for (int i = 0; i < 12; i++) {
+				n2kMessage->push_back(0xFF);
+			}
+		}
+
+		// Field 8 - Telephone Number 8 or 10 digits ??
+		if (parser->Dsc.timeOrTelephone.Length() != 4) {
+			std::string telephoneNumber = parser->Dsc.timeOrTelephone;
+			// Encoded String with Length & Control Byte
+			n2kMessage->push_back(telephoneNumber.length() + 2);
+			n2kMessage->push_back(0x01); // indicate ASCII encoding
+			for (std::string::iterator it = telephoneNumber.begin(); it != telephoneNumber.end(); ++it) {
+				n2kMessage->push_back(*it);
+			}
+		}
+		else {
+			n2kMessage->push_back(0x02);
+			n2kMessage->push_back(0x01);
+		}
+
+		if (parser->Dsc.positionOrFrequency.Length() == 10) {
+			int quadrant = std::atoi(parser->Dsc.positionOrFrequency.SubString(0, 1));
+
+			// Field 9
+			int latitudeMinutes = std::atoi(parser->Dsc.positionOrFrequency.SubString(1, 2));
+			double latitudeDegrees = std::atoi(parser->Dsc.positionOrFrequency.SubString(3, 2)) / 60;
+			int latitude = (int)((double)latitudeMinutes + latitudeDegrees) * 1e7;
+			// Field 10
+			int longitudeMinutes = std::atoi(parser->Dsc.positionOrFrequency.SubString(5, 3));
+			double longitudeDegrees = std::atoi(parser->Dsc.positionOrFrequency.SubString(8, 2)) / 60;
+			int longitude = (int)((double)longitudeMinutes + longitudeDegrees) * 1e7;
+
+			switch (quadrant) {
+				case 0: // North East
+					break;
+				case 1: // North West
+					longitude = -longitude;
+					break;
+				case 2: // South East
+					latitude = -latitude;
+					break;
+				case 3: // South West
+					latitude = -latitude;
+					longitude = -longitude;
+					break;
+			}
+
+			n2kMessage->push_back(latitude & 0xFF);
+			n2kMessage->push_back((latitude >> 8) & 0xFF);
+			n2kMessage->push_back((latitude >> 16) & 0xFF);
+			n2kMessage->push_back((latitude >> 24) & 0xFF);
+						
+			n2kMessage->push_back(longitude & 0xFF);
+			n2kMessage->push_back((longitude >> 8) & 0xFF);
+			n2kMessage->push_back((longitude >> 16) & 0xFF);
+			n2kMessage->push_back((longitude >> 24) & 0xFF);
+
+		}
+		else {
+			for (int i = 0; i < 8; i++) {
+				n2kMessage->push_back(0xFF);
+			}
+		}
+
+		// Field 11 - Time of transmission
+		if ((parser->Dsc.timeOrTelephone.Length() == 4) && (parser->Dsc.timeOrTelephone != "8888")) {
+			unsigned int secondsSinceMidnight = ((std::atoi(parser->Dsc.timeOrTelephone.SubString(0,2)) * 3600)+
+				(std::atoi(parser->Dsc.timeOrTelephone.SubString(2,2)) * 60))  * 10000;
+
+			n2kMessage->push_back(secondsSinceMidnight & 0xFF);
+			n2kMessage->push_back((secondsSinceMidnight >> 8) & 0xFF);
+			n2kMessage->push_back((secondsSinceMidnight >> 16) & 0xFF);
+			n2kMessage->push_back((secondsSinceMidnight >> 24) & 0xFF);
+
+
+		}
+		else {
+			for (int i = 0; i < 4; i++) {
+				n2kMessage->push_back(0xFF);
+			}
+		}
+		
+		// Field 12 _Should always contain the MMSI of the vessel in distress
+		int a, b, c, d, e;
+		unsigned long long mmsiNumber = parser->Dsc.mmsiNumber * 10;
+		
+		e = mmsiNumber % 100;
+		d = (mmsiNumber / 100) % 100;
+		c = (mmsiNumber / 10000) % 100;
+		b = (mmsiNumber / 1000000) % 100;
+		a = mmsiNumber / 100000000;
+
+		n2kMessage->push_back(a);
+		n2kMessage->push_back(b);
+		n2kMessage->push_back(c);
+		n2kMessage->push_back(d);
+		n2kMessage->push_back(e);
+		
+		// Field 13 - End of Sequence
+		byte endOfSequence;
+		if (parser->Dsc.ack == 'R') {
+			endOfSequence = 117;
+		}
+		else if (parser->Dsc.ack == 'B') {
+			endOfSequence = 122;
+		}
+		else if (parser->Dsc.ack == 'S') {
+			endOfSequence = 127;
+		}
+		else {
+			endOfSequence = 127;
+		}
+
+		n2kMessage->push_back(endOfSequence);
+
+		// Field 14 DSE follows & Field 15 (reserved)
+		byte dscExpansionEnabled = parser->Dsc.dseExpansion;
+		n2kMessage->push_back(dscExpansionEnabled | 0xFC);
+
+		// I guess the following are filled in by the radio.
+
+		// Field 16 - No idea what this is, presumably the DSC VHF Channel 70 or HF Frequencies 2187.5 kHz or 8414.5 
+		std::string callingFrequency = "900016";
+		for (std::string::iterator it = callingFrequency.begin(); it != callingFrequency.end(); ++it) {
+			n2kMessage->push_back(0xFF); // Default to Data Unavailable
+		}
+
+		// Field 17
+		std::string receivingFrequency = "900016";
+		for (std::string::iterator it = receivingFrequency.begin(); it != receivingFrequency.end(); ++it) {
+			n2kMessage->push_back(0xFF); // Default to Data Unavailable
+		}
+
+		// We'll just use now.
+		wxDateTime epoch;
+		wxDateTime now = wxDateTime::Now();
+		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxTimeSpan diff = now - epoch;
+
+		unsigned short daysSinceEpoch = diff.GetDays();
+		unsigned int secondsSinceMidnight = ((diff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+
+		// Field 18 - Time of receipt
+		n2kMessage->push_back(secondsSinceMidnight & 0xFF);
+		n2kMessage->push_back((secondsSinceMidnight >> 8) & 0xFF);
+		n2kMessage->push_back((secondsSinceMidnight >> 16) & 0xFF);
+		n2kMessage->push_back((secondsSinceMidnight >> 24) & 0xFF);
+
+		// Field 19 - Date of receipt
+		n2kMessage->push_back(daysSinceEpoch & 0xFF);
+		n2kMessage->push_back((daysSinceEpoch >> 8) & 0xFF);
+
+		// Field 20 - DSC Equipment Message ID
+		unsigned short messageId = USHRT_MAX;
+		n2kMessage->push_back(messageId & 0xFF);
+		n2kMessage->push_back((messageId >> 8) & 0xFF);
+
+		// The following pairs are repeated DSE Expansion fields
+		// Field 21
+		// DSE Expansion Field Symbol
+		byte dseExpansionFieldSymbol = 106; // 106; // 100 Position, 104, Station Name 106 POB
+		n2kMessage->push_back(dseExpansionFieldSymbol);
+
+		// Field 22
+		std::string dseExpansionData = "0007";
+		n2kMessage->push_back(0x06);
+		n2kMessage->push_back(0x01); // ASCII
+
+		n2kMessage->push_back(0x30);
+		n2kMessage->push_back(0x30);
+		n2kMessage->push_back(0x30);
+		n2kMessage->push_back(0x37);
+
+		//n2kMessage->push_back(49);
+		//n2kMessage->push_back(49);
+		//n2kMessage->push_back(50);
+		//n2kMessage->push_back(50);
+		//n2kMessage->push_back(51);
+		//n2kMessage->push_back(51);
+		//n2kMessage->push_back(52);
+		//n2kMessage->push_back(52);
+
+		//for (auto it = dseExpansionData.begin(); it != dseExpansionData.end(); ++it) {
+		//	n2kMessage->push_back(*it);
+		//}
+
+		// Field 23
+		dseExpansionFieldSymbol = 104;
+		n2kMessage->push_back(dseExpansionFieldSymbol);
+
+		// Field 24
+		dseExpansionData.clear();
+		dseExpansionData = "Iona"; // 19 25 24 11
+
+		for (auto it = dseExpansionData.begin(); it != dseExpansionData.end(); ++it) {
+			//n2kMessage->push_back(*it);
+		}
+
+		// Length & Encoding byte
+		n2kMessage->push_back(0x06);
+		n2kMessage->push_back(0x01); // ASCII
+
+
+		// Iona encoded as per DSE Expansion characters
+		n2kMessage->push_back(19);
+		n2kMessage->push_back(25);
+		n2kMessage->push_back(24);
+		n2kMessage->push_back(11);
+
+
+
+		return FALSE;
 	}
-	*/
 	return FALSE;
 
 }
@@ -3071,7 +3246,7 @@ bool TwoCanEncoder::EncodePGN130074(const NMEA0183 *parser, std::vector<byte> *n
 		unsigned short waypointId;
 		unsigned short pair1 = 0;
 		unsigned short pair2 = 0;
-		for (int i = 0; i < parser->Wpl.To.size(); i++) {
+		for (unsigned int i = 0; i < parser->Wpl.To.size(); i++) {
 			pair1 = pair1 ^ (unsigned short)parser->Wpl.To[i];
 		}
 		for (int i = parser->Wpl.To.size() - 1; i >= 0; i--) {

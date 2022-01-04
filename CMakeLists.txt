@@ -37,10 +37,10 @@ set(PACKAGE "twocan_plugin")
 set(SHORT_DESCRIPTION "TwoCan Plugin, integrates OpenCPN with NMEA 2000 networks")
 set(LONG_DESCRIPTION "TwoCan Plugin, integrates OpenCPN with NMEA 2000 networks by converting NMEA 2000 messages to NMEA 183 sentences for use by OpenCPN") 
 set(VERSION_MAJOR "2")
-set(VERSION_MINOR "0")
+set(VERSION_MINOR "1")
 set(VERSION_PATCH "0")
 set(VERSION_TWEAK "0")
-set(VERSION_DATE "10/04/2021")
+set(VERSION_DATE "10/10/2021")
 set(OCPN_MIN_VERSION "ov50")
 set(OCPN_API_VERSION_MAJOR "1")
 set(OCPN_API_VERSION_MINOR "16")
@@ -124,17 +124,17 @@ include("PluginConfigure")
 ##TwoCan plugin will use SVG for toolbar icons
 add_definitions(-DPLUGIN_USE_SVG)
 
-## We don't use JSON
-##if(APPLE)
-##    option(PI_JSON_SCHEMA_VALIDATOR "Use JSON Schema validator" OFF)
-##else(APPLE)
-##    option(PI_JSON_SCHEMA_VALIDATOR "Use JSON Schema validator" ON)
-##endif(APPLE)
+## the media player control uses json
+if(APPLE)
+    option(PI_JSON_SCHEMA_VALIDATOR "Use JSON Schema validator" OFF)
+else(APPLE)
+    option(PI_JSON_SCHEMA_VALIDATOR "Use JSON Schema validator" ON)
+endif(APPLE)
 
-## Need api-16 for ocpn_plugin.h
-INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/api-16)
+## Needed for ocpn_plugin.h
+INCLUDE_DIRECTORIES(BEFORE ${PROJECT_SOURCE_DIR}/libs/ocpn-api)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/inc ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/nmea183/src ${CMAKE_SOURCE_DIR}/nmea183/inc)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/inc ${CMAKE_SOURCE_DIR}/nmea183/inc ${CMAKE_SOURCE_DIR}/wxJSON/include)
 
 SET(SOURCES src/twocanerror.cpp
             src/twocandevice.cpp
@@ -147,7 +147,8 @@ SET(SOURCES src/twocanerror.cpp
             src/twocanautopilot.cpp
             src/twocanautopilotdialog.cpp
             src/twocanautopilotdialogbase.cpp
-            src/twocanais.cpp)
+            src/twocanais.cpp
+            src/twocanmedia.cpp)
 
 SET(HEADERS inc/twocanerror.h
             inc/twocandevice.h
@@ -160,13 +161,16 @@ SET(HEADERS inc/twocanerror.h
             inc/twocanautopilot.h
             inc/twocanautopilotdialog.h
             inc/twocanautopilotdialogbase.h
-            inc/twocanais.h)
+            inc/twocanais.h
+            inc/twocanmedia.h)
 
 SET(NMEA183_SRC nmea183/src/apb.cpp
                 nmea183/src/bod.cpp
                 nmea183/src/bwr.cpp
                 nmea183/src/dbt.cpp
                 nmea183/src/dpt.cpp
+		nmea183/src/dsc.cpp
+		nmea183/src/dse.cpp
                 nmea183/src/expid.cpp
                 nmea183/src/gga.cpp
                 nmea183/src/gll.cpp
@@ -179,7 +183,7 @@ SET(NMEA183_SRC nmea183/src/apb.cpp
                 nmea183/src/lat.cpp
                 nmea183/src/latlong.cpp
                 nmea183/src/long.cpp
-				nmea183/src/mob.cpp
+		nmea183/src/mob.cpp
                 nmea183/src/mtw.cpp
                 nmea183/src/mwv.cpp
                 nmea183/src/nmea0183.cpp
@@ -208,6 +212,8 @@ SET(NMEA183_INC nmea183/inc/apb.hpp
                 nmea183/inc/bwr.hpp
                 nmea183/inc/dbt.hpp
                 nmea183/inc/dpt.hpp
+		nmea183/inc/dsc.hpp
+		nmea183/inc/dse.hpp
                 nmea183/inc/gga.hpp
                 nmea183/inc/gll.hpp
                 nmea183/inc/gpwpl.hpp
@@ -216,7 +222,7 @@ SET(NMEA183_INC nmea183/inc/apb.hpp
                 nmea183/inc/hdm.hpp
                 nmea183/inc/hdt.hpp
                 nmea183/inc/latlong.hpp
-				nmea183/inc/mob.hpp
+		nmea183/inc/mob.hpp
                 nmea183/inc/mtw.hpp
                 nmea183/inc/mwv.hpp
                 nmea183/inc/nmea0183.h
@@ -240,6 +246,10 @@ SET(NMEA183_INC nmea183/inc/apb.hpp
                 nmea183/inc/xdr.hpp
                 nmea183/inc/xte.hpp
                 nmea183/inc/zda.hpp)
+
+SET(JSON wxJSON/src/jsonreader.cpp
+                wxJSON/src/jsonwriter.cpp
+                wxJSON/src/jsonval.cpp)
 
 IF(UNIX AND NOT APPLE)
 
@@ -282,7 +292,7 @@ IF(APPLE)
 
 ENDIF(APPLE)
 
-TARGET_SOURCES(${PACKAGE_NAME} PUBLIC ${SOURCES} ${HEADERS} ${NMEA183_INC} ${NMEA183_SRC})
+TARGET_SOURCES(${PACKAGE_NAME} PUBLIC ${SOURCES} ${HEADERS} ${NMEA183_SRC} ${NMEA183_INC} ${JSON})
 
 IF(WIN32)
 # This library is used to obtain a MAC address and hence derive a NMEA 2000 Unique Id

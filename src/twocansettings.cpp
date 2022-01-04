@@ -95,6 +95,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("129284 ") + _("Navigation Data") + _T(" (BWC/BWR/BOD/WCV)"));
 	pgn->Add(_T("128275 ") + _("Vessel Trip Details") +_T(" (VLW)"));
 	pgn->Add(_T("130323 ") + _("Meteorological Details") +_T(" (MDA)"));
+	pgn->Add(_T("127233 ") + _("Man Overboard") + _T(" (MOB)"));
 	
 	// Populate the listbox and check/uncheck as appropriate
 	for (size_t i = 0; i < pgn->Count(); i++) {

@@ -310,6 +310,17 @@ int SENTENCE::Integer( int field_number ) const
     return( ::atoi( abuf.data() ));
 }
 
+unsigned long long SENTENCE::ULongLong(int field_number) const
+{
+	//   ASSERT_VALID( this );
+	wxCharBuffer abuf = Field(field_number).ToUTF8();
+	if (!abuf.data())                            // badly formed sentence?
+		return 0;
+
+	return(::atoll(abuf.data()));
+}
+
+
 NMEA0183_BOOLEAN SENTENCE::IsChecksumBad( int checksum_field_number ) const
 {
 //   ASSERT_VALID( this );
@@ -698,6 +709,20 @@ const SENTENCE& SENTENCE::operator += ( int value )
    Sentence += temp_string;
 
    return( *this );
+}
+
+const SENTENCE& SENTENCE::operator += (unsigned long long value)
+{
+	//   ASSERT_VALID( this );
+
+	wxString temp_string;
+
+	temp_string.Printf(_T("%lld"), value);
+
+	Sentence += _T(",");
+	Sentence += temp_string;
+
+	return(*this);
 }
 
 const SENTENCE& SENTENCE::operator += ( EASTWEST easting )
