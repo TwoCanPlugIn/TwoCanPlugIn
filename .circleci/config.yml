@@ -12,10 +12,10 @@ parameters:
     run_build_armhf_buster:
         type: boolean
         default: true
-    run_build_armhf_bionic_64:
+    run_build_armhf_bionic_64: # not built as no suitable docker image
         type: boolean
-        default: true
-    run_build_trusty:
+        default: false 
+    run_build_trusty: # deprecated no longer supported
         type: boolean
         default: false
     run_build_xenial:
@@ -27,16 +27,16 @@ parameters:
     run_build_bionic_gtk3:
         type: boolean
         default: true
-    run_build_focal:
+    run_build_focal: # not built as no focal gtk2 
         type: boolean
-        default: true
+        default: false
     run_build_focal_gtk3:
         type: boolean
         default: true
     run_build_buster:
         type: boolean
         default: true
-    run_build_flatpack:
+    run_build_flatpack: # superceded by following two flatpak builds
         type: boolean
         default: false
     run_build_flatpak_x86_1808:
@@ -48,7 +48,7 @@ parameters:
     run_build_flatpack-arm64:
         type: boolean
         default: true
-    run_build_fedora:
+    run_build_fedora: # deprecated no longer supported
         type: boolean
         default: false
     run_build_mingw:
@@ -57,12 +57,15 @@ parameters:
     run_build_macos:
         type: boolean
         default: true
-    run_build_android_arm64:
+    run_build_macos_wx315:
         type: boolean
         default: true
-    run_build_android_armhf:
+    run_build_android_arm64: #engine dashboard not yet supported on android
         type: boolean
-        default: true
+        default: false
+    run_build_android_armhf: #engine dashboard not yet supported on android
+        type: boolean
+        default: false
 
 orbs:
     cloudsmith: cloudsmith/cloudsmith@1.0.4
@@ -345,7 +348,7 @@ jobs:
             image: ubuntu-2004:202010-01
         environment:
         - OCPN_TARGET:  flatpak
-        - FLATPAK_BRANCH: stable
+        - FLATPAK_BRANCH: beta
         - CLOUDSMITH_PKG_EXT: gz
         - SDK_VER: 20.08
         - DEPLOY_USE_ORB: true
@@ -367,7 +370,7 @@ jobs:
         resource_class: arm.medium
         environment:
         - OCPN_TARGET:  flatpak-arm64
-        - FLATPAK_BRANCH: stable
+        - FLATPAK_BRANCH: beta
         - CLOUDSMITH_PKG_EXT: gz
         - SDK_VER: 20.08
         - DEPLOY_USE_ORB: true
@@ -420,6 +423,25 @@ jobs:
         - OCPN_TARGET:  macos
         - CLOUDSMITH_PKG_EXT: pkg
         - DEPLOY_USE_ORB: true
+        - WXVERSION: 312
+        steps:
+        - checkout
+        - run: chmod a+x ci/*.sh
+        - run: bash ci/circleci-build-macos.sh
+        - when:
+            condition: <<pipeline.parameters.run_workflow_deploy>>
+            steps:
+            - cloudsmith/ensure-api-key
+            - cloudsmith/install-cli
+            - run: ci/cloudsmith-upload.sh
+    build-macos-wx315:
+        macos:
+            xcode: "12.5.1"
+        environment:
+        - OCPN_TARGET:  macos
+        - CLOUDSMITH_PKG_EXT: pkg
+        - DEPLOY_USE_ORB: true
+        - WXVERSION: 315
         steps:
         - checkout
         - run: chmod a+x ci/*.sh
@@ -456,10 +478,6 @@ jobs:
             condition: <<pipeline.parameters.run_workflow_deploy>>
             steps:
             - run: ci/cloudsmith-upload.sh
-            # the next process relies on circleci local being run with "--volume --volume <full path to directory for build> /circleci-output:/home/circleci/circleci-output"
-            # it will copy the generated gz file to the local drive so that it can be tested without neededing cloudsmith for the deployment. It is adised to use the "-e DONT_DEPLOY=true"
-            # setting on the circleci command line as this will supress the deploy to cloudsmith whilst generating all the required deployment files
-            #- run: sudo cp build/*.gz ~/circleci-output
 workflows:
     build_1:
         when: <<pipeline.parameters.run_build_armhf_stretch>>
@@ -483,30 +501,28 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
-# Currently circleci does not build armf64 correctly due to no suitable docker image
-#    build_3:
-#        when: <<pipeline.parameters.run_build_armhf_bionic_64>>
-#        jobs:
-#        - build-armhf-bionic-64:
-#            filters:
-#                branches:
-#                    ignore:
-#                    - devel
-#                    - tmp
-#                tags:
-#                    only: /.*/
-# Trusty is depricated so will not be built
-#    build_4:
-#        when: <<pipeline.parameters.run_build_trusty>>
-#        jobs:
-#        - build-trusty:
-#            filters:
-#                branches:
-#                    ignore:
-#                    - devel
-#                    - tmp
-#                tags:
-#                    only: /.*/
+    build_3:
+        when: <<pipeline.parameters.run_build_armhf_bionic_64>>
+        jobs:
+        - build-armhf-bionic-64:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
+    build_4:
+        when: <<pipeline.parameters.run_build_trusty>>
+        jobs:
+        - build-trusty:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
     build_5:
         when: <<pipeline.parameters.run_build_xenial>>
         jobs:
@@ -540,18 +556,17 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
-# there is no focal gtk2 available so this will not be built
-#    build_8:
-#        when: <<pipeline.parameters.run_build_focal>>
-#        jobs:
-#        - build-focal:
-#            filters:
-#                branches:
-#                    ignore:
-#                    - devel
-#                    - tmp
-#                tags:
-#                    only: /.*/
+    build_8:
+        when: <<pipeline.parameters.run_build_focal>>
+        jobs:
+        - build-focal:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
     build_9:
         when: <<pipeline.parameters.run_build_focal_gtk3>>
         jobs:
@@ -574,18 +589,17 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
-# Removed as replaced by following flatpack builds
-#    build_11:
-#        when: <<pipeline.parameters.run_build_flatpack>>
-#        jobs:
-#        - build-flatpak:
-#            filters:
-#                branches:
-#                    ignore:
-#                    - devel
-#                    - tmp
-#                tags:
-#                    only: /.*/
+    build_11:
+        when: <<pipeline.parameters.run_build_flatpack>>
+        jobs:
+        - build-flatpak:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
     build_12:
         when: <<pipeline.parameters.run_build_flatpack-arm64>>
         jobs:
@@ -619,18 +633,17 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
-# Fedora is being removed from the supplied list of environments so don't build
-#    build_15:
-#        when: <<pipeline.parameters.run_build_fedora>>
-#        jobs:
-#        - build-fedora:
-#            filters:
-#                branches:
-#                    ignore:
-#                    - devel
-#                    - tmp
-#                tags:
-#                    only: /.*/
+    build_15:
+        when: <<pipeline.parameters.run_build_fedora>>
+        jobs:
+        - build-fedora:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
     build_16:
         when: <<pipeline.parameters.run_build_mingw>>
         jobs:
@@ -653,5 +666,37 @@ workflows:
                     - tmp
                 tags:
                     only: /.*/
-    
+    build_18:
+        when: <<pipeline.parameters.run_build_macos_wx315>>
+        jobs:
+        - build-macos-wx315:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
+    build_19:
+        when: <<pipeline.parameters.run_build_android_arm64>>
+        jobs:
+        - build-android-arm64:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
+    build_20:
+        when: <<pipeline.parameters.run_build_android_armhf>>
+        jobs:
+        - build-android-armhf:
+            filters:
+                branches:
+                    ignore:
+                    - devel
+                    - tmp
+                tags:
+                    only: /.*/
 
