@@ -304,7 +304,7 @@ IF(APPLE)
     set(CMAKE_MACOSX_RPATH TRUE)
     
     # Refer to ci/circleci_build-macos.sh as we build the Toucan & Kvaser library and copy the dylib to data/drivers
-    # That script also creates a symbolic link, which is used both for the dynamic linking  and also for creating te correct 
+    # That script also creates a symbolic link, which is used both for the dynamic linking  and also for creating the correct 
     # runtime path. Note that using a symbolic link isolates the plugin from any version changes to the Rusolu & Kvaser libraries 
 
     FIND_LIBRARY(RUSOKU_LIBRARY
