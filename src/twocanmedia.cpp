@@ -53,7 +53,7 @@ TwoCanMedia::~TwoCanMedia(void) {
 // control dialog. Eg. Unit & Zone names, AM/FM frequency & station name, track names & length.
 // The only responses are for the handshaking when enumerating media folders & tracks.
 
-bool TwoCanMedia::DecodeResponse(const byte *payload, wxString *jsonResponse) {
+bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonResponse) {
 	wxJSONValue root;
 	wxJSONWriter writer;
 
@@ -582,7 +582,7 @@ bool TwoCanMedia::DecodeResponse(const byte *payload, wxString *jsonResponse) {
 }
 
 // Encode Media Player commands
-bool TwoCanMedia::EncodeRequest(wxString text, std::vector<CanMessage> *canMessages) {
+bool TwoCanMedia::EncodeMediaRequest(wxString text, std::vector<CanMessage> *canMessages) {
 	CanMessage message;
 	
 	// Even though these commands are all less than 8 bytes (except tone controls)

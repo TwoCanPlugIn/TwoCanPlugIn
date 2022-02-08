@@ -106,11 +106,11 @@ class TwoCanMedia {
 		// Encode Media Player commands
 		// Encode JSON messages from the Media Player Controller into
 		// NMEA PGN's for transmission over the network
-		bool EncodeRequest(wxString jsonText, std::vector<CanMessage> *canMessages);
+		bool EncodeMediaRequest(wxString jsonText, std::vector<CanMessage> *canMessages);
 
 		// Decode Media Player responses
 		// Decode the Fusion PGN's into JSON messages to pass onto the Media Player Controller
-		bool DecodeResponse(const byte * payload, wxString *jsonResponse);
+		bool DecodeMediaResponse(const byte * payload, wxString *jsonResponse);
 
 	private:
 		// Most operations (next, previous, play, pause) use the media source id

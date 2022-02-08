@@ -351,7 +351,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 		if ((deviceMode == TRUE) && (enableMusic == TRUE)) {
 			std::vector<CanMessage> messages;
 			unsigned int id;
-			twoCanMedia->EncodeRequest(message_body, &messages);
+			twoCanMedia->EncodeMediaRequest(message_body, &messages);
 			for (auto it : messages) {
 				int returnCode;
 				TwoCanUtils::EncodeCanHeader(&id, &it.header);

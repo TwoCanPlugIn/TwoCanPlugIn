@@ -5481,7 +5481,7 @@ bool TwoCanDevice::DecodePGN130820(const byte *payload, std::vector<wxString> *n
 				break;
 			case 419: {// Fusion
 					wxString jsonResponse;
-					if (twoCanMedia->DecodeResponse(payload, &jsonResponse)) {
+					if (twoCanMedia->DecodeMediaResponse(payload, &jsonResponse)) {
 						if (jsonResponse.Length() > 0) {
 							SendPluginMessage(_T("TWOCAN_MEDIA_PLAYER"), jsonResponse);
 						}
