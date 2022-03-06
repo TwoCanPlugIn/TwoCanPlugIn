@@ -24,7 +24,7 @@
 // Date: 10/5/2020
 // Version History:
 // 1.8 - Initial Release, Mac OSX support
-// 2.1 - 04-07-2021 Updated for TouCan 0.2.1 - Change read timeout value,  No Initializer or Finalizer API's, change to EChannelState
+// 2.1 - 10-02-2022 Updated for TouCan 0.2.3 - Change read timeout value,  No Initializer or Finalizer API's, change to EChannelState
 //
 // Refer to https://github.com/mac-can/RusokuCAN
 
@@ -41,12 +41,12 @@ TwoCanMacToucan::~TwoCanMacToucan() {
 
 // Open the Rusoku device
 int TwoCanMacToucan::Open(const wxString& portName) {
-	MacCAN_Return_t returnCode;
+	CANAPI_Return_t returnCode;
 
 	// Initialize the Toucan interface
 	//returnCode = CMacCAN::Initializer();
 	// BUG BUG What is the difference ?? returnCode = toucanInterface.Initializer();
-	//if ((returnCode == CMacCAN::NoError) || (returnCode == CMacCAN::AlreadyInitialized)) {
+	//if ((returnCode == CCanApi::NoError) || (returnCode == CMacCAN::AlreadyInitialized)) {
 	//	wxLogMessage(_T("TwoCan Mac Rusoku, Successfully Initialized Toucan Driver"));
 	//}
 	//else {
@@ -57,7 +57,7 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 	// Assumes we use Channel 0
 	int32_t channel = 0;
 
-	MacCAN_OpMode_t opMode = {};
+	CANAPI_OpMode_t opMode = {};
 	opMode.byte = CANMODE_DEFAULT;
 
 	CTouCAN::EChannelState state;
@@ -65,7 +65,7 @@ int TwoCanMacToucan::Open(const wxString& portName) {
     // Probe the interface, perhaps unnecessary, we assumes channel 0.
     returnCode = toucanInterface.ProbeChannel(channel, opMode, state);
     
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode == CCanApi::NoError) {
     	if (state == CTouCAN::ChannelAvailable)  {
 			wxLogMessage(_T("TwoCan Mac Rusoku, Channel %d is available"), channel);
 		}
@@ -81,7 +81,7 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 	
 	// Initialize the channel
 	returnCode = toucanInterface.InitializeChannel(channel, opMode);
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode == CCanApi::NoError) {
 		wxLogMessage(_T("TwoCan Mac Rusoku, Successfully Initialized Channel %d"), channel);
 	}
 	else {
@@ -91,11 +91,11 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 	}
 
 	// Set the CAN Bus speed to 250 k and start the CAN Bus adapter
-	MacCAN_Bitrate_t bitrate;
+	CANAPI_Bitrate_t bitrate;
 	bitrate.index = CANBTR_INDEX_250K;
 
 	returnCode = toucanInterface.StartController(bitrate);
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode == CCanApi::NoError) {
 		wxLogMessage(_T("TwoCan Mac Rusoku, Successfully Started Controller"));
 	}
 	else {
@@ -104,9 +104,9 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 	}
 
 	// Retrieve/Confirm the bus speed. Just for informational purposes
-	MacCAN_BusSpeed_t speed;
+	CANAPI_BusSpeed_t speed;
     returnCode = toucanInterface.GetBusSpeed(speed);
-    if (returnCode == CMacCAN::NoError) {
+    if (returnCode == CCanApi::NoError) {
 		wxLogMessage(_T("TwoCan Mac Rusoku, CAN Bus Speed: %.2f"), speed.data.speed);
 		// Should really confirm the bus speed is 250K (NMEA 2000)
 	}
@@ -115,10 +115,10 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 	}
 
 	// Retrieve the channel status
-	MacCAN_Status_t status;
+	CANAPI_Status_t status;
 	status = {};
 	returnCode = toucanInterface.GetStatus(status);
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode == CCanApi::NoError) {
 		// Should really confirm that status == 0x00 Controller Started
 		wxLogMessage(_T("TwoCan Mac Rusoku, CAN Bus status: %d"), status.byte);
 	}
@@ -129,7 +129,6 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 	// Some additional debugging info
 	wxLogMessage(_T("TwoCan Mac Rusoku, Hardware Version: %s"), toucanInterface.GetHardwareVersion());
 	wxLogMessage(_T("TwoCan Mac Rusoku, Firmware Version: %s"), toucanInterface.GetFirmwareVersion());
-	wxLogMessage(_T("TwoCan Mac Rusoku, CANAPI Version: %s"), CMacCAN::GetVersion());
     wxLogMessage(_T("TwoCan Mac Rusoku, TOUCAN Version: %s"), CTouCAN::GetVersion());
 
 
@@ -138,11 +137,11 @@ int TwoCanMacToucan::Open(const wxString& portName) {
 
 int TwoCanMacToucan::Close(void) {
 	// Close the CAN Bus and the adapter
-	MacCAN_Return_t returnCode;
-	MacCAN_Status_t status;
+	CANAPI_Return_t returnCode;
+	CANAPI_Status_t status;
 
 	returnCode = toucanInterface.TeardownChannel();
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode == CCanApi::NoError) {
 		wxLogMessage(_T("TwoCan Mac Rusoku, Successfully closed CAN Bus"));
 	} 
 	else {
@@ -150,22 +149,13 @@ int TwoCanMacToucan::Close(void) {
 	}
 
 	returnCode = toucanInterface.GetStatus(status);
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode == CCanApi::NoError) {
 		// Expect to see that status == 0x80 Controller Stopped or 0x40 Bus Off
 		wxLogMessage(_T("TwoCan Mac Rusoku, CAN Bus status: %d"), status.byte);
 	}
 	else {
 		wxLogMessage(_T("TwoCan Mac Rusoku, Error retrieving CAN Bus status %d"), returnCode);
 	}
-
-	//returnCode = toucanInterface.Finalizer();
-	// BUG BUG What is the difference ?? returnCode = toucanInterface.Finalizer();
-	//if (returnCode == CMacCAN::NoError) {
-	//	wxLogMessage(_T("TwoCan Mac Rusoku, Successfully closed Toucan driver"));
-	//}
-	//else {
-	//	wxLogMessage(_T("TwoCan Mac Rusoku, Error closing Toucan driver: %d"), returnCode);
-	//}
 		
 	return TWOCAN_RESULT_SUCCESS;
 }
@@ -173,11 +163,11 @@ int TwoCanMacToucan::Close(void) {
 void TwoCanMacToucan::Read() {
 	
 	std::vector<byte> postedFrame(CONST_FRAME_LENGTH);
-	MacCAN_Message_t message;
+	CANAPI_Message_t message;
 
 	while (!TestDestroy()) {
 			
-		if (toucanInterface.ReadMessage(message, CONST_TEN_MILLIS) == CMacCAN::NoError) {
+		if (toucanInterface.ReadMessage(message, CONST_TEN_MILLIS) == CCanApi::NoError) {
 			//wxLogMessage(_T("%0x,%c,%i"), message.id, message.xtd ? 'X' : 'S', message.dlc);
 
 			// Copy the CAN Header										
@@ -203,8 +193,8 @@ void TwoCanMacToucan::Read() {
 // Write, Transmit a CAN frame onto the NMEA 2000 network
 	int TwoCanMacToucan::Write(const unsigned int canId, const unsigned char payloadLength, const unsigned char *payload) {
 		
-		MacCAN_Return_t returnCode;
-		MacCAN_Message_t message;
+		CANAPI_Return_t returnCode;
+		CANAPI_Message_t message;
 
 		message.id = canId; // BUG BUG Bytes may need to be reversed
 		message.xtd = 1; // CAN 2.0 29bit Extended Frame
@@ -221,7 +211,7 @@ void TwoCanMacToucan::Read() {
 
 		returnCode = toucanInterface.WriteMessage(message);
 		
-		if (returnCode == CMacCAN::NoError) {
+		if (returnCode == CCanApi::NoError) {
 			return TWOCAN_RESULT_SUCCESS;
 		}
 		else {

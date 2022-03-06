@@ -25,7 +25,6 @@ make all
 sudo make install
 # copy include files 
 sudo cp Includes/*.h /usr/local/include
-sudo cp Sources/MacCAN/MacCAN.h /usr/local/include
 # back to the project build directory
 cd ..
 # copy the resulting Toucan library to the plugin data/drivers directory
@@ -52,7 +51,6 @@ make all
 sudo make install
 # copy include files - Note was cp -n Includes/*.h /usr/local/include 2>/dev/null || : to prevent over writing
 sudo cp Includes/*.h /usr/local/include
-sudo cp Sources/MacCAN/MacCAN.h /usr/local/include
 # back to the project build directory
 cd ..
 # copy the resulting Kvaser library to the plugin data/drivers directory

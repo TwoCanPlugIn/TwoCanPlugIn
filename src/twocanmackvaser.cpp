@@ -24,7 +24,7 @@
 // Date: 10/04/2021
 // Version History:
 // 2.0 - Initial Release of Kvaser Mac OSX interface
-// 2.1 - 04-07-2021 Updated for KvaserCAN 0.1.1 - Change read timeout value,  No Initializer or Finalizer API's, change to EChannelState
+// 2.1 - 04-07-2021 Updated for KvaserCAN 0.2 - Change read timeout value,  No Initializer or Finalizer API's, change to EChannelState
 //
 // Refer to https://github.com/mac-can/kvaserCAN
 
@@ -41,23 +41,12 @@ TwoCanMacKvaser::~TwoCanMacKvaser() {
 
 // Open the Kvaser device
 int TwoCanMacKvaser::Open(const wxString& portName) {
-	MacCAN_Return_t returnCode;
-
-	// Initialize the Kvaser interface
-	//returnCode = CMacCAN::Initializer();
-	// BUG BUG What is the difference ?? returnCode = kvaserInterface.Initializer();
-	//if ((returnCode == CMacCAN::NoError) || (returnCode == CMacCAN::AlreadyInitialized)) {
-	//	wxLogMessage(_T("TwoCan Mac Kvaser, Successfully Initialized Kvaser Driver"));
-	//}
-	//else {
-	//	wxLogMessage(_T("TwoCan Mac Kvaser, Error Initializing Kvaser Driver: %d"), returnCode);
-	//	return SET_ERROR(TWOCAN_RESULT_FATAL, TWOCAN_SOURCE_DRIVER, TWOCAN_ERROR_DRIVER_NOT_FOUND);
-	//}
+	CANAPI_Return_t returnCode;
 
 	// Assumes we use Channel 0
 	int32_t channel = 0;
 
-	MacCAN_OpMode_t opMode = {};
+	CANAPI_OpMode_t opMode = {};
 	opMode.byte = CANMODE_DEFAULT;
 
 	CKvaserCAN::EChannelState state;
@@ -65,7 +54,7 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
     // Probe the interface, perhaps unnecessary, we assumes channel 0.
     returnCode = kvaserInterface.ProbeChannel(channel, opMode, state);
     
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode ==CCanApi::NoError) {
 		if (state == CKvaserCAN::ChannelAvailable)  {
 			wxLogMessage(_T("TwoCan Mac Kvaser, Channel %d is available"), channel);
 		}
@@ -81,7 +70,7 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
 	
 	// Initialize the channel
 	returnCode = kvaserInterface.InitializeChannel(channel, opMode);
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode ==CCanApi::NoError) {
 		wxLogMessage(_T("TwoCan Mac Kvaser, Successfully Initialized Channel %d"), channel);
 	}
 	else {
@@ -91,11 +80,11 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
 	}
 
 	// Set the CAN Bus speed to 250 k and start the CAN Bus adapter
-	MacCAN_Bitrate_t bitrate;
+	CANAPI_Bitrate_t bitrate;
 	bitrate.index = CANBTR_INDEX_250K;
 
 	returnCode = kvaserInterface.StartController(bitrate);
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode ==CCanApi::NoError) {
 		wxLogMessage(_T("TwoCan Mac Kvaser, Successfully Started Controller"));
 	}
 	else {
@@ -104,9 +93,9 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
 	}
 
 	// Retrieve/Confirm the bus speed. Just for informational purposes
-	MacCAN_BusSpeed_t speed;
+	CANAPI_BusSpeed_t speed;
     returnCode = kvaserInterface.GetBusSpeed(speed);
-    if (returnCode == CMacCAN::NoError) {
+    if (returnCode ==CCanApi::NoError) {
 		wxLogMessage(_T("TwoCan Mac Kvaser, CAN Bus Speed: %.2f"), speed.data.speed);
 		// Should really confirm the bus speed is 250K (NMEA 2000)
 	}
@@ -115,10 +104,10 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
 	}
 
 	// Retrieve the channel status
-	MacCAN_Status_t status;
+	CANAPI_Status_t status;
 	status = {};
 	returnCode = kvaserInterface.GetStatus(status);
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode ==CCanApi::NoError) {
 		// Should really confirm that status == 0x00 Controller Started
 		wxLogMessage(_T("TwoCan Mac Kvaser, CAN Bus status: %d"), status.byte);
 	}
@@ -129,7 +118,6 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
 	// Some additional debugging info
 	wxLogMessage(_T("TwoCan Mac Kvaser, Hardware Version: %s"), kvaserInterface.GetHardwareVersion());
 	wxLogMessage(_T("TwoCan Mac Kvaser, Firmware Version: %s"), kvaserInterface.GetFirmwareVersion());
-	wxLogMessage(_T("TwoCan Mac Kvaser, CANAPI Version: %s"), CMacCAN::GetVersion());
     wxLogMessage(_T("TwoCan Mac Kvaser, Kvaser Version: %s"), CKvaserCAN::GetVersion());
 
 
@@ -138,11 +126,11 @@ int TwoCanMacKvaser::Open(const wxString& portName) {
 
 int TwoCanMacKvaser::Close(void) {
 	// Close the CAN Bus and the adapter
-	MacCAN_Return_t returnCode;
-	MacCAN_Status_t status;
+	CANAPI_Return_t returnCode;
+	CANAPI_Status_t status;
 
 	returnCode = kvaserInterface.TeardownChannel();
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode ==CCanApi::NoError) {
 		wxLogMessage(_T("TwoCan Mac Kvaser, Successfully closed CAN Bus"));
 	} 
 	else {
@@ -150,22 +138,13 @@ int TwoCanMacKvaser::Close(void) {
 	}
 
 	returnCode = kvaserInterface.GetStatus(status);
-	if (returnCode == CMacCAN::NoError) {
+	if (returnCode ==CCanApi::NoError) {
 		// Expect to see that status == 0x80 Controller Stopped or 0x40 Bus Off
 		wxLogMessage(_T("TwoCan Mac Kvaser, CAN Bus status: %d"), status.byte);
 	}
 	else {
 		wxLogMessage(_T("TwoCan Mac Kvaser, Error retrieving CAN Bus status %d"), returnCode);
 	}
-
-	//returnCode = kvaserInterface.Finalizer();
-	// BUG BUG What is the difference ?? returnCode = kvaserInterface.Finalizer();
-	//if (returnCode == CMacCAN::NoError) {
-	//	wxLogMessage(_T("TwoCan Mac Kvaser, Successfully closed Kvaser driver"));
-	//}
-	//else {
-	//	wxLogMessage(_T("TwoCan Mac Kvaser, Error closing Kvaser driver: %d"), returnCode);
-	//}
 		
 	return TWOCAN_RESULT_SUCCESS;
 }
@@ -173,11 +152,11 @@ int TwoCanMacKvaser::Close(void) {
 void TwoCanMacKvaser::Read() {
 	
 	std::vector<byte> postedFrame(CONST_FRAME_LENGTH);
-	MacCAN_Message_t message;
+	CANAPI_Message_t message;
 
 	while (!TestDestroy()) {
 			
-		if (kvaserInterface.ReadMessage(message, CONST_TEN_MILLIS) == CMacCAN::NoError) {
+		if (kvaserInterface.ReadMessage(message, CONST_TEN_MILLIS) ==CCanApi::NoError) {
 			//wxLogMessage(_T("%0x,%c,%i"), message.id, message.xtd ? 'X' : 'S', message.dlc);
 
 			// Copy the CAN Header										
@@ -203,8 +182,8 @@ void TwoCanMacKvaser::Read() {
 // Write, Transmit a CAN frame onto the NMEA 2000 network
 	int TwoCanMacKvaser::Write(const unsigned int canId, const unsigned char payloadLength, const unsigned char *payload) {
 		
-		MacCAN_Return_t returnCode;
-		MacCAN_Message_t message;
+		CANAPI_Return_t returnCode;
+		CANAPI_Message_t message;
 
 		message.id = canId; // BUG BUG Bytes may need to be reversed
 		message.xtd = 1; // CAN 2.0 29bit Extended Frame
@@ -221,7 +200,7 @@ void TwoCanMacKvaser::Read() {
 
 		returnCode = kvaserInterface.WriteMessage(message);
 		
-		if (returnCode == CMacCAN::NoError) {
+		if (returnCode ==CCanApi::NoError) {
 			return TWOCAN_RESULT_SUCCESS;
 		}
 		else {

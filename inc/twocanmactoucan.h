@@ -23,7 +23,6 @@
 #include "twocaninterface.h"
 
 // Mac-Can interfaces
-#include <MacCAN.h>
 #include <TouCAN.h>
 
 #include <CoreFoundation/CoreFoundation.h>
