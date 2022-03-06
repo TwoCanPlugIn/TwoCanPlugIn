@@ -325,7 +325,7 @@ IF(APPLE)
         # Add the drivers directory as a runtime path to the plugin 
         COMMAND install_name_tool -add_rpath "@loader_path/./../SharedSupport/plugins/${PACKAGE_NAME}/data/drivers" "lib${PACKAGE_NAME}.dylib"
         # Add the runtime path to the symbolic link for the Rusoku library
-        COMMAND install_name_tool -change libTouCAN.0.2.2.dylib @rpath/llibTouCAN.0.2.2.dylib lib${PACKAGE_NAME}.dylib
+        COMMAND install_name_tool -change libTouCAN.0.2.2.dylib @rpath/libTouCAN.0.2.2.dylib lib${PACKAGE_NAME}.dylib
     )
     
     # Similarly we add the runtime path to the symbolic link for the Kvaser library 
