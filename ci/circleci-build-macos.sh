@@ -20,9 +20,12 @@ export MACOSX_DEPLOYMENT_TARGET=10.9
 
 # Build the Rusoku Toucan Library
 git clone https://github.com/TwoCanPlugIn/RusokuCAN
-cd rusokucan
+cd RusokuCAN
 # generates the build/version number for the Toucan library
+cd Sources
 ./build_no.sh
+cd ..
+# build the library
 make all
 # perhaps unnecessary
 sudo make install
