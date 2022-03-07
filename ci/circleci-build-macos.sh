@@ -19,7 +19,7 @@ done
 export MACOSX_DEPLOYMENT_TARGET=10.9
 
 # Build the Rusoku Toucan Library
-git clone https://github.com/mac-can/rusokucan
+git clone https://github.com/TwoCanPlugIn/RusokuCAN
 cd rusokucan
 # generates the build/version number for the Toucan library
 ./build_no.sh
@@ -39,13 +39,13 @@ do
   echo $f
   cp $f data/drivers 
    # create a symbolic link to the library file
-   ln -s "data/drivers/${f##*/}" data/drivers/libTouCAN.dylib
+   # ln -s "data/drivers/${f##*/}" data/drivers/libTouCAN.dylib
    # there should only be one file, but in anycase exit after the first
   break
 done
 
 # Build the Kvaser Library
-git clone https://github.com/mac-can/MacCAN-KvaserCAN
+git clone https://github.com/TwoCanPlugIn/KvaserCAN-Library
 cd MacCAN-KvaserCAN
 # generates the build/version number for the Toucan library
 ./build_no.sh
@@ -65,7 +65,7 @@ do
   echo $f
   cp $f data/drivers 
    # create a symbolic link to the library file
-   ln -s "data/drivers/${f##*/}" data/drivers/libKvaserCAN.dylib
+   # ln -s "data/drivers/${f##*/}" data/drivers/libKvaserCAN.dylib
    # there should only be one file, but in anycase exit after the first
   break
 done
