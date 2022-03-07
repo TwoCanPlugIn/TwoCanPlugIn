@@ -132,7 +132,7 @@ const MOB& MOB::operator = ( const MOB& source )
 
 	EmitterID = source.EmitterID;
 	MobStatus = source.MobStatus;
-	ActivationTime = ActivationTime;
+	ActivationTime = source.ActivationTime;
 	PositionReference = source.PositionReference;
 	Date = source.Date;
 	UTCTime = source.UTCTime;

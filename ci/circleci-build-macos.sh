@@ -15,6 +15,9 @@ for pkg in cairo cmake gettext libarchive libexif python wget; do
     brew link --overwrite $pkg || brew install $pkg
 done
 
+# Force the MacOSX ennvironment for the two libraries
+export MACOSX_DEPLOYMENT_TARGET=10.9
+
 # Build the Rusoku Toucan Library
 git clone https://github.com/mac-can/rusokucan
 cd rusokucan
