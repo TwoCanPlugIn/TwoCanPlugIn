@@ -22,7 +22,10 @@ echo $MACOSX_DEPLOYMENT_TARGET
 git clone https://github.com/twocanplugin/rusokucan
 cd rusokucan
 # generates the build/version number for the Toucan library
+cd Sources
 ./build_no.sh
+cd ..
+# build the library
 make all
 # perhaps unnecessary
 sudo make install
@@ -45,7 +48,7 @@ do
 done
 
 # Build the Kvaser Library
-git clone https://github.comtwocanplugin/kvasercan-library
+git clone https://github.com/twocanplugin/kvasercan-library
 cd kvasercan-library
 # generates the build/version number for the Toucan library
 ./build_no.sh
