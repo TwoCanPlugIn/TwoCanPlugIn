@@ -17,9 +17,9 @@ done
 
 # Force the MacOSX ennvironment for the two libraries
 export MACOSX_DEPLOYMENT_TARGET=10.9
-
+echo $MACOSX_DEPLOYMENT_TARGET
 # Build the Rusoku Toucan Library
-git clone https://github.com/mac-can/rusokucan
+git clone https://github.com/twocanplugin/rusokucan
 cd rusokucan
 # generates the build/version number for the Toucan library
 ./build_no.sh
@@ -39,14 +39,14 @@ do
   echo $f
   cp $f data/drivers 
    # create a symbolic link to the library file
-   ln -s "data/drivers/${f##*/}" data/drivers/libTouCAN.dylib
+   # ln -s "data/drivers/${f##*/}" data/drivers/libTouCAN.dylib
    # there should only be one file, but in anycase exit after the first
   break
 done
 
 # Build the Kvaser Library
-git clone https://github.com/mac-can/MacCAN-KvaserCAN
-cd MacCAN-KvaserCAN
+git clone https://github.comtwocanplugin/kvasercan-library
+cd kvasercan-library
 # generates the build/version number for the Toucan library
 ./build_no.sh
 make all
@@ -60,12 +60,12 @@ cd ..
 # We will include the dylib file so that users do not have to compile/install 
 # the dylibs themselves.
 # It also allows the rpath to be correctly generated in the plugin dylib linker
-for f in $(find MacCAN-KvaserCAN/Libraries/KvaserCAN  -name '*.dylib')
+for f in $(find kvasercan-library/Libraries/KvaserCAN  -name '*.dylib')
 do
   echo $f
   cp $f data/drivers 
    # create a symbolic link to the library file
-   ln -s "data/drivers/${f##*/}" data/drivers/libKvaserCAN.dylib
+   # ln -s "data/drivers/${f##*/}" data/drivers/libKvaserCAN.dylib
    # there should only be one file, but in anycase exit after the first
   break
 done
