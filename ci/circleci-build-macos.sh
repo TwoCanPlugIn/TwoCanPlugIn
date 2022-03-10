@@ -18,6 +18,8 @@ done
 # Force the MacOSX ennvironment for the two libraries
 export MACOSX_DEPLOYMENT_TARGET=10.9
 echo $MACOSX_DEPLOYMENT_TARGET
+# Note to self, we use my fork of the libraries as the makefile has been changed with the
+# addition of the cflag -mmacosx-deployment_target=10.9
 # Build the Rusoku Toucan Library
 git clone https://github.com/twocanplugin/rusokucan
 cd rusokucan
