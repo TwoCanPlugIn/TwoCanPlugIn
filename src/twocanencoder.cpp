@@ -1484,8 +1484,7 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 
 			n2kMessage->push_back(sequenceId);
 
-			wxDateTime epoch;
-			epoch.ParseDateTime("00:00:00 01-01-1970");
+			wxDateTime epoch((time_t)0);
 
 			wxDateTime now;
 		
@@ -1517,8 +1516,7 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 	else if (parser->LastSentenceIDParsed == _T("ZDA")) {
 		n2kMessage->push_back(sequenceId);
 
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 
 		wxDateTime now;
 		now.ParseDateTime(wxString::Format(_T("%s/%s/20%s %s:%s:%s"), 
@@ -1547,8 +1545,7 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 		if (parser->Gll.IsDataValid == NTrue) {
 			n2kMessage->push_back(sequenceId);
 
-			wxDateTime epoch;
-			epoch.ParseDateTime("00:00:00 01-01-1970");
+			wxDateTime epoch((time_t)0);
 
 			wxDateTime now = wxDateTime::Now();
 			now.SetHour(std::atoi(parser->Gll.UTCTime.Mid(0,2)));
@@ -1577,8 +1574,7 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 	else if (parser->LastSentenceIDParsed == _T("GGA")) {
 		n2kMessage->push_back(sequenceId);
 
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 
 		// GGA sentence only has utc time, not date, so assume today
 		wxDateTime now = wxDateTime::Now();
@@ -1637,8 +1633,7 @@ bool TwoCanEncoder::EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n
 
 		wxDateTime now;
 		now = wxDateTime::Now();
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 		wxTimeSpan diff = now - epoch;
 
 		unsigned short daysSinceEpoch = diff.GetDays();
@@ -1855,8 +1850,7 @@ bool TwoCanEncoder::EncodePGN127258(const NMEA0183 *parser, std::vector<byte> *n
 		byte variationSource = 1; // 0 = Manual, 1 = Automatic Chart 
 		n2kMessage->push_back(variationSource & 0x0F);
 
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 
 		wxDateTime now = wxDateTime::Now();
 		wxTimeSpan dateDiff = now - epoch;
@@ -2045,8 +2039,7 @@ bool TwoCanEncoder::EncodePGN128275(const NMEA0183 *parser, std::vector<byte> *n
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("VLW")) {
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 
 		wxDateTime now = wxDateTime::Now();
 		wxTimeSpan dateDiff = now - epoch;
@@ -2196,8 +2189,7 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 		unsigned short daysSinceEpoch;
 		unsigned int secondsSinceMidnight;
 	
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 
 		wxDateTime now;
 		now.ParseDateTime(parser->Gga.UTCTime);
@@ -2296,8 +2288,7 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 		unsigned short daysSinceEpoch;
 		unsigned int secondsSinceMidnight;
 	
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 
 		wxDateTime now;
 		now.ParseDateTime(parser->Gga.UTCTime);
@@ -2396,8 +2387,7 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 		unsigned short daysSinceEpoch;
 		unsigned int secondsSinceMidnight;
 	
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 
 		wxDateTime now;
 		now.ParseDateTime(parser->Gga.UTCTime);
@@ -2492,8 +2482,7 @@ bool TwoCanEncoder::EncodePGN129033(const NMEA0183 *parser, std::vector<byte> *n
 	if (parser->LastSentenceIDParsed == _T("ZDA")) {
 		n2kMessage->clear();
 
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 
 		wxDateTime now;
 
@@ -3133,9 +3122,8 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 		}
 
 		// We'll just use now.
-		wxDateTime epoch;
+		wxDateTime epoch((time_t)0);
 		wxDateTime now = wxDateTime::Now();
-		epoch.ParseDateTime("00:00:00 01-01-1970");
 		wxTimeSpan diff = now - epoch;
 
 		unsigned short daysSinceEpoch = diff.GetDays();

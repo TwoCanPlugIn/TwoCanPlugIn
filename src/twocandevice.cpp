@@ -113,7 +113,7 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 		wxLogMessage(_T("TwoCan Device, Sent heartbeat"));
 	}
 	else {
-		wxLogMessage(_T("TwoCan Device, Error sending heartbeat: %lu"), returnCode);
+		wxLogMessage(_T("TwoCan Device, Error sending heartbeat: %d"), returnCode);
 	}
 	wxThread::Sleep(CONST_TEN_MILLIS);
 	// Iterate through the network map
@@ -125,10 +125,10 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 				// No product info has been received yet for this device, so request it
 				returnCode = SendISORequest(i, 126996);
 				if (returnCode == TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 126996 to %lu"), i);
+					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 126996 to %d"), i);
 				}
 				else {
-					wxLogMessage(_T("TwoCan Device, Error sending ISO Request for 126996 to %lu: %lu"), i, returnCode);
+					wxLogMessage(_T("TwoCan Device, Error sending ISO Request for 126996 to %d: %d"), i, returnCode);
 				}
 				wxThread::Sleep(CONST_TEN_MILLIS);
 			}
@@ -137,10 +137,10 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 			// BUG BUG Perhaps add an extra field in which to store the devices' hearbeat interval, rather than comparing against 60'
 				returnCode = SendISORequest(i, 60928);
 				if (returnCode == TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to %lu"), i);
+					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to %d"), i);
 				}
 				else {
-					wxLogMessage(_T("TwoCan Device, Error sending ISO Request  for 60928 to %lu: %lu"), i, returnCode);
+					wxLogMessage(_T("TwoCan Device, Error sending ISO Request  for 60928 to %d: %d"), i, returnCode);
 				}
 				wxThread::Sleep(CONST_TEN_MILLIS);
 			}
@@ -151,10 +151,10 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 				// No address claim has been received for this device
 				returnCode = SendISORequest(i, 60928);
 				if (returnCode == TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to %lu"), i);
+					wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to %d"), i);
 				}
 				else {
-					wxLogMessage(_T("TwoCan Device, Error sending ISO Request  for 60928 to %lu: %lu"), i, returnCode);
+					wxLogMessage(_T("TwoCan Device, Error sending ISO Request  for 60928 to %d: %d"), i, returnCode);
 				}
 				wxThread::Sleep(CONST_TEN_MILLIS);
 				numberOfDevices += 1;
@@ -167,10 +167,10 @@ void TwoCanDevice::OnHeartbeat(wxEvent &event) {
 		// No devices present on the network (yet)
 		returnCode = SendISORequest(CONST_GLOBAL_ADDRESS, 60928);
 		if (returnCode == TWOCAN_RESULT_SUCCESS) {
-			wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to %lu"), CONST_GLOBAL_ADDRESS);
+			wxLogMessage(_T("TwoCan Device, Sent ISO Request for 60928 to %d"), CONST_GLOBAL_ADDRESS);
 		}
 		else {
-			wxLogMessage(_T("TwoCan Device, Error sending ISO Request for 60928  to %lu: %lu"), CONST_GLOBAL_ADDRESS, returnCode);
+			wxLogMessage(_T("TwoCan Device, Error sending ISO Request for 60928  to %d: %d"), CONST_GLOBAL_ADDRESS, returnCode);
 		}
 	}	
 
@@ -213,14 +213,14 @@ int TwoCanDevice::Init(wxString driverPath) {
 			wxLogMessage(_T("TwoCan Device, Unique Number: %lu"), uniqueId);
 			returnCode = SendAddressClaim(networkAddress);
 			if (returnCode != TWOCAN_RESULT_SUCCESS) {
-				wxLogError(_T("TwoCan Device, Error sending address claim: %lu"), returnCode);
-			}
+                wxLogError(_T("TwoCan Device, Error sending address claim: %d"), returnCode);
+            }
 			else {
-				wxLogMessage(_T("TwoCan Device, Claimed network address: %lu"), networkAddress);
+				wxLogMessage(_T("TwoCan Device, Claimed network address: %d"), networkAddress);
 				// Broadcast our product information on the network
 				returnCode = SendProductInformation();
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
-					wxLogError(_T("TwoCan Device, Error sending Product Information %lu"), returnCode);
+					wxLogError(_T("TwoCan Device, Error sending Product Information %d"), returnCode);
 				}
 				else {
 					wxLogMessage(_T("TwoCan Device, Sent Product Information"));
@@ -248,7 +248,7 @@ int TwoCanDevice::Init(wxString driverPath) {
 		enableHeartbeat = FALSE;
 	}
 	else {
-		wxLogError(_T("TwoCan Device, Error loading driver %s: %lu"), driverPath, returnCode);
+		wxLogError(_T("TwoCan Device, Error loading driver %s: %d"), driverPath, returnCode);
 	}
 #endif
 
@@ -298,7 +298,7 @@ int TwoCanDevice::Init(wxString driverPath) {
 	}
 
 	if (returnCode != TWOCAN_RESULT_SUCCESS) {
-		wxLogError(_T("TwoCan Device, Error loading driver %s: %lu"), driverName, returnCode);
+		wxLogError(_T("TwoCan Device, Error loading driver %s: %d"), driverName, returnCode);
 	}
 	else {
 		wxLogMessage(_T("TwoCan Device, Loaded driver %s"),driverName);
@@ -308,13 +308,13 @@ int TwoCanDevice::Init(wxString driverPath) {
 				wxLogMessage(_T("TwoCan Device, Unique Number: %lu"),uniqueId);
 				returnCode = SendAddressClaim(networkAddress);
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
-					wxLogError(_T("TwoCan Device, Error sending address claim: %lu"), returnCode);
+					wxLogError(_T("TwoCan Device, Error sending address claim: %d"), returnCode);
 				}
 				else {
-					wxLogMessage(_T("TwoCan Device, Claimed network address: %lu"), networkAddress);
+					wxLogMessage(_T("TwoCan Device, Claimed network address: %d"), networkAddress);
 					returnCode = SendProductInformation();
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogError(_T("TwoCan Device, Error sending Product Information %lu"), returnCode);
+						wxLogError(_T("TwoCan Device, Error sending Product Information %d"), returnCode);
 					}
 					else {
 						wxLogMessage(_T("TwoCan Device, Sent Product Information"));
@@ -332,7 +332,7 @@ int TwoCanDevice::Init(wxString driverPath) {
 			else {
 				// unable to generate unique number
 				// BUG BUG GetUniqueNumber always returns a number.
-				wxLogError(_T("TwoCan Device, Unable to generate unique address: %lu"), returnCode);
+				wxLogError(_T("TwoCan Device, Unable to generate unique address: %d"), returnCode);
 			}
 		}
 		
@@ -371,13 +371,13 @@ void TwoCanDevice::OnExit() {
 	wxThread::ExitCode threadExitCode;
 	wxThreadError threadError;
 
-	wxLogMessage(_T("TwoCan Device, Terminating driver thread id (0x%x)\n"), adapterInterface->GetId());
+	wxLogMessage(_T("TwoCan Device, Terminating driver thread id (0x%lx)\n"), adapterInterface->GetId());
 	threadError = adapterInterface->Delete(&threadExitCode, wxTHREAD_WAIT_BLOCK);
 	if (threadError == wxTHREAD_NO_ERROR) {
-		wxLogMessage(_T("TwoCan Device, Terminated driver thread (%lu)"), threadExitCode);
+		wxLogMessage(_T("TwoCan Device, Terminated driver thread (%p)"), threadExitCode);
 	}
 	else {
-		wxLogMessage(_T("TwoCan Device, Error terminating driver thread (%lu)"), threadError);
+		wxLogMessage(_T("TwoCan Device, Error terminating driver thread(%d)"), threadError);
 	}
 	// Wait for the interface thread to exit
 	adapterInterface->Wait(wxTHREAD_WAIT_BLOCK);
@@ -385,7 +385,7 @@ void TwoCanDevice::OnExit() {
 	// Can only invoke close if it is a joinable thread as detached threads would have already deleted themselves
 	returnCode = adapterInterface->Close();
 	if (returnCode != TWOCAN_RESULT_SUCCESS) {
-		wxLogMessage(_T("TwoCan Device, Error closing driver (%lu)"), returnCode);
+		wxLogMessage(_T("TwoCan Device, Error closing driver (%d)"), returnCode);
 	}
 
 	// Can only delete the interface class if it is a joinable thread.
@@ -398,7 +398,7 @@ void TwoCanDevice::OnExit() {
 	returnCode = UnloadWindowsDriver();
 #endif
 
-	wxLogMessage(_T("TwoCan Device, Unloaded driver: %lu"), returnCode);
+	wxLogMessage(_T("TwoCan Device, Unloaded driver: %d"), returnCode);
 
 	eventHandlerAddress = NULL;
 
@@ -552,7 +552,7 @@ int TwoCanDevice::LoadWindowsDriver(wxString driverPath) {
 				// Fatal error so clean up and free the library
 				freeResult = FreeLibrary(dllHandle);
 				// BUG BUG Log Fatal Error
-				wxLogError(_T("TwoCan Device, Error opening driver: %lu"), openResult);
+				wxLogError(_T("TwoCan Device, Error opening driver: %d"), openResult);
 				return openResult;
 			}
 
@@ -618,12 +618,12 @@ int TwoCanDevice::ReadWindowsDriver() {
 		int readResult = read(canFrame);
 
 		if (readResult != TWOCAN_RESULT_SUCCESS) {
-			wxLogError(_T("TwoCan Device, Error starting driver read thread: %lu"), readResult);
+			wxLogError(_T("TwoCan Device, Error starting driver read thread: %d"), readResult);
 			return readResult;
 		}
 		
 		// Log the fact that the driver has started its read thread successfully
-		wxLogMessage(_T("TwoCan Device, Driver read thread started: %lu"), readResult);
+		wxLogMessage(_T("TwoCan Device, Driver read thread started: %d"), readResult);
 
 		DWORD eventResult;
 		DWORD mutexResult;
@@ -732,7 +732,7 @@ int TwoCanDevice::UnloadWindowsDriver() {
 		}
 		else {
 			/// BUG BUG Log error
-			wxLogError(_T("TwoCan Device, Error closing driver: %lu"), closeResult);
+			wxLogError(_T("TwoCan Device, Error closing driver: %d"), closeResult);
 			return closeResult;
 		}
 	}
@@ -1132,7 +1132,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 					int returnCode;
 					returnCode = SendAddressClaim(networkAddress);
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage("TwoCan Device, Error Sending Address Claim: %lu", returnCode);
+						wxLogMessage("TwoCan Device, Error Sending Address Claim: %d", returnCode);
 					}
 				}
 				break;
@@ -1142,7 +1142,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 					int returnCode;
 					returnCode = SendSupportedPGN();
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage("TwoCan Device, Error Sending Supported PGN: %lu", returnCode);
+						wxLogMessage("TwoCan Device, Error Sending Supported PGN: %d", returnCode);
 					}
 				}
 				break;
@@ -1157,7 +1157,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 					int returnCode;
 					returnCode = SendProductInformation();
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage("TwoCan Device, Error Sending Product Information: %lu", returnCode);
+						wxLogMessage("TwoCan Device, Error Sending Product Information: %d", returnCode);
 					}
 				}
 				break;
@@ -1168,7 +1168,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 					int returnCode;
 					returnCode = SendConfigurationInformation();
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage("TwoCan Device, Error Sending Configuration Information: %lu", returnCode);
+						wxLogMessage("TwoCan Device, Error Sending Configuration Information: %d", returnCode);
 					}
 				}
 				break;
@@ -1224,10 +1224,10 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 				int returnCode;
 				returnCode = SendAddressClaim(networkAddress);
 				if (returnCode == TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Device, Reclaimed network address: %lu"), networkAddress);
+					wxLogMessage(_T("TwoCan Device, Reclaimed network address: %d"), networkAddress);
 				}
 				else {
-					wxLogMessage("TwoCan Device, Error reclaiming network address %lu: %lu", networkAddress, returnCode);
+					wxLogMessage("TwoCan Device, Error reclaiming network address %d: %d", networkAddress, returnCode);
 				}
 			}
 			// Our uniqueId is larger so increment our network address and see if we can claim the new address
@@ -1237,10 +1237,10 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 					int returnCode;
 					returnCode = SendAddressClaim(networkAddress);
 					if (returnCode == TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage(_T("TwoCan Device, Claimed new network address: %lu"), networkAddress);
+						wxLogMessage(_T("TwoCan Device, Claimed new network address: %d"), networkAddress);
 					}
 					else {
-						wxLogMessage("TwoCan Device, Error claiming new network address %lu: %lu", networkAddress, returnCode);
+						wxLogMessage("TwoCan Device, Error claiming new network address %d: %d", networkAddress, returnCode);
 					}
 				}
 				else {
@@ -1252,10 +1252,10 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 					int returnCode;
 					returnCode = SendAddressClaim(CONST_NULL_ADDRESS);
 					if (returnCode == TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage(_T("TwoCan Device, Claimed NULL network address: %lu"), networkAddress);
+						wxLogMessage(_T("TwoCan Device, Claimed NULL network address: %d"), networkAddress);
 					}
 					else {
-						wxLogMessage("TwoCan Device, Error claiming NULL network address %lu: %lu", networkAddress, returnCode);
+						wxLogMessage("TwoCan Device, Error claiming NULL network address %d: %d", networkAddress, returnCode);
 					}
 				}
 			}
@@ -1276,14 +1276,14 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			int returnCode;
 			returnCode = SendAddressClaim(networkAddress);
 			if (returnCode == TWOCAN_RESULT_SUCCESS) {
-				wxLogMessage(_T("TwoCan Device, Claimed commanded network address: %lu"), networkAddress);
+				wxLogMessage(_T("TwoCan Device, Claimed commanded network address: %d"), networkAddress);
 			}
 			else {
-				wxLogMessage(_T("TwoCan Device, Error claiming commanded network address %lu: %lu"), networkAddress, returnCode);
+				wxLogMessage(_T("TwoCan Device, Error claiming commanded network address %d: %d"), networkAddress, returnCode);
 			}
 		}
 		else {
-				wxLogMessage(_T("TwoCan Device, Error, commanded to use invalid address %lu by %lu"), deviceInformation.networkAddress, header.source);
+				wxLogMessage(_T("TwoCan Device, Error, commanded to use invalid address %d by %d"), deviceInformation.networkAddress, header.source);
 			}
 		}
 		// No NMEA 0183 sentences to pass onto OpenCPN
@@ -1748,8 +1748,7 @@ bool TwoCanDevice::DecodePGN126992(const byte *payload, std::vector<wxString> *n
 		
 		if ((TwoCanUtils::IsDataValid(daysSinceEpoch)) && (TwoCanUtils::IsDataValid(secondsSinceMidnight))) {
 			
-			wxDateTime tm;
-			tm.ParseDateTime("00:00:00 01-01-1970");
+			wxDateTime tm((time_t)0);
 			tm += wxDateSpan::Days(daysSinceEpoch);
 			tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 			
@@ -1945,8 +1944,7 @@ bool TwoCanDevice::DecodePGN127233(const byte *payload, std::vector<wxString> *n
 		unsigned int timeOfDay;
 		timeOfDay = payload[6] | (payload[7] << 8) | (payload[8] << 16) | (payload[9] << 24);
 
-		wxDateTime tm;
-		tm.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime tm((time_t)0);
 		tm += wxTimeSpan::Seconds((wxLongLong)timeOfDay / 10000);
 		wxString activationTime = tm.Format("%H%M%S");
 
@@ -1962,7 +1960,7 @@ bool TwoCanDevice::DecodePGN127233(const byte *payload, std::vector<wxString> *n
 		unsigned int secondsSinceMidnight;
 		secondsSinceMidnight = payload[13] | (payload[14] << 8) | (payload[15] << 16) | (payload[16] << 24);
 
-		tm.ParseDateTime("00:00:00 01-01-1970");
+		tm.Set((time_t)0);
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
@@ -2723,8 +2721,7 @@ bool TwoCanDevice::DecodePGN128275(const byte *payload, std::vector<wxString> *n
 		unsigned int secondsSinceMidnight;
 		secondsSinceMidnight = payload[2] | (payload[3] << 8) | (payload[4] << 16) | (payload[5] << 24);
 
-		wxDateTime tm;
-		tm.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime tm((time_t)0);
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
@@ -2916,8 +2913,7 @@ bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *n
 		unsigned int secondsSinceMidnight;
 		secondsSinceMidnight = payload[3] | (payload[4] << 8) | (payload[5] << 16) | (payload[6] << 24);
 
-		wxDateTime tm;
-		tm.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime tm((time_t)0);
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
@@ -3028,8 +3024,7 @@ bool TwoCanDevice::DecodePGN129033(const byte *payload, std::vector<wxString> *n
 		short localOffset;
 		localOffset = payload[6] | (payload[7] << 8);
 
-		wxDateTime tm;
-		tm.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime tm((time_t)0);
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
@@ -3697,8 +3692,7 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 		unsigned short daysSinceEpoch;
 		daysSinceEpoch = payload[10] | (payload[11] << 8);
 
-		wxDateTime tm;
-		tm.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime tm((time_t)0);
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
@@ -4080,8 +4074,7 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 
 		byte longRangeFlag = 0;
 
-		wxDateTime tm;
-		tm.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime tm((time_t)0);
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
@@ -4172,8 +4165,7 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 		unsigned int secondsSinceMidnight;
 		secondsSinceMidnight = payload[47] | (payload[48] << 8) | (payload[49] << 16) | (payload[50] << 24);
 
-		wxDateTime eta;
-		eta.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime eta((time_t)0);
 		eta += wxDateSpan::Days(daysSinceEpoch);
 		eta += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
@@ -4655,8 +4647,7 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 		unsigned int secondsSinceMidnight;
 		secondsSinceMidnight = (unsigned int)payload[index] | ((unsigned int)payload[index + 1] << 8) | ((unsigned int)payload[index + 2] << 16) | ((unsigned int)payload[index + 3] << 24);
 
-		wxDateTime tm;
-		tm.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime tm((time_t)0);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 
 		wxString timeOfPosition = tm.Format("%H%M");
@@ -5401,8 +5392,7 @@ bool TwoCanDevice::DecodePGN130323(const byte *payload, std::vector<wxString> *n
 			}
 		}
 
-		wxDateTime tm;
-		tm.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime tm((time_t)0);
 		tm += wxDateSpan::Days(daysSinceEpoch);
 		tm += wxTimeSpan::Seconds((wxLongLong)secondsSinceMidnight / 10000);
 		
