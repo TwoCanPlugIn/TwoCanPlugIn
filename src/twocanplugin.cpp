@@ -239,7 +239,7 @@ void TwoCan::SetPositionFix(PlugIn_Position_Fix &pfix) {
 
 		int returnCode = twoCanDevice->TransmitFrame(id, payload);
 		if (returnCode != TWOCAN_RESULT_SUCCESS) {
-			wxLogMessage(_T("TwoCanPlugin, Error sending position fix: %lu"), returnCode);
+			wxLogMessage(_T("TwoCanPlugin, Error sending position fix: %d"), returnCode);
 		}
 	}
 }
@@ -259,7 +259,7 @@ void TwoCan::SetNMEASentence(wxString &sentence) {
 				int returnCode;
 				returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Plugin, Error sending converted NMEA 183 sentence %lu"), returnCode);
+					wxLogMessage(_T("TwoCan Plugin, Error sending converted NMEA 183 sentence %d"), returnCode);
 				}
 				wxThread::Sleep(CONST_TEN_MILLIS);
 				
@@ -334,7 +334,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 								int returnCode;
 								returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 								if (returnCode != TWOCAN_RESULT_SUCCESS) {
-									wxLogMessage(_T("TwoCan Plugin, Error sending MOB message %lu"), returnCode);
+									wxLogMessage(_T("TwoCan Plugin, Error sending MOB message %d"), returnCode);
 								}
 								wxThread::Sleep(CONST_TEN_MILLIS);
 							}
@@ -357,7 +357,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 				TwoCanUtils::EncodeCanHeader(&id, &it.header);
 				returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Plugin, Error sending Media Controller command: %lu"), returnCode);
+					wxLogMessage(_T("TwoCan Plugin, Error sending Media Controller command: %d"), returnCode);
 				}
 				wxThread::Sleep(CONST_TEN_MILLIS);
 			}
@@ -407,7 +407,7 @@ void TwoCan::OnAutopilotCommand(wxCommandEvent &event) {
 				wxLogMessage(_T("TwoCan Autopilot, Debug, Tx Auopilot message"));
 			}
 			else {
-				wxLogMessage(_T("TwoCan Autopilot, Debug, Error Tx Autopilot message %ul"), returnCode);
+				wxLogMessage(_T("TwoCan Autopilot, Debug, Error Tx Autopilot message %d"), returnCode);
 			}
 				
 		}
@@ -578,10 +578,10 @@ void TwoCan::StopDevice(void) {
 	wxThreadError threadError;
 	if (twoCanDevice != nullptr) {
 		if (twoCanDevice->IsRunning()) {
-			wxLogMessage(_T("TwoCan Plugin, Terminating device thread id (0x%x)\n"), twoCanDevice->GetId());
+			wxLogMessage(_T("TwoCan Plugin, Terminating device thread id (0x%lx)\n"), twoCanDevice->GetId());
 			threadError = twoCanDevice->Delete(&threadExitCode, wxTHREAD_WAIT_BLOCK);
 			if (threadError == wxTHREAD_NO_ERROR) {
-				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Result: %lu"), threadExitCode);
+				wxLogMessage(_T("TwoCan Plugin, TwoCan Device Thread Delete Result: %p"), threadExitCode);
 				// BUG BUG Following is to prevent wxLog message "Error: Can not wait for thread termination (error 6: the handle is invalid.)"
 				// when runing on Windows, refer to https://forums.wxwidgets.org/viewtopic.php?t=13726
 				#if defined (__WXMSW__) 
@@ -656,6 +656,6 @@ void TwoCan::StartDevice(void) {
 		}
 	}
 	else {
-		wxLogError(_T("TwoCan Plugin,  TwoCan Device Initialize Error: %lu"), returnCode);
+		wxLogError(_T("TwoCan Plugin,  TwoCan Device Initialize Error: %d"), returnCode);
 	}
 }

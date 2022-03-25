@@ -869,8 +869,7 @@ bool TwoCanAis::EncodePGN129793(const std::vector<bool> binaryData, std::vector<
 		now.Set(day, static_cast<wxDateTime::Month>(month - 1), year, hour < AIS_INVALID_HOUR ? hour : 0,
 			minute < AIS_INVALID_MINUTE ? minute : 0,
 			second < AIS_INVALID_SECOND ? second : 0, 0);
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
+		wxDateTime epoch((time_t)0);
 		wxTimeSpan diff = now - epoch;
 
 		unsigned short daysSinceEpoch = diff.GetDays();
@@ -984,8 +983,7 @@ bool TwoCanAis::EncodePGN129794(const std::vector<bool> binaryData, std::vector<
 			eta.Set(day, static_cast<wxDateTime::Month>(month - 1), now.GetMonth() + 1 > month ? now.GetYear() + 1 : now.GetYear(), 
 				hour < AIS_INVALID_HOUR ? hour : 0, minute < AIS_INVALID_MINUTE ? minute : 0, 0);
 
-			wxDateTime epoch;
-			epoch.ParseDateTime("00:00:00 01-01-1970");
+			wxDateTime epoch((time_t)0);
 
 			wxTimeSpan diff = eta - epoch;
 
