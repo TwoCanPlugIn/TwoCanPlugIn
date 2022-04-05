@@ -206,6 +206,10 @@ public:
 	// As we don't throw errors in the constructor, invoke functions that may fail from these functions
 	int Init(wxString driverPath);
 	int DeInit(void);
+
+	// Fragment a fast message into 8 byte messages
+	int FragmentFastMessage(CanHeader *header, unsigned int payloadLength, byte *payload);
+	// Transmit the frame onto the NMEA 2000 network
 	int TransmitFrame(unsigned int id, byte *data);
 
 protected:
@@ -293,9 +297,6 @@ private:
 	
 	// Assemble sequence of Fast Messages int a payload
 	void AssembleFastMessage(const CanHeader header, const byte *message);
-	
-	// And its companion, fragment a fast message into 8 byte messages
-	int FragmentFastMessage(CanHeader *header, unsigned int payloadLength, byte *payload);
 
 	// Add, Append and Find entries in the FastMessage buffer
 	void MapInitialize(void);

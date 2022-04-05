@@ -363,6 +363,43 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 			}
 		}
 	}
+
+	if (message_id == _T("TWOCAN_EXPORT_WAYPOINT")) {
+
+
+
+	}
+
+	if (message_id == _T("TWOCAN_TRANSMIT_FRAME")) {
+		if (deviceMode == TRUE) {
+			wxJSONValue root;
+			wxJSONReader reader;
+			CanHeader header;
+			std::vector<byte> payload;
+			std::vector<CanMessage> nmeaMessages;
+
+			if (reader.Parse(message_body, &root) > 0) {
+				// Log the error 
+			}
+
+			header.pgn = root["pgn"].AsInt();
+			header.priority = root["priority"].AsInt();
+			header.destination = root["destination"].AsInt();
+			header.source = root["source"].AsInt();
+
+			if (root["data"].IsArray()) {
+				wxJSONValue data = root["data"];
+				
+				for (int i = 0; i < data.Size(); i++) {
+					payload.push_back(data[i].AsInt());
+				}
+			}
+
+			if (payload.size() > 0) {
+				twoCanDevice->FragmentFastMessage(&header, payload.size(), payload.data());
+			}
+		}
+	}
 }
 
 // Event Handlers

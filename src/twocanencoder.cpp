@@ -1546,7 +1546,6 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back(sequenceId);
 
 			wxDateTime epoch((time_t)0);
-
 			wxDateTime now = wxDateTime::Now();
 			now.SetHour(std::atoi(parser->Gll.UTCTime.Mid(0,2)));
 			now.SetMinute(std::atoi(parser->Gll.UTCTime.Mid(2,2)));

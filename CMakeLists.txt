@@ -145,8 +145,8 @@ SET(SOURCES src/twocanerror.cpp
             src/twocanicons.cpp
             src/twocanencoder.cpp
             src/twocanautopilot.cpp
-            src/twocanautopilotdialog.cpp
-            src/twocanautopilotdialogbase.cpp
+			src/twocanautopilotdialog.cpp
+			src/twocanautopilotdialogbase.cpp
             src/twocanais.cpp
             src/twocanmedia.cpp)
 
@@ -159,8 +159,8 @@ SET(HEADERS inc/twocanerror.h
             inc/twocanicons.h
             inc/twocanencoder.h
             inc/twocanautopilot.h
-            inc/twocanautopilotdialog.h
-            inc/twocanautopilotdialogbase.h
+			inc/twocanautopilotdialog.h
+			inc/twocanautopilotdialogbase.h
             inc/twocanais.h
             inc/twocanmedia.h)
 

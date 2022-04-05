@@ -869,6 +869,7 @@ bool TwoCanAis::EncodePGN129793(const std::vector<bool> binaryData, std::vector<
 		now.Set(day, static_cast<wxDateTime::Month>(month - 1), year, hour < AIS_INVALID_HOUR ? hour : 0,
 			minute < AIS_INVALID_MINUTE ? minute : 0,
 			second < AIS_INVALID_SECOND ? second : 0, 0);
+
 		wxDateTime epoch((time_t)0);
 		wxTimeSpan diff = now - epoch;
 
