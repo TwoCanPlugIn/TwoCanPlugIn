@@ -134,7 +134,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 
 		totalSources = payload[4];
 
-		// BUG BUG IS this necessary
+		// BUG BUG Is this necessary
 		root["entertainment"]["device"]["input"]["count"] = totalSources;
 		
 		break;
@@ -196,7 +196,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		// 00 0C 30 32 5F 4A 75 64
 		// 67 65 6D 65 6E 74 00
 
-		//When paused not playing on BT
+		// When paused not playing on BT
 		// A3 99 05 80 08 FF FF FF
 		// FF 01 20 00 track name is a space, track number is data unavailable
 		sessionId = (FUSION_MEDIA_PORT)payload[4];
@@ -313,6 +313,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		// We need some way to synchronize/wait
 
 		break;
+
 	case 16: // Number of items in folder
 		// A3 99 10 80 05 03 00 00 00 06
 		if (sessionId == payload[4]) { // && (folderSessionId == payload[9])) {
@@ -320,13 +321,14 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 			root["entertainment"]["device"]["media"]["count"] = folderCount;
 			root["entertainment"]["device"]["media"]["foldersessionid"] = payload[9];
 
-			//BUG BUG Remove
-			wxLogMessage("***** Folder Items: %d Session Id: %d", folderCount, folderSessionId);
+			//BUG BUG DEBUG
+			wxString debugMessage = wxString::Format("Folder Items: %d Folder Session Id: %d", folderCount, folderSessionId);
+			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
+
+			
 		}
-
-		// Again ne need some way to synchronize/wait
-
 		break;
+
 	case 17: // file/folder Names
 		// A3 99 11 80 05 00 00 00
 		// 00 4F 06 05 4D 55 53 49
@@ -364,6 +366,10 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 			root["entertainment"]["device"]["media"]["foldername"] = folderName;
 			root["entertainment"]["device"]["media"]["foldertype"] = folderType;
 			root["entertainment"]["device"]["media"]["folderid"] = folderId;
+
+			wxString debugMessage = wxString::Format("Folder Name: %s Folder Id: %d", folderName, folderId);
+			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
+
 
 		}		
 		break;
@@ -455,22 +461,18 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 
 	case 24: // balance
 		// A3 99 18 80 00 FE
-
-		balance = payload[5]; // Signed, +ve Right Channel, -ve Left Channel
+		// Signed, +ve Right Channel, -ve Left Channel
+		balance = payload[5];
 
 		root["entertainment"]["device"]["zone" + std::to_string(payload[4])]["balance"] = balance;
 
 		break;
 
-
-
 	case 26: // Sub Woofer
 		// A3 99 1A 80 0C 0C 0C 00
 
 		zone0SubWoofer = payload[4];
-		
 		zone1SubWoofer = payload[5];
-		
 		zone2SubWoofer = payload[6];
 		
 		root["entertainment"]["device"]["zone0"]["subwoofer"] = zone0SubWoofer;
@@ -481,8 +483,9 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 	
 	case 27: // Tone Controls
 		// A3 99 1B 80 03 08 05 03
-		
-		bass = payload[5];
+		// Note values range from -15 to 15, so ensure all clients used a signed int
+		// For Two's Complement bass = (payload[5] & 0x80) == 0x80 ? payload[5] - 256 : payload[5];
+		bass = payload[5]; 
 		midrange = payload[6];
 		treble = payload[7];
 		
@@ -532,8 +535,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		for (size_t i = 0; i < payload[4]; i++) {
 			deviceName.append(1, payload[5 + i]);
 		}
-		wxLogMessage("Device Name: %s\n", deviceName);
-
+		
 		root["entertainment"]["device"]["name"] = deviceName;
 
 		break;
@@ -582,7 +584,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 }
 
 // Encode Media Player commands
-bool TwoCanMedia::EncodeMediaRequest(wxString text, std::vector<CanMessage> *canMessages) {
+bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *canMessages) {
 	CanMessage message;
 	
 	// Even though these commands are all less than 8 bytes (except tone controls)
@@ -789,7 +791,7 @@ bool TwoCanMedia::EncodeMediaRequest(wxString text, std::vector<CanMessage> *can
 			// manual increments by 9KHz steps for am and 5MHz steps for am
 			// No idea how or what the auto mode determines where to tune next.
 			if ((sessionId == FUSION_MEDIA_PORT::am) || (sessionId == FUSION_MEDIA_PORT::fm)) {
-				int frequency = root["entertainment"]["device"]["frequency"].AsDouble() * 1e6;
+				int frequency = root["entertainment"]["device"]["radio"]["frequency"].AsDouble() * 1e6;
 				// A3 99 05 00 01 02 80 04 39 06
 				message.payload.push_back(0xA0); 
 				message.payload.push_back(0x0A);
@@ -841,7 +843,7 @@ bool TwoCanMedia::EncodeMediaRequest(wxString text, std::vector<CanMessage> *can
 		if (previous == TRUE) {
 
 			if ((sessionId == FUSION_MEDIA_PORT::am) || (sessionId == FUSION_MEDIA_PORT::fm)) {
-				int frequency = root["entertainment"]["device"]["frequency"].AsDouble() * 1e6;
+				int frequency = root["entertainment"]["device"]["radio"]["frequency"].AsDouble() * 1e6;
 				// A3 99 05 00 01 02 80 04 39 06
 				message.payload.push_back(0xA0); 
 				message.payload.push_back(0x0A);
@@ -1041,11 +1043,10 @@ bool TwoCanMedia::EncodeMediaRequest(wxString text, std::vector<CanMessage> *can
 		int folderId = root["entertainment"]["device"]["media"]["folderid"].AsInt();
 		
 		// BUG BUG Remove
-		wxString debugMessage = wxString::Format("Send folder request: folderId: %d, folderSessionId: %d RQST: %d", folderId, folderSessionId, request);
+		wxString debugMessage = wxString::Format("Send folder request: FolderId: %d, Folder Session Id: %d RQST: %d", folderId, folderSessionId, request);
 		debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
 
-		// A3 99 09 00 05 00 00 00 
-		// 00 01 02
+		// A3 99 09 00 05 00 00 00 00 01 02
 
 		// 0 just gets message 16, ?
 		// 1 is get current folder,
@@ -1080,73 +1081,74 @@ bool TwoCanMedia::EncodeMediaRequest(wxString text, std::vector<CanMessage> *can
 	}
 
 	if (root["entertainment"]["device"]["media"].HasMember("ack")) {
-		//A3 99 0A 00 05 02
-		message.payload.push_back(0xA0);
-		message.payload.push_back(0x06);
-		message.payload.push_back(0xA3);
-		message.payload.push_back(0x99);
-		message.payload.push_back(0x0A);
-		message.payload.push_back(0x00);
-		message.payload.push_back(sessionId);
-		message.payload.push_back(folderSessionId);
+		if (root["entertainment"]["device"]["media"]["ack"].AsBool() == true) {
+			//A3 99 0A 00 05 02
+			message.payload.push_back(0xA0);
+			message.payload.push_back(0x06);
+			message.payload.push_back(0xA3);
+			message.payload.push_back(0x99);
+			message.payload.push_back(0x0A);
+			message.payload.push_back(0x00);
+			message.payload.push_back(sessionId);
+			message.payload.push_back(folderSessionId);
 
-		// BUG BUG Remove
-		wxString debugMessage = wxString::Format("Sent Ack, Session Id: %d, Folder Session Id: %d", sessionId, folderSessionId);
-		debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
+			// BUG BUG Remove
+			wxString debugMessage = wxString::Format("Sent Ack, Session Id: %d, Folder Session Id: %d", sessionId, folderSessionId);
+			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
 
-
-		canMessages->push_back(message);
-		return TRUE;
-
+			canMessages->push_back(message);
+			return TRUE;
+		}
 	}
 
 	if (root["entertainment"]["device"]["media"].HasMember("confirm")) {
-		int folderId = root["entertainment"]["device"]["media"]["folderid"].AsInt();
-		int recordsReceived = root["entertainment"]["device"]["media"]["recordsreceived"].AsInt();
-		// Send Confirmation
-		// A3 99 0B 00 05 00 00 00 
-		//	00 01 00 00 00 02
+		if (root["entertainment"]["device"]["media"]["confirm"].AsBool() == true) {
+			int folderId = root["entertainment"]["device"]["media"]["folderid"].AsInt();
+			int recordsReceived = root["entertainment"]["device"]["media"]["recordsreceived"].AsInt();
+			// Send Confirmation
+			// A3 99 0B 00 05 00 00 00 00 01 00 00 00 02
 
-		message.payload.push_back(0xA0);
-		message.payload.push_back(0x0E);
-		message.payload.push_back(0xA3);
-		message.payload.push_back(0x99);
-		message.payload.push_back(0x0B);
-		message.payload.push_back(0x00);
-		message.payload.push_back(sessionId);
-		message.payload.push_back(folderId & 0xFF);
+			message.payload.push_back(0xA0);
+			message.payload.push_back(0x0E);
+			message.payload.push_back(0xA3);
+			message.payload.push_back(0x99);
+			message.payload.push_back(0x0B);
+			message.payload.push_back(0x00);
+			message.payload.push_back(sessionId);
+			message.payload.push_back(folderId & 0xFF);
 
-		canMessages->push_back(message);
-		message.payload.clear();
+			canMessages->push_back(message);
+			message.payload.clear();
 
-		message.payload.push_back(0xA1);
-		message.payload.push_back((folderId >> 8) & 0xFF);
-		message.payload.push_back((folderId >> 16) & 0xFF);
-		message.payload.push_back((folderId >> 24) & 0xFF);
-		message.payload.push_back(recordsReceived & 0xFF);
-		message.payload.push_back((recordsReceived >> 8) & 0xFF);
-		message.payload.push_back((recordsReceived >> 16) & 0xFF);
-		message.payload.push_back((recordsReceived >> 24) & 0xFF);
+			message.payload.push_back(0xA1);
+			message.payload.push_back((folderId >> 8) & 0xFF);
+			message.payload.push_back((folderId >> 16) & 0xFF);
+			message.payload.push_back((folderId >> 24) & 0xFF);
+			message.payload.push_back(recordsReceived & 0xFF);
+			message.payload.push_back((recordsReceived >> 8) & 0xFF);
+			message.payload.push_back((recordsReceived >> 16) & 0xFF);
+			message.payload.push_back((recordsReceived >> 24) & 0xFF);
 
-		canMessages->push_back(message);
-		message.payload.clear();
+			canMessages->push_back(message);
+			message.payload.clear();
 
-		message.payload.push_back(0xA2);
-		message.payload.push_back(folderSessionId);
-		message.payload.push_back(0xFF);
-		message.payload.push_back(0xFF);
-		message.payload.push_back(0xFF);
-		message.payload.push_back(0xFF);
-		message.payload.push_back(0xFF);
-		message.payload.push_back(0xFF);
+			message.payload.push_back(0xA2);
+			message.payload.push_back(folderSessionId);
+			message.payload.push_back(0xFF);
+			message.payload.push_back(0xFF);
+			message.payload.push_back(0xFF);
+			message.payload.push_back(0xFF);
+			message.payload.push_back(0xFF);
+			message.payload.push_back(0xFF);
 
-		canMessages->push_back(message);
+			canMessages->push_back(message);
 
-		wxString debugMessage = wxString::Format("Sent Confirm SessionId: %d, Folder Id %d: %d", sessionId, folderId, recordsReceived);
-		debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
+			wxString debugMessage = wxString::Format("Sent Confirm SessionId: %d, Folder Id %d, Records: %d", sessionId, folderId, recordsReceived);
+			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
 
 
-		return TRUE;
+			return TRUE;
+		}
 
 	}
 

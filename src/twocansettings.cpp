@@ -42,8 +42,10 @@
 // Constructor and destructor implementation
 // inherits froms TwoCanSettingsBase which was implemented using wxFormBuilder
 TwoCanSettings::TwoCanSettings(wxWindow* parent, wxWindowID id, const wxString& title, \
-	const wxPoint& pos, const wxSize& size, long style ) 
+	const wxPoint& pos, const wxSize& size, long style )
 	: TwoCanSettingsBase(parent, id, title, pos, size, style) {
+
+	parentWindow = parent;
 
 	// Set the dialog's 16x16 icon
 	wxIcon icon;
@@ -160,9 +162,15 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	chkDeviceMode->SetValue(deviceMode);
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
 	chkGateway->Enable(chkDeviceMode->IsChecked());
+	chkAutopilot->Enable(chkDeviceMode->IsChecked());
+	chkMedia->Enable(chkDeviceMode->IsChecked());
+	chkWaypoint->Enable(chkDeviceMode->IsChecked());
 	if (deviceMode == TRUE) {
 		chkHeartbeat->SetValue(enableHeartbeat);
 		chkGateway->SetValue(enableGateway);
+		chkAutopilot->SetValue(enableAutopilot);
+		chkMedia->SetValue(enableMusic);
+		chkWaypoint->SetValue(enableWaypoint);
 	}
 	else {
 		chkHeartbeat->SetValue(FALSE);
@@ -239,12 +247,22 @@ void TwoCanSettings::OnCopy(wxCommandEvent &event) {
 	}
 }
 
+void TwoCanSettings::OnExportWaypoint(wxCommandEvent &event) {
+	wxMessageBox("Export Waypoint Settings Dialog");
+}
+
 // Set whether the device is an actve or passive node on the NMEA 2000 network
 void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
-	chkHeartbeat->SetValue(FALSE);
+	chkHeartbeat->SetValue(enableHeartbeat);
 	chkGateway->Enable(chkDeviceMode->IsChecked());
-	chkGateway->SetValue(FALSE);
+	chkGateway->SetValue(enableGateway);
+	chkMedia->Enable(chkDeviceMode->IsChecked());
+	chkMedia->SetValue(enableMusic);
+	chkWaypoint->Enable(chkDeviceMode->IsChecked());
+	chkWaypoint->SetValue(enableWaypoint);
+	chkAutopilot->Enable(chkDeviceMode->IsChecked());
+	chkAutopilot->SetValue(enableAutopilot);
 	this->settingsDirty = TRUE;
 }
 
@@ -255,6 +273,21 @@ void TwoCanSettings::OnCheckHeartbeat(wxCommandEvent &event) {
 
 // Set whether the device acts as a bi-directional gateway, NMEA 183 -> NMEA 2000
 void TwoCanSettings::OnCheckGateway(wxCommandEvent &event) {
+	this->settingsDirty = TRUE;
+}
+
+// Set whether the device integrates with NMEA 2000 autopilots
+void TwoCanSettings::OnCheckAutopilot(wxCommandEvent &event) {
+	this->settingsDirty = TRUE;
+}
+
+// Set whether the device integrates with Fusion Media players
+void TwoCanSettings::OnCheckMedia(wxCommandEvent &event) {
+	this->settingsDirty = TRUE;
+}
+
+// Set whether the device will create an OpenCPN waypoint on reception of PGN 130074
+void TwoCanSettings::OnCheckWaypoint(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
 
@@ -334,6 +367,21 @@ void TwoCanSettings::SaveSettings(void) {
 	deviceMode = FALSE;
 	if (chkDeviceMode->IsChecked()) {
 		deviceMode = TRUE;
+	}
+
+	enableAutopilot = FALSE;
+	if (chkAutopilot->IsChecked()) {
+		enableAutopilot = TRUE;
+	}
+
+	enableMusic = FALSE;
+	if (chkMedia->IsChecked()) {
+		enableMusic = TRUE;
+	}
+
+	enableWaypoint = FALSE;
+	if (chkWaypoint->IsChecked()) {
+		enableWaypoint = TRUE;
 	}
 
 	if (cmbInterfaces->GetSelection() != wxNOT_FOUND) {

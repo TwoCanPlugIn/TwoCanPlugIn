@@ -1,4 +1,4 @@
-// Copyright(C) 2018-2020 by Steven Adler
+// Copyright(C) 2018-2022 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -65,162 +65,261 @@ const std::vector<byte> raymarineTrack = {0x0d, 0x3b, 0x9f, 0xf0, 0x81, 0x84, 0x
 const std::vector<byte>raymarineHeading = {0x14, 0x01, 0x50, 0xff, 0x00, 0xf8, 0x03, 0x01, 0x3b, 0x07, 0x03, 0x04, 0x06, 0x00, 0x00};
 
 // TwoCan Autopilot
-TwoCanAutopilot::TwoCanAutopilot(int mode) {
+TwoCanAutopilot::TwoCanAutopilot(int manufacturer) {
     // Save the autopilot model, 0 - None, 1 - Garmin, 2 - Navico, 3 - Raymarine
-    autopilotMode = mode;
+    autopilotManufacturer = manufacturer;
 }
 
 TwoCanAutopilot::~TwoCanAutopilot(void) {
 }
 
-void TwoCanAutopilot::ActivateRoute(wxString name) {
-  isRouteActive = TRUE;
-  routeName = name;
-}
-
-void TwoCanAutopilot::DeactivateRoute(void) {
-  isRouteActive = FALSE;
-  routeName = wxEmptyString;
-}
-
-
-bool TwoCanAutopilot::ParseCommand(int commandId, int commandValue, std::vector<CanMessage> *nmeaMessages) {
+bool TwoCanAutopilot::EncodeAutopilotCommand(wxString message_body, std::vector<CanMessage> *nmeaMessages) {
     CanMessage message;
     CanHeader header;
-    switch (autopilotMode) {
-        case FLAGS_AUTOPILOT_GARMIN:
-            switch (commandId) {
-                case AUTOPILOT_POWER_EVENT:
-                    if (commandValue == AUTOPILOT_POWER_OFF) {
-                        // Turn Off 
-                    }
-                    else if (commandValue == AUTOPILOT_POWER_STANDBY) {
-                        // Standby
-                    }
-                    else if (commandValue == AUTOPILOT_POWER_ON) {
-                        // Turn On
-                    }
-                break;
-                case AUTOPILOT_MODE_EVENT:
-                    if (commandValue == AUTOPILOT_COMMAND_HEADING) {
-                        // Heading Mode 
-                    }
-                    else if (commandValue == AUTOPILOT_COMMAND_WIND) {
-                        // Wind mode
-                    }
-                    else if (commandValue == AUTOPIOT_COMMAND_GPS) {
-                        // GPS mode
-                    }
-                break;
-                case AUTOPILOT_HEADING_EVENT:
-                    // Adjust Heading
-                break;
-            }
 
-            break;
-        case FLAGS_AUTOPILOT_RAYMARINE:
-            switch (commandId) {
-                case AUTOPILOT_POWER_EVENT:
-                    if (commandValue == AUTOPILOT_POWER_OFF) {
-                        // Turn Off 
-                    }
-                    else if (commandValue == AUTOPILOT_POWER_STANDBY) {
-                        // Set to Standby
-                        header.pgn = 0;
-                        header.destination = CONST_GLOBAL_ADDRESS;
-                        header.priority = CONST_PRIORITY_VERY_HIGH;
-                        header.source =networkAddress;
-                        message.header = header;
-                        message.payload = raymarineStandby;
-                        nmeaMessages->push_back(message);
-                        return TRUE;
-                    }
-                    else if (commandValue == AUTOPILOT_POWER_ON) {
-                        // set to On
-                        header.pgn = 0;
-                        header.destination = CONST_GLOBAL_ADDRESS;
-                        header.priority = CONST_PRIORITY_VERY_HIGH;
-                        header.source =networkAddress;
-                        message.header = header;
-                        message.payload = raymarineTrack;
-                        nmeaMessages->push_back(message);
-                        return TRUE;
-                    }
-                break;
-                case AUTOPILOT_MODE_EVENT:
-                    if (commandValue == AUTOPILOT_COMMAND_HEADING) {
-                        // set to Compass Heading Mode
-                        header.pgn = 0;
-                        header.destination = CONST_GLOBAL_ADDRESS;
-                        header.priority = CONST_PRIORITY_VERY_HIGH;
-                        header.source =networkAddress;
-                        message.header = header;
-                        message.payload = raymarineHeading;
-                        nmeaMessages->push_back(message);
-                        return TRUE;
-                    }
-                    else if (commandValue == AUTOPILOT_COMMAND_WIND) {
-                        // set to Wind Mode
-                        
-                    }
-                    else if (commandValue == AUTOPIOT_COMMAND_GPS) {
-                        // set to GPS mode
-                        header.pgn = 0;
-                        header.destination = CONST_GLOBAL_ADDRESS;
-                        header.priority = CONST_PRIORITY_VERY_HIGH;
-                        header.source =networkAddress;
-                        message.header = header;
-                        message.payload = raymarineTrack;
-                        nmeaMessages->push_back(message);
-                        return TRUE;
-                    }
-                    break;
-                case AUTOPILOT_HEADING_EVENT:
-                    // Adjust Heading
-                    break;
-            }
+	wxJSONValue root;
+	wxJSONReader reader;
+	if (reader.Parse(message_body, &root) > 0) {
+		// BUG BUG should log errors, but as I'm generating the JSON, there shouldn't be any,
+		// however another developer could write a better controller using different steering algorithms
+		wxLogMessage("TwoCan Plugin Autopilot, JSON Error in following");
+		wxLogMessage("%s", message_body);
+		wxArrayString jsonErrors = reader.GetErrors();
+		for (auto it : jsonErrors) {
+			wxLogMessage(it);
+		}
+		return FALSE;
+	}
+	else {
+		int commandValue;
+		int commandId;
+		if (root["autopilot"].HasMember("status")) {
+			commandId = AUTOPILOT_CHANGE_STATUS;
+			commandValue = root["autopilot"]["state"].AsInt();
+			wxMessageBox(wxString::Format("AUTOPILOT STATUS CHANGE: %d", commandValue), "TwoCanPlugin Debug");
+		}
+		
+		else if (root["autopilot"].HasMember("heading")) {
+			commandId = AUTOPILOT_CHANGE_COURSE;
+			commandValue = root["autopilot"]["heading"].AsInt();
+			wxMessageBox(wxString::Format("AUTOPILOT COURSE CHANGE: %d", commandValue), "TwoCanPlugin Debug");
+		}
 
-            break;
+		else if (root["autopilot"].HasMember("manufacturer")) {
+			commandId = AUTOPILOT_CHANGE_MANUFACTURER;
+			commandValue = root["autopilot"]["manufacturer"].AsInt();
+			autopilotManufacturer = commandValue;
+			wxMessageBox(wxString::Format("AUTOPILOT MANUFACTURER CHANGE: %d", commandValue), "TwoCanPlugin Debug");
+		}
 
-        case FLAGS_AUTOPILOT_NAVICO:
-            switch (commandId) {
-                case AUTOPILOT_POWER_EVENT:
-                    if (commandValue == AUTOPILOT_POWER_OFF) {
-                        // Turn Off 
-                    }
-                    else if (commandValue == AUTOPILOT_POWER_STANDBY) {
-                        // set to Standby
-                    }
-                    else if (commandValue == AUTOPILOT_POWER_ON) {
-                        // Turn On
-                    }
-                    break;
-                case AUTOPILOT_MODE_EVENT:
-                    if (commandValue == AUTOPILOT_COMMAND_HEADING) {
-                        // Heading Mode 
-                    }
-                    else if (commandValue == AUTOPILOT_COMMAND_WIND) {
-                        // Wind mode
-                    }
-                    else if (commandValue == AUTOPIOT_COMMAND_GPS) {
-                        // GPS mode
-                    }
-                    break;
-                case AUTOPILOT_HEADING_EVENT:
-                    // Adjust Heading
-                    break;
-            }
+		else {
+			// Not a command we are interested in
+			wxLogMessage(_T("TwoCan Plugin, Invalid Autopilot Request: %s"), message_body);
+			return FALSE;
+		}
 
-            break;
+		// Now parse the commands and generate the approprite PGN's
+		switch (autopilotManufacturer) {
+			case FLAGS_AUTOPILOT_GARMIN:
+				switch (commandId) {
+					case AUTOPILOT_CHANGE_STATUS:
+						if (commandValue == AUTOPILOT_POWER_OFF) {
+						// Turn Off 
+						}
+						else if (commandValue == AUTOPILOT_POWER_STANDBY) {
+						// Standby
+						}
+						if (commandValue == AUTOPILOT_MODE_HEADING) {
+						// Heading Mode 
+						}
+						else if (commandValue == AUTOPILOT_MODE_WIND) {
+						// Wind mode
+						}
+						else if (commandValue == AUTOPILOT_MODE_GPS) {
+						// GPS mode
+						}
+						break;
+					case AUTOPILOT_CHANGE_COURSE:
+						// Adjust Heading
+						break;
+				} // end switch command
+				break; // end case garmin
+		
+			case FLAGS_AUTOPILOT_RAYMARINE:
+				switch (commandId) {
+					case AUTOPILOT_CHANGE_STATUS:
+						if (commandValue == AUTOPILOT_POWER_OFF) {
+							// Turn Off 
+						}
+						else if (commandValue == AUTOPILOT_POWER_STANDBY) {
+							// Set to Standby
+							header.pgn = 0;
+							header.destination = CONST_GLOBAL_ADDRESS;
+							header.priority = CONST_PRIORITY_VERY_HIGH;
+							header.source = networkAddress;
+							message.header = header;
+							message.payload = raymarineStandby;
+							nmeaMessages->push_back(message);
+						}
+						
+						else if (commandValue == AUTOPILOT_MODE_HEADING) {
+							// set to Compass Heading Mode
+							header.pgn = 0;
+							header.destination = CONST_GLOBAL_ADDRESS;
+							header.priority = CONST_PRIORITY_VERY_HIGH;
+							header.source = networkAddress;
+							message.header = header;
+							message.payload = raymarineHeading;
+							nmeaMessages->push_back(message);
+						}
 
+						else if (commandValue == AUTOPILOT_MODE_WIND) {
+							// set to Wind Mode
+						}
 
-            break;
-        default:
-            return FALSE;
-            break;
-    }
+						else if (commandValue == AUTOPILOT_MODE_GPS) {
+							// set to GPS mode
+							header.pgn = 0;
+							header.destination = CONST_GLOBAL_ADDRESS;
+							header.priority = CONST_PRIORITY_VERY_HIGH;
+							header.source = networkAddress;
+							message.header = header;
+							message.payload = raymarineTrack;
+							nmeaMessages->push_back(message);
+						}
+						break;
+					case AUTOPILOT_CHANGE_COURSE:
+						// Adjust Heading
+						break;
+				} // end switch command
+				break; // end case raymarine
 
+			case FLAGS_AUTOPILOT_NAVICO:
+				switch (commandId) {
+					case AUTOPILOT_CHANGE_STATUS:
+						if (commandValue == AUTOPILOT_POWER_OFF) {
+							// Turn Off 
+						}
+						else if (commandValue == AUTOPILOT_POWER_STANDBY) {
+							// set to Standby
+						}
+						else if (commandValue == AUTOPILOT_MODE_HEADING) {
+							// Heading Mode 
+						}
+						else if (commandValue == AUTOPILOT_MODE_WIND) {
+							// Wind mode
+						}
+						else if (commandValue == AUTOPILOT_MODE_GPS) {
+							// GPS mode
+						}
+						break;
+					case AUTOPILOT_CHANGE_COURSE:
+						// Adjust Heading
+						break;
+				} // end switch command
+				break; // end case navico
 
+			case FLAGS_AUTOPILOT_FURUNO:
+				switch (commandId) {
+					case AUTOPILOT_CHANGE_STATUS:
+						if (commandValue == AUTOPILOT_POWER_OFF) {
+							// Turn Off 
+						}
+						else if (commandValue == AUTOPILOT_POWER_STANDBY) {
+							// set to Standby
+						}
+						else if (commandValue == AUTOPILOT_MODE_HEADING) {
+							// Heading Mode 
+						}
+						else if (commandValue == AUTOPILOT_MODE_WIND) {
+							// Wind mode
+						}
+						else if (commandValue == AUTOPILOT_MODE_GPS) {
+							// GPS mode
+						}
+						break;
+					case AUTOPILOT_CHANGE_COURSE:
+						// Adjust Heading
+						break;
+				} // end switch command
+				break; // end furuno
+
+		default:
+			return FALSE;
+			break;
+		} // end switch manufacturer
+
+	}
 return TRUE;    
 }
 
+// Simnet Autopilot Command
+void EncodePGN130850(int command) {
+	std::vector<byte>payload;
+	int controllingDevice; //Is this the network address of the controlling device
+	int eventId;
+
+
+	//,41,9f,%s,ff,ff,%s,00,00,00,ff
+	payload.push_back(0x41); // This is the usual manufacturer code/industry code
+	payload.push_back(0x9F);
+	payload.push_back(command);
+	payload.push_back(0xFF); //unknown
+	payload.push_back(controllingDevice);
+	payload.push_back(eventId);
+	payload.push_back(0xFF); // Mode
+	payload.push_back(0xFF); // Mode
+	payload.push_back(0xFF); // direction
+	payload.push_back(0xFF); // angle
+	payload.push_back(0xFF); // angle
+	payload.push_back(0xFF); // unknown
+}
+
+// Simnet Autopilot Mode
+void EncodePGN65341(void) {
+
+}
+
+// Simnet Wind Angle
+void EncodePGN65431(int windAngle) {
+	std::vector<byte>payload;
+
+	payload.push_back(0x41); // This is the usual manufacturer code/industry code
+	payload.push_back(0x9F);
+	payload.push_back(0xFF);
+	payload.push_back(0xFF);
+	payload.push_back(0x03); // command
+	payload.push_back(0xFF);
+	payload.push_back(windAngle & 0xFF); // wind angle to be expressed in tenths of radians
+	payload.push_back((windAngle >> 8) & 0xFF);
+
+}
+	
+/* PGN 127237 is Heading/Track Control
+function AC12_PGN127237 () {
+  const heading_track_pgn = {
+	  "navigation" : "%s,2,127237,%s,%s,15,ff,3f,ff,ff,7f,%s,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s", - course to steer, heading
+	  "headinghold": "%s,2,127237,%s,%s,15,ff,7f,ff,ff,7f,%s,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s", locked heading/heading
+	  "wind":        "%s,2,127237,%s,%s,15,ff,7f,ff,ff,7f,ff,ff,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s", locked heading, heading
+	  "standby":     "%s,2,127237,%s,%s,15,ff,7f,ff,ff,7f,ff,ff,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s" // Magnetic
+	  // "standby":  "%s,2,127237,%s,%s,15,ff,3f,ff,ff,7f,ff,ff,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s" // True
+  }
+
+  // These are possibly heartbeats
+
+  const pgn65340 = {
+	  "standby":     "%s,3,65340,%s,255,8,41,9f,00,00,fe,f8,00,80",
+	  "headinghold": "%s,3,65340,%s,255,8,41,9f,10,01,fe,fa,00,80", // Heading Hold
+	  "followup":    "%s,3,65340,%s,255,8,41,9f,10,03,fe,fa,00,80", // Follow up
+	  "wind":        "%s,3,65340,%s,255,8,41,9f,10,03,fe,fa,00,80",
+	  "navigation":  "%s,3,65340,%s,255,8,41,9f,10,06,fe,f8,00,80"
+  }
+  const pgn65302 = {
+	  "standby":    "%s,7,65302,%s,255,8,41,9f,0a,6b,00,00,00,ff",
+	  "headinghold":"%s,7,65302,%s,255,8,41,9f,0a,69,00,00,28,ff", // Heading Hold
+	  "followup":   "%s,7,65302,%s,255,8,41,9f,0a,69,00,00,30,ff", // Follow up
+	  "wind":       "%s,7,65302,%s,255,8,41,9f,0a,69,00,00,30,ff",
+	  "navigation": "%s,7,65302,%s,255,8,41,9f,0a,6b,00,00,28,ff"  // guessing
+  }
+
+*/

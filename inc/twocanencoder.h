@@ -52,6 +52,92 @@
 // Logging (Info & Errors)
 #include <wx/log.h>
 
+// Combine all of the data from NMEA 183 XTE, RMB and APB sentences into 
+// a single struct required for navigation (in particular autopilot control)
+typedef struct NavigationData {
+	unsigned int originWaypointId;
+	wxString originWaypointName;
+	unsigned int destinationWaypointId;
+	wxString destinationWaypointNme;
+	unsigned int distanceToWaypoint;
+	short bearingFromOrigin;
+	short bearingFromPosition;
+	short closingVelocity;
+	int crossTrackError;
+	wxString routeGUID; // Use this to initiate a lookup of the waypoints
+	wxString routeName;
+	int vesselHeading;
+	int headingToSteer;
+	int track;
+} NavigationData;
+
+// Some DSC definitions
+enum class DSC_FORMAT_SPECIFIER {
+	GEO = 2,
+	DISTRESS = 12,
+	COMMON = 14,
+	ALLSHIPS = 16,
+	INDIVIDUAL = 20,
+	SEMI_AUTO = 23
+};
+
+enum class DSC_CATEGORY {
+	ROUTINE = 0,
+	SAFETY = 8,
+	URGENCY = 10,
+	CAT_DISTRESS = 12
+};
+
+enum class DSC_FIRST_TELECOMMAND {
+	ALL = 0,
+	DUPLEX = 1,
+	POLLING = 3,
+	UNABLE = 4,
+	ENDCALL = 5,
+	DATA = 6,
+	J3E = 9,
+	DISTRESSACK = 10,
+	DISTRESSRELAY = 12,
+	TTYFEC = 13,
+	TTYARQ = 15,
+	TEST = 18,
+	UPDATE = 21,
+	NOINFO = 26
+};
+
+enum class DSC_SECOND_TELECOMMAND {
+	NOREASON = 0,
+	CONGESTION = 1,
+	BUSY = 2,
+	QUEUE = 3,
+	BARRED = 4,
+	NOOPERATOR = 5,
+	TEMPOPERATOR = 6,
+	DSC_DISABLED = 7,
+	NOCHANNEL = 8,
+	NOMODE = 9,
+	RES18 = 10,
+	MEDICAL = 11,
+	PAYPHONE = 12,
+	FAX = 13,
+	NO_INFO = 26
+};
+
+enum class DSC_DISTRESS_NATURE {
+	FIRE = 0,
+	FLOODING = 1,
+	COLLISION = 2,
+	GROUNDING = 3,
+	CAPSIZE = 4,
+	SINKING = 5,
+	DISABLED = 6,
+	UNDESIGNATED = 7,
+	ABANDON = 8,
+	PIRATES = 9,
+	OVERBOARD = 10,
+	EPIRB = 12
+};
+
 // Global variables
 // A 1 byte CAN bus network address for this device if it is an Active device (0-253)
 extern int networkAddress;
@@ -60,16 +146,31 @@ extern int networkAddress;
 // For the gateway, logical not determines if we convert from NMEA 183 to NMEA 2000
 extern int supportedPGN;
 
+// Whether we can export waypoints from OpenCPN to external NMEA 2000 devices
+extern bool enableWaypoint;
+
+// Events passed up to the plugin
+extern const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT;
+
 class TwoCanEncoder {
 
 public:
 
-	TwoCanEncoder(void);
+	TwoCanEncoder(wxEvtHandler *handler);
 
 	~TwoCanEncoder(void);
 
+	// Reference to event handler address, ie. the TwoCan PlugIn
+	wxEvtHandler *eventHandlerAddress;
+
+	// Raise events to plugin, in particular a dsc sentence that time out waiting for a dse sentence
+	void RaiseEvent(int pgn, std::vector<byte> *data);
+
 	// Validate XDR Transducer Names
 	int GetInstanceNumber(wxString transducerName);
+
+	// Handles DSE sentence receive timeout
+	void OnDseTimerExpired(wxEvent &event);
 
 	// Fragment fast messages into sequences of messages
 	void FragmentFastMessage(CanHeader *header, std::vector<byte> *payload, std::vector<CanMessage> *canMessages);
@@ -180,7 +281,15 @@ public:
 	// AIS Decoding
 	TwoCanAis *aisDecoder;
 	
+	// Navigation Data for when the autopilot is engaged
+	// BUG BUG Is this used ??
+	NavigationData navigationData;
 
+	//If DSC sentence has a following DSE sentence, wait until it is received or times out, before transmitting PGN 129808 
+	wxTimer *dseTimer;
+	unsigned long long dseMMSINumber;
+	std::vector<byte> dscPayload;
+	
 };
 
 #endif

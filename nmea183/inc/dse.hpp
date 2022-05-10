@@ -75,8 +75,8 @@ class DSE : public RESPONSE
 	  int sentenceNumber;
 	  int queryFlag;
 	  unsigned long long mmsiNumber;
-	  int codeField;
-	  wxString dataField;
+	  std::vector<int> codeFields;
+	  std::vector<wxString> dataFields;
 
       /*
       ** Methods

@@ -70,7 +70,7 @@ void DSC::Empty( void )
 	positionOrFrequency = wxEmptyString;
 	timeOrTelephone = wxEmptyString;
 	relayMMSI = 0;
-	relayCategory = 0;
+	relayNatureOfDistress = 0;
 	ack = wxEmptyString;
 	dseExpansion = NFalse;
 }
@@ -98,7 +98,7 @@ bool DSC::Parse( const SENTENCE& sentence )
    positionOrFrequency = sentence.Field(6);
    timeOrTelephone = sentence.Field(7);
    relayMMSI = sentence.ULongLong(8);
-   relayCategory = sentence.Integer(9);
+   relayNatureOfDistress = sentence.Integer(9);
    ack = sentence.Field( 10 );
    dseExpansion = sentence.Field(11) == "E" ? NTrue : NFalse;
 
@@ -124,7 +124,7 @@ bool DSC::Write( SENTENCE& sentence )
    sentence += timeOrTelephone;
    sentence += positionOrFrequency;
    sentence += relayMMSI;
-   sentence += relayCategory;
+   sentence += relayNatureOfDistress;
    sentence += ack;
    sentence += dseExpansion;
 
@@ -144,7 +144,7 @@ const DSC& DSC::operator = ( const DSC &source )
 	  positionOrFrequency = source.positionOrFrequency;
 	  timeOrTelephone = source.timeOrTelephone;
 	  relayMMSI = source.relayMMSI;
-	  relayCategory = source.relayCategory;
+	  relayNatureOfDistress = source.relayNatureOfDistress;
 	  ack = source.ack;
 	  dseExpansion = source.dseExpansion;
   }

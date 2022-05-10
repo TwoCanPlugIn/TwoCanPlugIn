@@ -66,8 +66,8 @@ void DSE::Empty( void )
 	sentenceNumber = 0;
 	queryFlag = static_cast<int>(DSE_QUERY_FLAG::REPLY);
 	mmsiNumber = 0;
-	codeField = static_cast<int>(DSE_DATA_SPECIFIER::POSITION);
-	dataField = wxEmptyString;
+	codeFields.clear();
+	dataFields.clear();
 }
 
 bool DSE::Parse( const SENTENCE& sentence )
@@ -79,7 +79,7 @@ bool DSE::Parse( const SENTENCE& sentence )
    ** First we check the checksum...
    */
 
-   if ( sentence.IsChecksumBad( 12 ) == NTrue )
+   if ( sentence.IsChecksumBad(sentence.GetNumberOfDataFields() + 1) == NTrue )
    {
       SetErrorMessage( _T("Invalid Checksum") );
       return( FALSE );
@@ -89,9 +89,13 @@ bool DSE::Parse( const SENTENCE& sentence )
    sentenceNumber = sentence.Integer(2);
    queryFlag = sentence.Integer(3);
    mmsiNumber = sentence.ULongLong(4);
-   codeField = sentence.Integer(5);
-   dataField = sentence.Field(6);
-   
+   codeFields.clear();
+   dataFields.clear();
+
+   for (int i = 0; i < (sentence.GetNumberOfDataFields() - 4) / 2; i++) {
+	   codeFields.push_back(sentence.Integer(5 + (2 * i)));
+	   dataFields.push_back(sentence.Field(6 + (2 * i)));
+   }
    return( TRUE );
 }
 
@@ -109,8 +113,10 @@ bool DSE::Write( SENTENCE& sentence )
    sentence += sentenceNumber;
    sentence += queryFlag;
    sentence += mmsiNumber;
-   sentence += codeField;
-   sentence += dataField;
+   for (size_t i = 0; i < codeFields.size(); i++) {
+	   sentence += codeFields.at(i);
+	   sentence += dataFields.at(i);
+   }
    sentence.Finish();
 
    return( TRUE );
@@ -124,8 +130,8 @@ const DSE& DSE::operator = ( const DSE &source )
 	  sentenceNumber = source.sentenceNumber;
 	  queryFlag = source.queryFlag;
 	  mmsiNumber = source.mmsiNumber;
-	  codeField = source.codeField;
-	  dataField = source.dataField;
+	  codeFields = source.codeFields;
+	  dataFields = source.dataFields;
 	  
   }
    return *this;

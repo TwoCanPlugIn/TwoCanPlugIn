@@ -60,10 +60,6 @@
 
 // Plugin receives FrameReceived events from the TwoCan device
 const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT = wxNewEventType();
-
-// Plugin receives Autopilot Command events from the TwoCan Autopilot dialog
-const wxEventType wxEVT_AUTOPILOT_COMMAND_EVENT = wxNewEventType();
-
 // Globally accessible variables used by the plugin, device and the settings dialog.
 // OpenCPN Configuration Settings
 wxFileConfig *configSettings;
@@ -85,10 +81,12 @@ bool enableWaypoint;
 bool enableGateway;
 // If we act as a SignalK server
 bool enableSignalK;
-// If we act as a Media Server
+// If we can control a Fusion Media Player
 bool enableMusic;
-// If we are in Active Mode, whether we can control an Autpilot. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine
-int autopilotMode; 
+// If we can control an autopilot
+bool enableAutopilot;
+// If we are in Active Mode, what model of autopilot we control. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine
+int autopilotManufacturer; 
 // If any logging is to be performed and in what format (twocan raw, candump, canboat, yacht devices or csv)
 int logLevel;
 // A 29bit number that uniqiuely identifies the TwoCan device if it is an Active Device
@@ -101,6 +99,11 @@ NetworkInformation networkMap[CONST_MAX_DEVICES];
 // Works in conjunction with the Media Player plugin. Defined as a global because methods are invoked
 // from both TwoCanPlugin and TwoCanDevice
 TwoCanMedia *twoCanMedia;
+
+// TwoCanAutopilot is used to decode/encode NMEA 2000 autopilot messages
+// Works in conjunction with the Autopilot plugin. Defined as a global because methods are invoked
+// from both TwoCanPlugin and TwoCanDevice
+TwoCanAutopilot *twoCanAutopilot;
 
 // The TwoCan plugin
 class TwoCan : public opencpn_plugin_116, public wxEvtHandler {
@@ -125,12 +128,8 @@ public:
 	wxString GetLongDescription();
 	void SetNMEASentence(wxString &sentence); // Not used yet...
 	wxBitmap *GetPlugInBitmap();
-	int GetToolbarToolCount(void);
-	int GetToolbarItemId();
-	void OnToolbarToolCallback(int id);
 	void SetPluginMessage(wxString& message_id, wxString& message_body);
-	void SetPositionFix(PlugIn_Position_Fix &pfix);
-		
+	
 private: 
 	// NMEA 2000 device
 	TwoCanDevice *twoCanDevice;
@@ -155,20 +154,11 @@ private:
 	void StartDevice(void);
 	void StopDevice(void);
 
-	// Autopilot Toolbar
-	int autopilotToolbar;
-	wxString normalIcon;
-	wxString toggledIcon;
-	wxString rolloverIcon;
-	TwoCanAutopilot *twoCanAutopilot;
-	
-	// Handles Autopilot dialog commands, eg. On, Off, Left, Right 
-	void OnAutopilotCommand(wxCommandEvent &event);
-
 	// TwoCanEncoder is used to convert NMEA 183 sentences to NMEA 2000 messages 
 	TwoCanEncoder *twoCanEncoder;
 		
-	// BUG BUG Testing some failure on exit modes
+	// Prevent events occurring whilst in process of shutting down. 
+	// ie. the rug has been pulled from underneath us.
 	bool isRunning;
 };
 

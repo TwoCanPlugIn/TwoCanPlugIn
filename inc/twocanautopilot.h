@@ -27,25 +27,41 @@
       #include <wx/wx.h>
 #endif
 
+#include "twocanutils.h"
+
 // STL 
 #include <vector>
 
-#include "twocanautopilotdialog.h"
+// JSON stuff
+#include <wx/json_defs.h>
+#include <wx/jsonval.h>
+#include <wx/jsonreader.h>
+#include <wx/jsonwriter.h>
 
-// If we are in Active Mode, whether we can control an Autpilot. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine
-extern int autopilotMode; 
+// If we are in Active Mode, whether we can control an Autpilot. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine, 4 Furuno
+extern int autopilotManufacturer; 
 
 // A 1 byte CAN bus network address for this device if it is an Active device (0-253)
 extern int networkAddress;
 
+#define AUTOPILOT_CHANGE_STATUS 0
+#define AUTOPILOT_CHANGE_COURSE 1
+#define AUTOPILOT_CHANGE_MANUFACTURER 2
 
+// These must match the UI radio box values
 #define AUTOPILOT_POWER_OFF 0
 #define AUTOPILOT_POWER_STANDBY 1
-#define AUTOPILOT_POWER_ON 2
+#define AUTOPILOT_MODE_HEADING 2
+#define AUTOPILOT_MODE_WIND 3
+#define AUTOPILOT_MODE_GPS 4
 
-#define AUTOPILOT_COMMAND_HEADING 0
-#define AUTOPILOT_COMMAND_WIND 1
-#define AUTOPIOT_COMMAND_GPS 2
+// These are also defined in twocansettings as a hashmap
+#define RAYMARINE_MANUFACTURER_CODE 1851
+#define SIMARD_MANUFACTURER_CODE 1857
+#define GARMIN_MANUFACTURER_CODE 229
+
+#define MARINE_INDUSTRY_CODE 4;
+
 
 // The TwoCan Autopilot
 class TwoCanAutopilot {
@@ -53,25 +69,15 @@ class TwoCanAutopilot {
 public:
 	// The constructor
 	TwoCanAutopilot(int mode);
-	
+
 	// and destructor
 	~TwoCanAutopilot(void);
 
-	// when we have an actve route
-	void ActivateRoute(wxString name);
-	void DeactivateRoute(void);
-
-
 	// Generates NMEA 2000 autopilot messages
-	bool ParseCommand(int commandId, int commandValue, std::vector<CanMessage> *nmeaMessages);
+	bool EncodeAutopilotCommand(wxString message_body, std::vector<CanMessage> *nmeaMessages);
 
 protected:
 private:
-	bool isRouteActive;
-	wxString routeName;
-	wxString waypointName;
 
 };
-
-#endif 
-
+#endif

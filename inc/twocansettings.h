@@ -192,6 +192,15 @@ extern bool enableHeartbeat;
 // If we are in active mode, whether we act as a bi-directional gateway NMEA183 -> NMEA 2000
 extern bool enableGateway;
 
+// If we are in active mode, whether we can control an autopilot
+extern bool enableAutopilot;
+
+// If we are in active mode, whether we can control a Fusion Media Player
+extern bool enableMusic;
+
+// If we are in active mode, whether we can import/export waypoints
+extern bool enableWaypoint;
+
 // Whether to Log raw NMEA 2000 messages
 extern int logLevel;
 
@@ -224,12 +233,16 @@ protected:
 	void OnCheckMode(wxCommandEvent &event);
 	void OnCheckHeartbeat(wxCommandEvent &event);
 	void OnCheckGateway(wxCommandEvent &event);
+	void OnCheckMedia(wxCommandEvent &event);
+	void OnCheckAutopilot(wxCommandEvent &event);
+	void OnCheckWaypoint(wxCommandEvent &event);
 	void OnPause(wxCommandEvent &event);
 	void OnCopy(wxCommandEvent &event);
 	void OnOK(wxCommandEvent &event);
 	void OnApply(wxCommandEvent &event);
 	void OnCancel(wxCommandEvent &event);
 	void OnRightClick(wxMouseEvent& event);
+	void OnExportWaypoint(wxCommandEvent &event);
 
 private:
 	void SaveSettings(void);
@@ -237,6 +250,8 @@ private:
 	void GetDriverInfo(wxString fileName);
 	bool EnumerateDrivers(void);
 	bool togglePGN;
+
+	wxWindow *parentWindow;
 	
 	// To obtain the "friendly" name of Windows CAN driver
 	typedef wxChar *(*LPFNDLLDriverName)(void);

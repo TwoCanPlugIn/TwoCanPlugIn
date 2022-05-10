@@ -254,11 +254,12 @@
 #define FLAGS_LOG_YACHTDEVICES 4 // Found some samples from their Voyage Data Recorder
 #define FLAGS_LOG_CSV 5 // Comma Separted Variables
 
-// Bit values to determine in what Autpilot Model is selected
+// Bit values to determine in what Autpilot Brand is selected
 #define FLAGS_AUTOPILOT_NONE 0
 #define FLAGS_AUTOPILOT_GARMIN 1 
 #define FLAGS_AUTOPILOT_RAYMARINE 2 
 #define FLAGS_AUTOPILOT_NAVICO 3 
+#define FLAGS_AUTOPILOT_FURUNO 4
 
 // Bit values to match 2000 Active Mode features and the options checklistbox control
 #define FLAGS_MODE_HEARTBEAT 0
@@ -266,6 +267,11 @@
 #define FLAGS_MODE_WAYPOINT 2
 #define FLAGS_MODE_MUSIC 3
 #define FLAGS_MODE_AUTOPILOT 4
+
+// Event Id's
+const int SENTENCE_RECEIVED_EVENT = wxID_HIGHEST + 1;
+const int WAYPOINT_EXPORT_EVENT = wxID_HIGHEST + 2;
+const int DSE_EXPIRED_EVENT = wxID_HIGHEST + 3;
 
 // All the NMEA 2000 data is transmitted as an unsigned char which for convenience sake, I call a byte
 typedef unsigned char byte;
@@ -341,7 +347,14 @@ public:
 	static byte GenerateID(unsigned char previousSID);
 	// Calculate the number of microsoeconds since Posix Epoch
 	static unsigned long long GetTimeInMicroseconds(void);
+	// Return a Date/Time variable initialized to 1/1/1970. All NMEA 2000 Date/Time values are offsets from the Posic Epoch
+	static wxDateTime GetEpochTime(void);
+	// Calculate a NMEA 2000 date/time by adding the days since epoch and the seconds since midnight
+	static wxDateTime CalculateTime(unsigned short days, unsigned int seconds);
 	// BUG BUG Any other conversion functions required ??
+
+	// Encode Navico (Simrad, B&G, Lowrance) Night Mode command
+	static bool EncodeNavicoNightMode(const int networkAddress, const int networkGroup, const bool nightMode, std::vector<CanMessage> *canMessages);
 
 	// Used to generate the unique id for Windows versions (Note the Linux version is defined in twocansocket
 #if defined (__WXMSW__)

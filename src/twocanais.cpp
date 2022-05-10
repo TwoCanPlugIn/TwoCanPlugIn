@@ -984,9 +984,8 @@ bool TwoCanAis::EncodePGN129794(const std::vector<bool> binaryData, std::vector<
 			eta.Set(day, static_cast<wxDateTime::Month>(month - 1), now.GetMonth() + 1 > month ? now.GetYear() + 1 : now.GetYear(), 
 				hour < AIS_INVALID_HOUR ? hour : 0, minute < AIS_INVALID_MINUTE ? minute : 0, 0);
 
-			wxDateTime epoch((time_t)0);
-
-			wxTimeSpan diff = eta - epoch;
+			wxDateTime epochTime((time_t)0);
+			wxTimeSpan diff = eta - epochTime;
 
 			daysSinceEpoch = diff.GetDays();
 			secondsSinceMidnight = (diff.GetSeconds().GetValue() - (diff.GetDays() * 24 * 60 * 60)) * 1e4;

@@ -94,7 +94,6 @@
 #endif
 
 // Events passed up to the plugin
-const int SENTENCE_RECEIVED_EVENT = wxID_HIGHEST + 1;
 extern const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT;
 
 // NMEA 2000 Raw frame log file
@@ -142,8 +141,8 @@ extern bool enableSignalK;
 // If we act as a Media Server
 extern bool enableMusic;
 
-// If we are in Active Mode, whether we can control an Autpilot. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine
-extern int autopilotMode; 
+// If we are in Active Mode, whether we can control an Autpilot.
+extern bool enableAutopilot; 
 
 // Whether to Log raw NMEA 2000 messages
 extern int logLevel;
@@ -325,6 +324,15 @@ private:
 	// Decode PGN 65240 ISO Commanded Address
 	int DecodePGN65240(const byte *payload, DeviceInformation *device_Information);
 
+	// Decode PGN 65280 Manufacturer Proprietary Message
+	bool DecodePGN65280(const byte *payload);
+
+	// Decode PGN 65309 Manufacturer Proprietary Message
+	bool DecodePGN65309(const byte *payload);
+
+	// Decode PGN 126720 Manufacturer Proprietary Message
+	bool DecodePGN126720(const byte *payload);
+
 	// Decode PGN 126992 NMEA System Time
 	bool DecodePGN126992(const byte *payload, std::vector<wxString> *nmeaSentences);
 	
@@ -480,6 +488,12 @@ private:
 
 	// Decode Manufacturer Proprietary Fast Message (used by the Fusion Media Player thingy)
 	bool DecodePGN130820(const byte *payload, std::vector<wxString> *nmeaSentences);
+
+	// Decode Manufacturer Proprietary Fast Message
+	bool DecodePGN130822(const byte *payload);
+
+	// Decode Manufacturer Proprietary Fast Message
+	bool DecodePGN130824(const byte *payload);
 	
 	// Transmit an ISO Request
 	int SendISORequest(const byte destination, const unsigned int pgn);

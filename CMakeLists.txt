@@ -145,8 +145,6 @@ SET(SOURCES src/twocanerror.cpp
             src/twocanicons.cpp
             src/twocanencoder.cpp
             src/twocanautopilot.cpp
-			src/twocanautopilotdialog.cpp
-			src/twocanautopilotdialogbase.cpp
             src/twocanais.cpp
             src/twocanmedia.cpp)
 
@@ -159,8 +157,6 @@ SET(HEADERS inc/twocanerror.h
             inc/twocanicons.h
             inc/twocanencoder.h
             inc/twocanautopilot.h
-			inc/twocanautopilotdialog.h
-			inc/twocanautopilotdialogbase.h
             inc/twocanais.h
             inc/twocanmedia.h)
 
@@ -169,8 +165,8 @@ SET(NMEA183_SRC nmea183/src/apb.cpp
                 nmea183/src/bwr.cpp
                 nmea183/src/dbt.cpp
                 nmea183/src/dpt.cpp
-		nmea183/src/dsc.cpp
-		nmea183/src/dse.cpp
+				nmea183/src/dsc.cpp
+				nmea183/src/dse.cpp
                 nmea183/src/expid.cpp
                 nmea183/src/gga.cpp
                 nmea183/src/gll.cpp
@@ -183,7 +179,7 @@ SET(NMEA183_SRC nmea183/src/apb.cpp
                 nmea183/src/lat.cpp
                 nmea183/src/latlong.cpp
                 nmea183/src/long.cpp
-		nmea183/src/mob.cpp
+				nmea183/src/mob.cpp
                 nmea183/src/mtw.cpp
                 nmea183/src/mwv.cpp
                 nmea183/src/nmea0183.cpp
@@ -212,8 +208,8 @@ SET(NMEA183_INC nmea183/inc/apb.hpp
                 nmea183/inc/bwr.hpp
                 nmea183/inc/dbt.hpp
                 nmea183/inc/dpt.hpp
-		nmea183/inc/dsc.hpp
-		nmea183/inc/dse.hpp
+				nmea183/inc/dsc.hpp
+				nmea183/inc/dse.hpp
                 nmea183/inc/gga.hpp
                 nmea183/inc/gll.hpp
                 nmea183/inc/gpwpl.hpp
@@ -222,7 +218,7 @@ SET(NMEA183_INC nmea183/inc/apb.hpp
                 nmea183/inc/hdm.hpp
                 nmea183/inc/hdt.hpp
                 nmea183/inc/latlong.hpp
-		nmea183/inc/mob.hpp
+				nmea183/inc/mob.hpp
                 nmea183/inc/mtw.hpp
                 nmea183/inc/mwv.hpp
                 nmea183/inc/nmea0183.h
@@ -254,7 +250,7 @@ SET(JSON wxJSON/src/jsonreader.cpp
 IF(UNIX AND NOT APPLE)
 
     LIST(APPEND SOURCES 
-	src/twocansocket.cpp
+		src/twocansocket.cpp
         src/twocanlogreader.cpp
         src/twocaninterface.cpp
         src/twocanpcap.cpp)
