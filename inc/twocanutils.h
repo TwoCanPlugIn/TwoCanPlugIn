@@ -349,9 +349,6 @@ public:
 	static unsigned long long GetTimeInMicroseconds(void);
 	// BUG BUG Any other conversion functions required ??
 
-	// Encode Navico (Simrad, B&G, Lowrance) Night Mode command
-	static bool EncodeNavicoNightMode(const int networkAddress, const int networkGroup, const bool nightMode, std::vector<CanMessage> *canMessages);
-
 	// Used to generate the unique id for Windows versions (Note the Linux version is defined in twocansocket
 #if defined (__WXMSW__)
 	static int GetUniqueNumber(unsigned long *uniqueNumber);

@@ -3002,13 +3002,13 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 
 		// Field 16 - No idea what this is, presumably the DSC VHF Channel 70 or HF Frequencies 2187.5 kHz or 8414.5 
 		// "900016";
-		std::string callingFrequency = parser->Dsc.positionOrFrequency;
+		std::string callingFrequency = parser->Dsc.positionOrFrequency.ToStdString();
 		for (std::string::iterator it = callingFrequency.begin(); it != callingFrequency.end(); ++it) {
 			n2kMessage->push_back(0xFF); // Default to Data Unavailable
 		}
 
 		// Field 17
-		std::string receivingFrequency = parser->Dsc.positionOrFrequency;
+		std::string receivingFrequency = parser->Dsc.positionOrFrequency.ToStdString();
 		for (std::string::iterator it = receivingFrequency.begin(); it != receivingFrequency.end(); ++it) {
 			n2kMessage->push_back(0xFF); // Default to Data Unavailable
 		}
