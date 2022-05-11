@@ -194,11 +194,6 @@ unsigned long long TwoCanUtils::GetTimeInMicroseconds() {
 #endif
 }
 
-// Return a Date/Time variable initialized to the Posix & NMEA 2000 epoch, 1/1/1970
-wxDateTime TwoCanUtils::GetEpochTime(void) {
-	return wxDateTime::wxDateTime((time_t)0);
-}
-
 // Calculate the Date/Time value based on the NMEA 2000 days since epoch and seconds since midnight values
 wxDateTime TwoCanUtils::CalculateTime(unsigned short days, unsigned int seconds) {
 	wxDateTime tm = GetEpochTime();
