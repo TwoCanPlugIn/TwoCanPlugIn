@@ -40,6 +40,8 @@
 ** You can use it any way you like.
 */
 
+#include <vector>
+
 enum class DSE_DATA_SPECIFIER
 {
 	POSITION = 0,
