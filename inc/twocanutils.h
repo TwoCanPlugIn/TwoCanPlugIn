@@ -347,8 +347,6 @@ public:
 	static byte GenerateID(unsigned char previousSID);
 	// Calculate the number of microsoeconds since Posix Epoch
 	static unsigned long long GetTimeInMicroseconds(void);
-	// Calculate a NMEA 2000 date/time by adding the days since epoch and the seconds since midnight
-	static wxDateTime CalculateTime(unsigned short days, unsigned int seconds);
 	// BUG BUG Any other conversion functions required ??
 
 	// Encode Navico (Simrad, B&G, Lowrance) Night Mode command

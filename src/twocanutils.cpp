@@ -194,17 +194,6 @@ unsigned long long TwoCanUtils::GetTimeInMicroseconds() {
 #endif
 }
 
-// Calculate the Date/Time value based on the NMEA 2000 days since epoch and seconds since midnight values
-wxDateTime TwoCanUtils::CalculateTime(unsigned short days, unsigned int seconds) {
-	wxDateTime tm = GetEpochTime();
-	if ((IsDataValid(days)) && (IsDataValid(seconds))) {
-		tm += wxDateSpan::Days(days);
-		tm += wxTimeSpan::Seconds((wxLongLong)seconds / 10000);
-	}
-	return tm;
-}
-
-
 // Encode the manufacturer proprietary pgn to set the day/night mode for Navico (B&G, Simrad, Lowrance) displays.
 bool TwoCanUtils::EncodeNavicoNightMode(int networkAddress, int networkGroup, bool nightMode, std::vector<CanMessage> *canMessages) {
 	CanMessage message;
