@@ -303,14 +303,14 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 			if (folderType == 0x01) { // Root Folder
 				root["entertainment"]["device"]["media"]["rootfolder"] = true;
 			}
-			if (folderType == 0x02) { // normal folder
+			if (folderType == 0x02) { // Normal folder
 				root["entertainment"]["device"]["media"]["rootfolder"] = false;
 			}
 			root["entertainment"]["device"]["media"]["folderid"] = folderId;
 			root["entertainment"]["device"]["media"]["foldersessionid"] = folderSessionId;
 		}
 
-		// We need some way to synchronize/wait
+		// BUG BUG We need some way to synchronize/wait, currently done in the UI.
 
 		break;
 
