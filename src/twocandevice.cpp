@@ -41,8 +41,8 @@
 // 1.91 - 20/10/2020 Add PGN 129540, Bug Fixes (random position - missing break, socket & queue timeouts)
 // 1.92 - 10/04/2021 Fix for fast message assembly & SID generation
 // 2.0 - 04/07/2021 Bi-directional gateway (incl AIS)
-// 2.1 - 10/10/2021 Minor fix to GGA/DBT in Gateway, DSC & MOB Sentences, Waypoint creation, epoch time fixes (time_t)0
-// wxWidgets 3.15 support for MacOSX, , Autopilot & Fusion Media control, Navico display dimming & night mode
+// 2.1 - 04/04/2022 Minor fix to GGA/DBT in Gateway, DSC & MOB Sentences, Waypoint creation, epoch time fixes (time_t)0
+// wxWidgets 3.15 support for MacOSX, Fusion Media control, OCPN Messaging for NMEA 2000 Transmit
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //
@@ -670,7 +670,7 @@ int TwoCanDevice::ReadWindowsDriver() {
 			// Reset the FrameReceived event
 			ResetEvent(eventHandle);
 
-		} // end while TestDestory
+		} // end while TestDestroy
 
 		wxLogMessage(_T("TwoCan Device, Read Thread exiting"));
 
@@ -2063,6 +2063,17 @@ bool TwoCanDevice::DecodePGN127233(const byte *payload, std::vector<wxString> *n
 			speedOverGround * CONVERT_MS_KNOTS / 100, RADIANS_TO_DEGREES((float)courseOverGround / 10000),
 			mmsiNumber, batteryStatus));
 
+		// As OpenCPN does not support this sentence, just drop a waypoint
+		// When it does, remove this code
+		PlugIn_Waypoint waypoint;
+		waypoint.m_IsVisible = true;
+		waypoint.m_MarkName = wxString::Format("Man Overboard at: %s", activationTime);
+		waypoint.m_IconName = _T("Mob");
+		waypoint.m_GUID = GetNewGUID();
+		waypoint.m_lat = latitudeDouble;
+		waypoint.m_lon = longitudeDouble;
+		AddSingleWaypoint(&waypoint, true);
+
 		return TRUE;
 	}
 	else {
@@ -2367,6 +2378,7 @@ bool TwoCanDevice::DecodePGN127257(const byte *payload, std::vector<wxString> *n
 		wxString xdrString;
 
 		// BUG BUG Not sure if Dashboard supports yaw and whether roll should be ROLL or HEEL
+		// BUG BUG NMEA 183 v4.11 standard defines Pitch, Yaw & Roll, however don't want to break the existing dashboard
 		if (TwoCanUtils::IsDataValid(yaw)) {
 			xdrString.Append(wxString::Format("A,%0.2f,D,YAW,", RADIANS_TO_DEGREES((float)yaw / 10000)));
 		}
@@ -2447,7 +2459,7 @@ bool TwoCanDevice::DecodePGN127488(const byte *payload, std::vector<wxString> *n
 		}
 
 		if (TwoCanUtils::IsDataValid(engineSpeed)) {
-			// Note, Now using NMEA 183 v4.11 standard XDR names
+			// BUGB BUG Note, Now using NMEA 183 v4.11 standard XDR names
 			nmeaSentences->push_back(wxString::Format("$IIXDR,T,%.2f,R,Engine#%1d", engineSpeed * 0.25f, engineInstance));
 			/*
 			switch (engineInstance) {
@@ -2567,13 +2579,14 @@ bool TwoCanDevice::DecodePGN127489(const byte *payload, std::vector<wxString> *n
 
 		// BUG BUG Instead of using logical and, separate into separate sentences so if invalid value for one or two sensors, we still send something
 		if ((TwoCanUtils::IsDataValid(oilPressure)) && (TwoCanUtils::IsDataValid(engineTemperature)) && (TwoCanUtils::IsDataValid(alternatorPotential))) {
-			// Note, Now using NMEA 183 v4.11 standard XDR names
+			// BUG BUG Note, Now using NMEA 183 v4.11 standard XDR names
 			nmeaSentences->push_back(wxString::Format("$IIXDR,P,%.2f,P,EngineOil#%1d,C,%.2f,C,Engine#%1d,U,%.2f,V,Alternator#%1d", 
 				(float)(oilPressure * 100.0f), engineInstance,
 				(float)(engineTemperature * 0.01f) - CONST_KELVIN, engineInstance,
 				(float)(alternatorPotential * 0.01f), engineInstance));
-			// Type G = Generic, I'm defining units as H to define hours
-			nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,H,Engine#%1d", (float)totalEngineHours / 3600, engineInstance));
+			// Type G = Generic, For deprecated TwoCan naming I defined units as H to indicate hours
+			// NMEA 183 v4.11 does not stipulate a field for the units. Until identified otherwise, leave blank
+			nmeaSentences->push_back(wxString::Format("$IIXDR,G,%.2f,,Engine#%1d", (float)totalEngineHours / 3600, engineInstance));
 			
 			return TRUE;
 		}
@@ -2601,7 +2614,7 @@ bool TwoCanDevice::DecodePGN127505(const byte *payload, std::vector<wxString> *n
 
 		unsigned int tankCapacity; // 0.1 L
 		tankCapacity = payload[3] | (payload[4] << 8) | (payload[5] << 16) | (payload[6] << 24);
-		// Note, Now using NMEA 4.11 standard XDR names
+		// BUG BUG Note, Now using NMEA 4.11 standard XDR names
 		if (TwoCanUtils::IsDataValid(tankLevel)) {
 			switch (tankType) {
 				case TANK_FUEL:
@@ -2653,7 +2666,7 @@ bool TwoCanDevice::DecodePGN127508(const byte *payload, std::vector<wxString> *n
 		byte sid;
 		sid = payload[7];
 		
-		// Note, Now using NMEA 183 v4.11 standard XDR names
+		// BUG BUG Note, Now using NMEA 183 v4.11 standard XDR names
 		if ((TwoCanUtils::IsDataValid(batteryVoltage)) && (TwoCanUtils::IsDataValid(batteryCurrent))) {
 			nmeaSentences->push_back(wxString::Format("$IIXDR,U,%.2f,V,Battery#%1d,I,%.2f,A,Battery#%1d,C,%.2f,C,Battery#%1d", 
 				(float)(batteryVoltage * 0.01f), batteryInstance, 
@@ -4599,7 +4612,6 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 
 
 // Decode PGN 129808 NMEA DSC Call
-// A mega confusing combination !!
 // $--DSC, xx,xxxxxxxxxx,xx,xx,xx,x.x,x.x,xxxxxxxxxx,xx,a,a
 //          |     |       |  |  |  |   |  MMSI        | | Expansion Specifier
 //          |   MMSI     Category  Position           | Acknowledgement        
@@ -4619,9 +4631,10 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 		dscCategory = payload[1];
 
 		wxString mmsiAddress = wxEmptyString;
-		// BUG BUG Note appended zero
+		// BUG BUG Note MMSI addresses are 9 digits but the spec for both NMEA 183 & 2000 append zero as the field could
+		// also be encoded as a geographic location, encoded using 10 digits.
 		if (payload[6] != 0xFF) {
-			mmsiAddress = wxString::Format("%02d%02d%02d%02d%02d", payload[2], payload[3], payload[4], payload[5], payload[6]);
+			mmsiAddress = wxString::Format("%02x%02x%02x%02x%02x", payload[2], payload[3], payload[4], payload[5], payload[6]);
 		}
 
 		byte firstTelecommand; // or Nature of Distress
@@ -4700,7 +4713,7 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 
 		wxString vesselInDistress = wxEmptyString;
 
-		if (payload[index + 4] != 0xFF) {
+		if (payload[index + 4] != 0xFF) { // If there is no MMSI address, the value should be all 0xFF
 			vesselInDistress = wxString::Format("%02d%02d%02d%02d%02d", payload[index], payload[index + 1], payload[index + 2], payload[index + 3], payload[index + 4]);
 		}
 
@@ -4745,35 +4758,29 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 
 		index += 2;
 
-		// $--DSC, xx,xxxxxxxxxx,xx,xx,xx,x.x,x.x,xxxxxxxxxx,xx,a,a
-		//          |     |       |  |  |  |   |  MMSI        | | Expansion Specifier
-		//          |   MMSI     Category  Position           | Acknowledgement        
-		//          Format Specifer  |  |      |Time          Nature of Distress
-		//                           |  Type of Communication or Second telecommand
-		//                           Nature of Distress or First Telecommand
 		wxString dscSentence;
 
-		dscSentence = wxString::Format("$CDDSC,%02d,%s", formatSpecifier - 100, mmsiAddress.ToAscii().data());
+		dscSentence = wxString::Format("$CDDSC,%02d,%s", formatSpecifier - 100, mmsiAddress);
 
 		if (formatSpecifier == 112) { // If Format Specifier is Distress, DSC Category is NULL
-			dscSentence += wxString::Format(",,%02d,%02d,%s,%s,,,%c", firstTelecommand - 100, secondTelecommand - 100, position.ToAscii().data(),
-				timeOfPosition.ToAscii().data(), endOfSequence == 117 ? 'R' : endOfSequence == 122 ? 'B' : 'S');
+			dscSentence += wxString::Format(",,%02d,%02d,%s,%s,,,%c", firstTelecommand - 100, secondTelecommand - 100, position,
+				timeOfPosition, endOfSequence == 117 ? 'R' : endOfSequence == 122 ? 'B' : 'S');
 		}
 		else { // Format Specifier is All Ships, Group or Individual
 			//"$CDDSC,16,0112345670,12,12,09,1474712219,1234,9991212120,00,S,,", _
 			//"$CDDSC,16,0112345670,08,09,26,041250,,,,S,,*C9",
 			if (dscCategory == 112) { // Either a Distress Ack, Distres Relay or Distress Relay Ack
 				dscSentence += wxString::Format(",%02d,%02d,%02d,%s,%s,%s,%02d,%c", dscCategory - 100, firstTelecommand - 100, secondTelecommand - 100,
-					position.ToAscii().data(), timeOfPosition.ToAscii().data(), vesselInDistress.ToAscii().data(), secondTelecommand - 100,
+					position, timeOfPosition, vesselInDistress, secondTelecommand - 100,
 					endOfSequence == 117 ? 'R' : endOfSequence == 122 ? 'B' : 'S');
 			}
-			else { // 
+			else { // Urgency of Safety.Eg, A position update
 				dscSentence += wxString::Format(",%02d,%02d, %02d,%s,%s,,,%c", dscCategory - 100, firstTelecommand - 100, secondTelecommand - 100,
-					position.ToAscii().data(), timeOfPosition.ToAscii().data(), endOfSequence == 117 ? 'R' : endOfSequence == 122 ? 'B' : 'S');
+					position, timeOfPosition, endOfSequence == 117 ? 'R' : endOfSequence == 122 ? 'B' : 'S');
 			}
 		}
 
-		if (dscExpansionEnabled == 0x01) {
+		if ((dscExpansionEnabled & 0x01)== 0x01) {
 			dscSentence += ",E";
 		}
 		else {
@@ -4784,71 +4791,42 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 
 		// If there is DSE Expansion Data, the following pairs are repeated
 
-		if (dscExpansionEnabled == 0x01) {
+		if ((dscExpansionEnabled & 0x01) == 0x01) {
 
 			byte dscExpansionSymbol;
 			std::vector<byte> dseExpansionData;
 			wxString dseSentence;
 
-			dseSentence = wxString::Format("$CDDSE,1,1,A,%s,", mmsiAddress.ToAscii().data());
+			dseSentence = wxString::Format("$CDDSE,1,1,A,%s", mmsiAddress);
 			
 			for (size_t j = 0; j < 2; j++) {
 
 				dscExpansionSymbol = payload[index];
-				dseSentence += wxString::Format("%02d,", dscExpansionSymbol - 100);
-				index += 1;
+				if (dscExpansionSymbol != 0xFF) {
+					dseSentence += wxString::Format(",%02d,", dscExpansionSymbol - 100);
+					index += 1;
 
-				size_t  dseExpansionDataLength = payload[index];
-				index += 1;
+					size_t  dseExpansionDataLength = payload[index];
+					index += 1;
 
-				if ((payload[index] == 1) && (dseExpansionDataLength > 2)) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
-					index += 1; // past ascii/unicode character
+					byte dscEncoding = payload[index]; // Should really check it is 0x01  to denote ASCII
+					index += 1;
 
-					std::vector<byte> dseRawExpansionData;
-					for (size_t k = 0; k < dseExpansionDataLength - 2; k++) {
-						dseSentence+=wxString::Format("%d",payload[index]);
-						index += 1;
-					}
-					/*
-					// Refer to ITU-R M.821 Table 1.
-					switch (dscExpansionSymbol) {
+					if (dseExpansionDataLength > 2) {
 
-					case 100: // enhanced position
-						dseSentence += ",00,";
-						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
-						break;
-					case 101: // Source and datum of position
-						dseSentence += ",01,";
-						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
-						break;
-					case 102: // Current speed of the vessel - 4 bytes
-						dseSentence += ",02,";
-						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
-						break;
-					case 103: // Current course of the vessel - 4 bytes
-						dseSentence += ",03,";
-						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
-						break;
-					case 104: // Additional Station information - 10
-						dseSentence += ",04,";
-						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
-						break;
-					case 105: // Enhanced Geographic Area - 12
-						dseSentence += ",05,";
-						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
-						break;
-					case 106: // Numbr of persons onboard - 2 characters
-						dseSentence += ",06,";
-						//dseSentence += DecodeDSEExpansionIntegers(dseRawExpansionData);
-						break;
-					case 0xFF:
-						break;
-					} // switch
-					*/
-				} // ascii
-			} // pairs
+						for (size_t k = 0; k < dseExpansionDataLength - 2; k++) {
+							dseSentence += std::to_string(payload[index]);
+							index += 1;
+						}
+					} 
+				}
+				else {
+					// Assuming they have correctly encoded a blank value with the correct length & encoding byte
+					index += 2;
+				}
+			}
 			nmeaSentences->push_back(dseSentence);
-		} // dse expansion
+		} 
 
 		return TRUE;
 	}
@@ -4857,7 +4835,7 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 	}
 }
 
-// Decode table from ITU-R M.825
+// Decode table from ITU-R M.825 // Not actually used here, but.....
 wxString TwoCanDevice::DecodeDSEExpansionCharacters(std::vector<byte> dseData) {
 	wxString result;
 	char lookupTable[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '\'',

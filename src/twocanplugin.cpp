@@ -29,7 +29,8 @@
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20-08-2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // 2.0 - 04/07/2021 Bi-Directional Gateway, Kvaser support on Mac OSX, Fast Message Assembly & SID generation fix, PCAP log file support 
-// 2.1 - 04/04/2022 Various fixes, MOB, DSC support, Fusion Media Player, Autopilot, Navico display integration, Waypoint import/export
+// 2.1 - 04/04/2022 Minor fix to GGA/DBT in Gateway, DSC & MOB Sentences, Waypoint creation, epoch time fixes (time_t)0
+// wxWidgets 3.15 support for MacOSX, Fusion Media control, OCPN Messaging for NMEA 2000 Transmit
 // Outstanding Features: 
 // 1. Localization ??
 //
@@ -189,11 +190,12 @@ void TwoCan::SetNMEASentence(wxString &sentence) {
 
 		if (twoCanEncoder->EncodeMessage(sentence, &nmeaMessages) == TRUE) {
 			unsigned int id;
+			int returnCode;
 			// Some NMEA 183 sentence conversions generate multipe NMEA 2000 PGN's
 			// Also if the PGN is a fast message, there will be multiple frames
+			// So we need a vector of frames to be sent
 			for (auto it : nmeaMessages) {
-				TwoCanUtils::EncodeCanHeader(&id,&it.header);
-				int returnCode;
+				TwoCanUtils::EncodeCanHeader(&id, &it.header);
 				returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
 					wxLogMessage(_T("TwoCan Plugin, Error sending converted NMEA 183 sentence %d"), returnCode);
@@ -209,7 +211,6 @@ void TwoCan::SetNMEASentence(wxString &sentence) {
 void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 	// Receive MOB events from OpenCPN and generate corresponding NMEA 2000 message, PGN 127233
 	if (message_id == _T("OCPN_MAN_OVERBOARD")) {
-		wxMessageBox("MOB");
 		if ((deviceMode == TRUE) && (twoCanDevice != nullptr) && (twoCanEncoder != nullptr)) {
 			wxJSONValue root;
 			wxJSONReader reader;
@@ -230,11 +231,10 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 				// Now iterate the waypoints in the route to find the actual mob position
 				// What the fuck were the OpenCPN developers thinking, this is so fucking stupid
 				Plugin_WaypointList *pWaypointList = mobRoute->pWaypointList;
-				for (auto waypointIterator : *pWaypointList) {
-					// What a stupid way to identify the MOB, by using the name of a MOB icon.
-					wxLogMessage(wxString::Format("MOB Waypoint: %s", waypointIterator->m_IconName.Lower()));
+				for (auto it : *pWaypointList) {
 
-					if (waypointIterator->m_IconName.Lower() == _T("mob")) {
+					// What a stupid way to identify the MOB, by using the name of a MOB icon.
+					if (it->m_IconName.Lower() == _T("mob")) {
 
 						// Encode it as NMEA 0183 and then parse it to the twocanencoder method
 						// to generate the the NMEA 2000 message. A bit inefficient, but eliminates code duplication
@@ -242,22 +242,19 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 						SENTENCE sentence;
 						nmea0183.TalkerID = "EC";
 						nmea0183.Mob.BatteryStatus = 0;
-						nmea0183.Mob.Position.Latitude.Latitude = waypointIterator->m_lat;
-						nmea0183.Mob.Position.Latitude.Northing = waypointIterator->m_lat >= 0 ? NORTHSOUTH::North : NORTHSOUTH::South;
-						nmea0183.Mob.Position.Longitude.Longitude = waypointIterator->m_lon;
-						nmea0183.Mob.Position.Longitude.Easting = waypointIterator->m_lon >= 0 ? EASTWEST::East : EASTWEST::West;
+						nmea0183.Mob.Position.Latitude.Latitude = it->m_lat;
+						nmea0183.Mob.Position.Latitude.Northing = it->m_lat >= 0 ? NORTHSOUTH::North : NORTHSOUTH::South;
+						nmea0183.Mob.Position.Longitude.Longitude = it->m_lon;
+						nmea0183.Mob.Position.Longitude.Easting = it->m_lon >= 0 ? EASTWEST::East : EASTWEST::West;
 						nmea0183.Mob.Write(sentence);
-
-						// BUG BUG DEBUG REMOVE
-						wxLogMessage(_T("TwoCan MOB: %s"), sentence.Sentence);
 
 						std::vector<CanMessage> messages;
 
 						if (twoCanEncoder->EncodeMessage(sentence, &messages) == TRUE) {
 							unsigned int id;
+							int returnCode;
 							for (auto it : messages) {
 								TwoCanUtils::EncodeCanHeader(&id, &it.header);
-								int returnCode;
 								returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 								if (returnCode != TWOCAN_RESULT_SUCCESS) {
 									wxLogMessage(_T("TwoCan Plugin, Error sending MOB message %d"), returnCode);
@@ -278,9 +275,9 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 		if ((deviceMode == TRUE) && (enableMusic == TRUE) && (twoCanDevice != nullptr) && (twoCanMedia != nullptr)) {
 			std::vector<CanMessage> messages;
 			unsigned int id;
+			int returnCode;
 			if (twoCanMedia->EncodeMediaCommand(message_body, &messages)) {
 				for (auto it : messages) {
-					int returnCode;
 					TwoCanUtils::EncodeCanHeader(&id, &it.header);
 					returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
@@ -292,7 +289,8 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 		}
 	}
 
-	// Handle request to export waypoints via NMEA 2000 - initiated by Navico Tools plugin
+	// Handle request to export waypoints via NMEA 2000 - initiated by Two Tools plugin
+	// Not used as the Toys plugin uses the TWOCAN_TRAMSIT_MESSAGE mechanism
 	else if (message_id == _T("TWOCAN_EXPORT_WAYPOINTS")) {
 		if ((deviceMode == TRUE) && (enableWaypoint == TRUE) && (twoCanDevice != nullptr) && (twoCanEncoder != nullptr)) {
 			wxJSONValue root;
@@ -316,13 +314,12 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 						// No counterpart for PGN 130074 description to store the description value
 						//root["navico"]["exportwaypoint"]["description"]
 
-						// Use the existing NMEA 183 WPL encoder to encode the NMEA 2000 message. As described above, a little inefficient
+						// Use the existing NMEA 183 WPL encoder to encode the NMEA 2000 message. 
+						// As described above, a little inefficient
 						nmea0183.TalkerID = "EC";
 						nmea0183.Wpl.To = root["navico"]["exportwaypoint"]["name"].AsString();
-						//value = root["navico"]["exportwaypoint"]["latitude"];
 						nmea0183.Wpl.Position.Latitude.Latitude = root["navico"]["exportwaypoint"]["latitude"].AsDouble();
 						nmea0183.Wpl.Position.Latitude.Northing = nmea0183.Wpl.Position.Latitude.Latitude >= 0 ? NORTHSOUTH::North : NORTHSOUTH::South;
-						//value = root["navico"]["exportwaypoint"]["longitude"];
 						nmea0183.Wpl.Position.Longitude.Longitude = root["navico"]["exportwaypoint"]["longitude"].AsDouble(); // GetJsonDouble(value);
 						nmea0183.Wpl.Position.Longitude.Easting = nmea0183.Wpl.Position.Longitude.Longitude >= 0 ? EASTWEST::East : EASTWEST::West;
 						nmea0183.Wpl.Write(sentence);
@@ -331,12 +328,12 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 
 						if (twoCanEncoder->EncodeMessage(sentence, &messages) == TRUE) {
 							unsigned int id;
+							int returnCode;
 							for (auto it : messages) {
 								TwoCanUtils::EncodeCanHeader(&id, &it.header);
-								int returnCode;
 								returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 								if (returnCode != TWOCAN_RESULT_SUCCESS) {
-									wxLogMessage(_T("TwoCan Plugin, Error sending Waypoint message %d"), returnCode);
+									wxLogMessage(_T("TwoCan Plugin, Error sending Waypoint export message %d"), returnCode);
 								}
 								wxThread::Sleep(CONST_TEN_MILLIS);
 							}
@@ -393,13 +390,14 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 	}
 
 	// Handle Autopilot Plugin dialog commands
+	// Not yet implemented
 	else if (message_id == _T("TWOCAN_AUTOPILOT_COMMAND")) {
 		if ((deviceMode == TRUE) && (enableAutopilot == TRUE) && (twoCanDevice != nullptr) && (twoCanAutopilot != nullptr)) {
 			std::vector<CanMessage> messages;
 			unsigned int id;
+			int returnCode;
 			if (twoCanAutopilot->EncodeAutopilotCommand(message_body, &messages)) {
 				for (auto it : messages) {
-					int returnCode;
 					TwoCanUtils::EncodeCanHeader(&id, &it.header);
 					returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
@@ -428,7 +426,8 @@ void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 			}
 			break;
 
-		case DSE_EXPIRED_EVENT: // A received DSC Sentence has timed out waiting for a DSE sentence 
+		case DSE_EXPIRED_EVENT: 
+			// A received DSC Sentence has timed out waiting for a DSE sentence, so we send PGN 129808 without the DSE data
 			if (isRunning) {
 				CanHeader header;
 				header.source = networkAddress;
@@ -437,7 +436,6 @@ void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 				header.pgn = std::atoi(event.GetString());
 
 				std::vector<byte> *payload = (std::vector<byte> *) event.GetClientData();
-
 				int returnCode = twoCanDevice->FragmentFastMessage(&header, payload->size(), payload->data());
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
 					wxLogMessage("TwoCan Plugin, Error sending expired DSC message %d", returnCode);
@@ -509,11 +507,11 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("Address"), &networkAddress, 0);
 		configSettings->Read(_T("Heartbeat"), &enableHeartbeat, FALSE);
 		configSettings->Read(_T("Gateway"), &enableGateway, FALSE);
-		configSettings->Read(_T("Autopilot"), &enableAutopilot, FALSE);
 		configSettings->Read(_T("Waypoint"), &enableWaypoint, FALSE);
 		configSettings->Read(_T("Music"), &enableMusic, FALSE);
-		configSettings->Read(_T("AutopilotBrand"), &autopilotManufacturer, 0);
 		// Not ready to implement yet
+		//configSettings->Read(_T("Autopilot"), &enableAutopilot, FALSE);
+		//configSettings->Read(_T("AutopilotBrand"), &autopilotManufacturer, 0);
 		//configSettings->Read(_T("SignalK"), &enableSignalK, FALSE);
 		return TRUE;
 	}
@@ -547,10 +545,12 @@ bool TwoCan::SaveConfiguration(void) {
 		configSettings->Write(_T("Address"), networkAddress);
 		configSettings->Write(_T("Heartbeat"), enableHeartbeat);
 		configSettings->Write(_T("Gateway"), enableGateway);
-		configSettings->Write(_T("Autopilot"), enableAutopilot);
+		
 		configSettings->Write(_T("Waypoint"), enableWaypoint);
 		configSettings->Write(_T("Music"), enableMusic);
 		// Not ready to implement yet....
+		//configSettings->Write(_T("Autopilot"), enableAutopilot);
+		//configSettings->Read(_T("AutopilotBrand"), autopilotManufacturer);
 		//configSettings->Write(_T("SignalK"), enableSignalK);
 
 		return TRUE;

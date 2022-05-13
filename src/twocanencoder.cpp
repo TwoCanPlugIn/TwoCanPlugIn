@@ -26,8 +26,9 @@
 // Version History: 
 // 1.0 Initial Release of Bi-directional Gateway
 // 1.1 - 04/07/2021 Add AIS conversion
-// 1.2 - 10/10/2021 Add DSC & MOB conversion
- 
+// 1.2 - 04/04/2022 Add DSC & MOB conversion, Fix incorrect GGA PGN (caused random depth values), Fix APB flags
+//       Use NMEA 0183 v4.11 XDR standard transducer names
+
 #include "twocanencoder.h"
 
 
@@ -373,7 +374,8 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 					if ((dseTimer->IsRunning()) && (dseMMSINumber == nmeaParser.Dse.mmsiNumber) && (nmeaParser.Dse.sentenceNumber == nmeaParser.Dse.totalSentences)) {
 						// We've received a DSE sentence that matches a preceding DSC sentence and within the time limit
 						// Add the DSE data pairs to the PGN 129808 payload
-						for (size_t i = 0; i < nmeaParser.Dse.codeFields.size(); i++) {
+						// Not sure if the DSE is limted to two items for NMEA 2000 ?
+						for (size_t i = 0; i < nmeaParser.Dse.codeFields.size(), i < 2; i++) {
 							dscPayload.push_back(nmeaParser.Dse.codeFields.at(i) + 100); // Code byte 
 							dscPayload.push_back(nmeaParser.Dse.dataFields.at(i).size() + 2); // Length byte includes length & control byte
 							dscPayload.push_back(0x01); // Control Byte, 0x01 = ASCII
@@ -2811,12 +2813,12 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 		// Otherwise DSC Category is one of: Distress = 112, Routine = 100, Safety = 108  = Safety, Urgency = 110
 		byte dscCategory;
 		if (formatSpecifier == (byte)DSC_FORMAT_SPECIFIER::DISTRESS) {
-			dscCategory = parser->Dsc.category;
-			n2kMessage->push_back(dscCategory + 100);
-		}
-		else {
 			dscCategory = 0xFF;
 			n2kMessage->push_back(dscCategory);
+		}
+		else {
+			dscCategory = parser->Dsc.category;
+			n2kMessage->push_back(dscCategory + 100);
 		}
 		
 		// Field 3. MMSI (or geographic area), 
@@ -2831,7 +2833,7 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 		}
 		else {
 			for (size_t i = 0; i < 5; i++) {
-				// This is the broken B&G implementation, otherwise use std::atoi or base 10
+				// BUG BUG This displays correctly on B&G but seems to differ from the spec. Nees to be tested against other MFD's
 				n2kMessage->push_back(strtol(sourceAddress.substr(i * 2, 2).data(), NULL, 10));
 			}
 		}
@@ -2967,12 +2969,18 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 		}
 		
 		// Field 12 _Should always contain the MMSI of the vessel in distress
+		// BUG BUG B&G Fails to display if this is set as per the spec ?
+		std::string Address = std::to_string(parser->Dsc.mmsiNumber);
 		if ((formatSpecifier == (byte)DSC_FORMAT_SPECIFIER::DISTRESS) || (dscCategory == (byte)DSC_CATEGORY::CAT_DISTRESS)) {
-			std::string Address = std::to_string(parser->Dsc.mmsiNumber);
-			if (formatSpecifier == (byte)DSC_FORMAT_SPECIFIER::ALLSHIPS) {
-				for (size_t i = 0; i < 5; i++) {
-					n2kMessage->push_back(0xFF);
-				}
+			for (size_t i = 0; i < 5; i++) {
+				//n2kMessage->push_back(strtol(sourceAddress.substr(i * 2, 2).data(), NULL, 10));
+				n2kMessage->push_back(0xFF);
+			}
+
+		}
+		else {
+			for (size_t i = 0; i < 5; i++) {
+				n2kMessage->push_back(0xFF);
 			}
 		}
 
@@ -3037,7 +3045,8 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 		n2kMessage->push_back(messageId & 0xFF);
 		n2kMessage->push_back((messageId >> 8) & 0xFF);
 
-		// If there is a DSE sentence to follow, we copy the payload and wait for the DSE sentence to arrive
+		// If there is a DSE sentence to follow, we copy this payload and wait for the DSE sentence to arrive,
+		// add the remaining bytes and send
 		if (parser->Dsc.dseExpansion == NMEA0183_BOOLEAN::NTrue) {
 			dseMMSINumber = parser->Dsc.mmsiNumber;
 			dseTimer->Start(2 * CONST_ONE_SECOND, wxTIMER_ONE_SHOT);
@@ -3064,8 +3073,8 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back(dseExpansionFieldSymbol);
 
 			// Field 24
-			n2kMessage->push_back(0x02); // Length of data includes length byte & encoding byte
-			n2kMessage->push_back(0x01); // 01 = ASCII
+			n2kMessage->push_back(0x02);
+			n2kMessage->push_back(0x01);
 
 			return TRUE;
 		}

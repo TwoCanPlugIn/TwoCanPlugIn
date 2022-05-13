@@ -25,9 +25,9 @@
 #include <wx/stattext.h>
 #include <wx/grid.h>
 #include <wx/checkbox.h>
-#include <wx/textctrl.h>
-#include <wx/button.h>
 #include <wx/radiobox.h>
+#include <wx/button.h>
+#include <wx/textctrl.h>
 #include <wx/statbmp.h>
 #include <wx/notebook.h>
 #include <wx/dialog.h>
@@ -65,39 +65,9 @@ class TwoCanSettingsBase : public wxDialog
 		wxStaticText* labelDevice;
 		wxStaticText* labelFunction;
 		wxChoice* cmbLogging;
-		wxPanel* panelLogging;
-		wxCheckBox* chkSpreadsheet;
-		wxCheckBox* chkInfluxDB;
-		wxStaticText* labelInfluxDBOrg;
-		wxTextCtrl* txtInfluxDBOrg;
-		wxStaticText* lblInfluxDBBucket;
-		wxTextCtrl* txtInfluxDBBucket;
-		wxStaticText* lblInfluxDBElse;
-		wxTextCtrl* txtinfluxDBElse;
-		wxCheckBox* chkSQLDatabase;
-		wxButton* buttonBrowse;
-		wxStaticText* lblSQLFileName;
-		wxTextCtrl* txtSQLFileName;
 		wxPanel* panelAutopilot;
 		wxCheckBox* chkAutopilotOption;
 		wxRadioBox* rdoBoxAutopilot;
-		wxPanel* panelWaypoints;
-		wxCheckBox* chkWaypointOption;
-		wxCheckBox* chkRoute;
-		wxCheckBox* chkGenerateGUID;
-		wxCheckBox* chkWaypointId;
-		wxStaticText* lblWaypointSymbol;
-		wxChoice* cmbWaypointSymbol;
-		wxButton* btnImportWaypoint;
-		wxButton* btnexportwaypoints;
-		wxButton* btnImportRoute;
-		wxButton* btnExportRoute;
-		wxPanel* panelSignalK;
-		wxCheckBox* chkSignalK;
-		wxStaticText* lblIPPort;
-		wxTextCtrl* txtHTTPPort;
-		wxStaticText* lblWebSocketsPort;
-		wxTextCtrl* txtWebSocketsPort;
 		wxPanel* panelDebug;
 		wxStaticText* labelDebug;
 		wxButton* btnPause;
@@ -121,21 +91,7 @@ class TwoCanSettingsBase : public wxDialog
 		virtual void OnCheckMedia( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckWaypoint( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnChoiceLogging( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckExcel( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckInfluxDb( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckSQL( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnBrowse( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnAutopilotModelChanged( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckConvertWaypoints( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckConvertRoutes( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckGenerateGUIDS( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckWaypointDescriptions( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnChoiceWaypointymbol( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnImportWaypoint( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnExportWaypoint( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnImportRoute( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnExportRoute( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckSignalK( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnPause( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCopy( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }

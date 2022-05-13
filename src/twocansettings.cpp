@@ -32,6 +32,7 @@
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20/08/2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // 2.0 - 04/07/2021 Bi-directional gateway, PCAP log files
+// 2.1 - 04/04/2022 Add configuration items for Media Player, Waypoint Creation and Autopilot (not yet implemented)
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !

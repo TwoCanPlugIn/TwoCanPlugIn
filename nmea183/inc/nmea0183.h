@@ -53,6 +53,9 @@
 #include <wx/math.h>
 #include <wx/log.h>
 
+// vector is used for DSE
+#include <vector>
+
 /*
 ** Turn off the warning about precompiled headers, it is rather annoying
 */
