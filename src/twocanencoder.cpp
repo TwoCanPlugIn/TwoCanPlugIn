@@ -1300,38 +1300,38 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 
 					// "U" Voltage in "V" volts
 					if (nmeaParser.Xdr.TransducerInfo[i].TransducerType == _T("U")) {
-						if (!(supportedPGN & FLAGS_BAT)) {
-							if (nmeaParser.Xdr.TransducerInfo[i].UnitOfMeasurement == _T("V")) {
+						if (nmeaParser.Xdr.TransducerInfo[i].UnitOfMeasurement == _T("V")) {
 								
-								int batteryInstance = GetInstanceNumber(nmeaParser.Xdr.TransducerInfo[i].TransducerName);
-								wxString remainingString;
+							int batteryInstance = GetInstanceNumber(nmeaParser.Xdr.TransducerInfo[i].TransducerName);
+							wxString remainingString;
 
-								if (batteryInstance != -1) {
-								
-									if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("BATTERY#"), &remainingString)) {
-																		
+							if (batteryInstance != -1) {
+															
+								if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("BATTERY#"), &remainingString)) {
+									if (!(supportedPGN & FLAGS_BAT)) {
 										payload.push_back(batteryInstance & 0xF);
 
 										unsigned short batteryVoltage = static_cast<unsigned short>(nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100.0f);
 										payload.push_back(batteryVoltage & 0xFF);
 										payload.push_back((batteryVoltage >> 8) & 0xFF);
 
-										short batteryCurrent  = SHRT_MAX;
+										short batteryCurrent = SHRT_MAX;
 										payload.push_back(batteryCurrent & 0xFF);
 										payload.push_back((batteryCurrent >> 8) & 0xFF);
-			
-										unsigned short batteryTemperature = USHRT_MAX; 
+
+										unsigned short batteryTemperature = USHRT_MAX;
 										payload.push_back(batteryTemperature & 0xFF);
 										payload.push_back((batteryTemperature >> 8) & 0xFF);
-			
+
 										payload.push_back(sequenceId);
 
 										header.pgn = 127508;
 										FragmentFastMessage(&header, &payload, canMessages);
 									}
+								}
 								
-									if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ALTERNATOR#"), &remainingString)) {
-
+								if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ALTERNATOR#"), &remainingString)) {
+									if (!(supportedPGN & FLAGS_ENG)) {
 										payload.push_back(batteryInstance);
 
 										unsigned short oilPressure = USHRT_MAX;
@@ -1346,13 +1346,13 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										payload.push_back(engineTemperature & 0xFF);
 										payload.push_back((engineTemperature >> 8) & 0xFF);
 
-										unsigned short alternatorPotential = nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100; 
+										unsigned short alternatorPotential = nmeaParser.Xdr.TransducerInfo[i].MeasurementData * 100;
 										payload.push_back(alternatorPotential & 0xFF);
 										payload.push_back((alternatorPotential >> 8) & 0xFF);
 
 										unsigned short fuelRate = USHRT_MAX; // 0.1 Litres/hour
 										payload.push_back(fuelRate & 0xFF);
-										payload.push_back((fuelRate >> 8) &0xFF);
+										payload.push_back((fuelRate >> 8) & 0xFF);
 
 										unsigned int totalEngineHours = UINT_MAX;  // seconds
 										payload.push_back(totalEngineHours & 0xFF);
@@ -1374,10 +1374,10 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										unsigned short statusOne = USHRT_MAX;
 										payload.push_back(statusOne & 0xFF);
 										payload.push_back((statusOne >> 8) & 0xFF);
-			
+
 										unsigned short statusTwo = USHRT_MAX;
 										payload.push_back(statusTwo & 0xFF);
-										payload.push_back((statusTwo >>8) & 0xFF);
+										payload.push_back((statusTwo >> 8) & 0xFF);
 
 										byte engineLoad = UCHAR_MAX;  // percentage
 										payload.push_back(engineLoad & 0xFF);

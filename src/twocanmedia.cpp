@@ -57,7 +57,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 	wxJSONValue root;
 	wxJSONWriter writer;
 
-	// Each media source has a name & corresponding number
+	// Each input source has a name & corresponding number
 	wxString sourceName;
 	FUSION_MEDIA_TYPE sourceType;
 	FUSION_MEDIA_STATUS sourceStatus;
@@ -88,6 +88,8 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		sessionId = (FUSION_MEDIA_PORT)payload[5];
 		sourceType = (FUSION_MEDIA_TYPE)payload[6];
 		sourceStatus = (FUSION_MEDIA_STATUS)payload[7];
+		// byte 8 is a length field
+		// bytes 9.. are a null terminated string, the length given by the length field
 
 		sourceName.Clear();
 		for (size_t i = 0; i < payload[8]; i++) {
@@ -113,7 +115,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 
 		}
 
-		// if a usb device, set the mapping
+		// if a usb device, set the mapping. The usb port could be connected to a USB or iPod device
 		// provide the client with the name of the current device
 		if ((sessionId == FUSION_MEDIA_PORT::ipod) || (sessionId == FUSION_MEDIA_PORT::mtp) || (sessionId == FUSION_MEDIA_PORT::usb)) {
 			root["entertainment"]["device"]["source"]["name"] = GetMediaSourceById(FUSION_MEDIA_PORT::usb);
@@ -124,7 +126,6 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		}
 
 		// and finally give the client the session id to use for all subsequent requests
-
 		root["entertainment"]["device"]["source"]["sessionid"] = sessionId;
 		
 		break;
@@ -134,7 +135,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 
 		totalSources = payload[4];
 
-		// BUG BUG Is this necessary
+		// BUG BUG This is not used anywhere
 		root["entertainment"]["device"]["input"]["count"] = totalSources;
 		
 		break;
@@ -198,7 +199,8 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 
 		// When paused not playing on BT
 		// A3 99 05 80 08 FF FF FF
-		// FF 01 20 00 track name is a space, track number is data unavailable
+		// FF 01 20 00 
+		// Track name is a space, track number is data unavailable
 		sessionId = (FUSION_MEDIA_PORT)payload[4];
 
 		if ((sessionId == FUSION_MEDIA_PORT::ipod) || (sessionId == FUSION_MEDIA_PORT::mtp) || (sessionId == FUSION_MEDIA_PORT::usb)) {
@@ -234,8 +236,6 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		// A3 99 09 80 05 8D B1 00 00
 
 		// I presume only valid for USB & iPod devices
-		// BUG BUG Better way of determing what kind of device
-
 		sessionId = (FUSION_MEDIA_PORT)payload[4];
 
 		// By definition, if the time is elapsing, we're playing....
@@ -261,7 +261,6 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 	case 11: // Radio Station Frequency & Name
 		
 		// A3 99 0B 80 01 02 20 9C 52 05 BE 00 00
-		// A3 99 0B 80 01 02 20 9C 52 05 9B 00 00
 
 		sessionId = (FUSION_MEDIA_PORT)payload[4];
 		root["entertainment"]["device"]["source"]["name"] = GetMediaSourceById(sessionId);
@@ -463,7 +462,6 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		// A3 99 18 80 00 FE
 		// Signed, +ve Right Channel, -ve Left Channel
 		balance = payload[5];
-
 		root["entertainment"]["device"]["zone" + std::to_string(payload[4])]["balance"] = balance;
 
 		break;
@@ -544,7 +542,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		//A3 99 22 80 02 01 00 FF FF 01
 		break;
 
-	case 45: {// Zone Names
+	case 45: { // Zone Names
 		// A3 99 2D 80 00 06 53 41 4C 4F 4F 4E 00
 		// A3 99 2D 80 01 07 43 4F 43 4B 50 49 54 00
 		// A3 99 2D 80 02 06 5A 6F 6E 65 20 33 00;

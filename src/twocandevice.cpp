@@ -4825,6 +4825,8 @@ bool TwoCanDevice::DecodePGN129808(const byte *payload, std::vector<wxString> *n
 					index += 2;
 				}
 			}
+
+			wxLogMessage(wxString::Format("&&&& DSE: %s", dseSentence));
 			nmeaSentences->push_back(dseSentence);
 		} 
 
