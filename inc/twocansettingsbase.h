@@ -54,9 +54,9 @@ class TwoCanSettingsBase : public wxDialog
 		wxCheckBox* chkDeviceMode;
 		wxCheckBox* chkHeartbeat;
 		wxCheckBox* chkGateway;
+		wxCheckBox* chkWaypoint;
 		wxCheckBox* chkAutopilot;
 		wxCheckBox* chkMedia;
-		wxCheckBox* chkWaypoint;
 		wxStaticText* labelNetworkAddress;
 		wxStaticText* labelUniqueId;
 		wxStaticText* labelManufacturer;
@@ -87,9 +87,9 @@ class TwoCanSettingsBase : public wxDialog
 		virtual void OnCheckMode( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckHeartbeat( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckGateway( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnCheckWaypoint( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckAutopilot( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckMedia( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckWaypoint( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnChoiceLogging( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnAutopilotModelChanged( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnPause( wxCommandEvent& event ) { event.Skip(); }

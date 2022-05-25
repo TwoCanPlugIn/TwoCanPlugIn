@@ -22,7 +22,7 @@
 // Description: NMEA 2000 plugin for OpenCPN
 // Unit: Autoplot Control
 // Owner: twocanplugin@hotmail.com
-// Date: 01/12/2020
+// Date: 20/05/2022
 // Version History: 
 // 1.0 Initial Release of Autopilot Control - Not actually exposed or used yet....
 

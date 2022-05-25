@@ -41,8 +41,8 @@
 // 1.91 - 20/10/2020 Add PGN 129540, Bug Fixes (random position - missing break, socket & queue timeouts)
 // 1.92 - 10/04/2021 Fix for fast message assembly & SID generation
 // 2.0 - 04/07/2021 Bi-directional gateway (incl AIS)
-// 2.1 - 04/04/2022 Minor fix to GGA/DBT in Gateway, DSC & MOB Sentences, Waypoint creation, epoch time fixes (time_t)0
-// wxWidgets 3.15 support for MacOSX, Fusion Media control, OCPN Messaging for NMEA 2000 Transmit
+// 2.1 - 20/05/2022 Minor fix to GGA/DBT in Gateway, DSC & MOB Sentences, Waypoint creation, epoch time fixes (time_t)0
+// wxWidgets 3.15 support for MacOSX, Fusion Media control, OCPN Messaging for NMEA 2000 Transmit, Extend PGN 130312 for Engine Exhaust
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //
@@ -1592,7 +1592,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		break;
 	
 	case 130312: // Temperature
-		if (supportedPGN & FLAGS_MTW) {
+		if ((supportedPGN & FLAGS_MTW) || (supportedPGN & FLAGS_ENG)) {
 			result = DecodePGN130312(payload, &nmeaSentences);
 		}
 		break;
@@ -5251,6 +5251,7 @@ bool TwoCanDevice::DecodePGN130311(const byte *payload, std::vector<wxString> *n
 
 // Decode PGN 130312 NMEA Temperature
 // $--MTW,x.x,C*hh<CR><LF>
+// $--XDR,C,x.x,C,c-c*hh<<CR?<:F>
 bool TwoCanDevice::DecodePGN130312(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
@@ -5269,8 +5270,14 @@ bool TwoCanDevice::DecodePGN130312(const byte *payload, std::vector<wxString> *n
 		unsigned short setTemperature;
 		setTemperature = payload[5] | (payload[6] << 8);
 
+		// BUG BUG Perhaps switch statement ??
 		if ((source == TEMPERATURE_SEA) && (TwoCanUtils::IsDataValid(actualTemperature))) {
 			nmeaSentences->push_back(wxString::Format("$IIMTW,%.2f,C", ((float)actualTemperature * 0.01f) - CONST_KELVIN));
+			return TRUE;
+		}
+		else if ((source == TEMPERATURE_EXHAUST) && (TwoCanUtils::IsDataValid(actualTemperature))) {
+			nmeaSentences->push_back(wxString::Format("$ERXDR,C,%.1f,C,ENGINEEXHAUST#%1d", 
+				((float)actualTemperature * 0.01f) - CONST_KELVIN, instance));
 			return TRUE;
 		}
 		else {
@@ -5496,10 +5503,12 @@ bool TwoCanDevice::DecodePGN130820(const byte *payload, std::vector<wxString> *n
 			case  382: //B & G
 				break;
 			case 419: {// Fusion
-					wxString jsonResponse;
-					if (twoCanMedia->DecodeMediaResponse(payload, &jsonResponse)) {
-						if (jsonResponse.Length() > 0) {
-							SendPluginMessage(_T("TWOCAN_MEDIA_RESPONSE"), jsonResponse);
+				if (enableMusic) {
+						wxString jsonResponse;
+						if (twoCanMedia->DecodeMediaResponse(payload, &jsonResponse)) {
+							if (jsonResponse.Length() > 0) {
+								SendPluginMessage(_T("TWOCAN_MEDIA_RESPONSE"), jsonResponse);
+							}
 						}
 					}
 				}

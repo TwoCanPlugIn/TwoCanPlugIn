@@ -165,9 +165,11 @@ class TwoCanMedia {
 		std::unordered_map<int, wxString> trackNames;
 
 		// BUG BUG DEBUG REMOVE
+#ifdef DEBUG
 		wxDatagramSocket *debugSocket;
 		wxIPV4address addrLocal;
 		wxIPV4address addrPeer;
+#endif // DEBUG
 };
 
 #endif

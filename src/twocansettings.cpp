@@ -32,7 +32,7 @@
 // 1.8 - 10/05/2020 AIS data validation fixes, Mac OSX support
 // 1.9 - 20/08/2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // 2.0 - 04/07/2021 Bi-directional gateway, PCAP log files
-// 2.1 - 04/04/2022 Add configuration items for Media Player, Waypoint Creation and Autopilot (not yet implemented)
+// 2.1 - 20/05/2022 Add configuration items for Media Player, Waypoint Creation and Autopilot (not yet implemented)
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -163,19 +163,23 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	chkDeviceMode->SetValue(deviceMode);
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
 	chkGateway->Enable(chkDeviceMode->IsChecked());
-	chkAutopilot->Enable(chkDeviceMode->IsChecked());
-	chkMedia->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
+	// BUG BUG Not yet implemented
+	chkMedia->Enable(FALSE);
+	chkAutopilot->Enable(FALSE);
 	if (deviceMode == TRUE) {
 		chkHeartbeat->SetValue(enableHeartbeat);
 		chkGateway->SetValue(enableGateway);
+		chkWaypoint->SetValue(enableWaypoint);
 		chkAutopilot->SetValue(enableAutopilot);
 		chkMedia->SetValue(enableMusic);
-		chkWaypoint->SetValue(enableWaypoint);
 	}
 	else {
 		chkHeartbeat->SetValue(FALSE);
 		chkGateway->SetValue(FALSE);
+		chkWaypoint->SetValue(FALSE);
+		chkAutopilot->SetValue(FALSE);
+		chkMedia->SetValue(FALSE);
 	}
 
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
@@ -258,12 +262,13 @@ void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
 	chkHeartbeat->SetValue(enableHeartbeat);
 	chkGateway->Enable(chkDeviceMode->IsChecked());
 	chkGateway->SetValue(enableGateway);
-	chkMedia->Enable(chkDeviceMode->IsChecked());
-	chkMedia->SetValue(enableMusic);
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->SetValue(enableWaypoint);
-	chkAutopilot->Enable(chkDeviceMode->IsChecked());
-	chkAutopilot->SetValue(enableAutopilot);
+	// BUG BUG Not yet implemented
+	// chkMedia->Enable(chkDeviceMode->IsChecked());
+	// chkMedia->SetValue(enableMusic);
+	// chkAutopilot->Enable(chkDeviceMode->IsChecked());
+	// chkAutopilot->SetValue(enableAutopilot);
 	this->settingsDirty = TRUE;
 }
 

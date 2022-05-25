@@ -35,17 +35,20 @@ TwoCanMedia::TwoCanMedia() {
 	usbMapping = FUSION_MEDIA_PORT::unknown;
 
 	// BUG BUG DEBUG REMOVE
+#ifdef DEBUG
 	// Initialize UDP socket for debug spew
 	addrLocal.Hostname();
 	addrPeer.Hostname("127.0.0.1");
 	addrPeer.Service(3002);
-
 	debugSocket = new wxDatagramSocket(addrLocal, wxSOCKET_NONE);
+#endif // DEBUG
 }
 
 TwoCanMedia::~TwoCanMedia(void) {
 	// BUG BUG DEBUG REMOVE
+#ifdef DEBUG
 	debugSocket->Close();
+#endif // DEBUG
 }
 
 // Decode Media Player responses
@@ -197,10 +200,9 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		// 00 0C 30 32 5F 4A 75 64
 		// 67 65 6D 65 6E 74 00
 
-		// When paused not playing on BT
+		// When paused not playing on BT, Track name is a space, track number is data unavailable
 		// A3 99 05 80 08 FF FF FF
 		// FF 01 20 00 
-		// Track name is a space, track number is data unavailable
 		sessionId = (FUSION_MEDIA_PORT)payload[4];
 
 		if ((sessionId == FUSION_MEDIA_PORT::ipod) || (sessionId == FUSION_MEDIA_PORT::mtp) || (sessionId == FUSION_MEDIA_PORT::usb)) {
@@ -321,10 +323,10 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 			root["entertainment"]["device"]["media"]["foldersessionid"] = payload[9];
 
 			//BUG BUG DEBUG
+#ifdef DEBUG
 			wxString debugMessage = wxString::Format("Folder Items: %d Folder Session Id: %d", folderCount, folderSessionId);
 			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
-
-			
+#endif // DEBUG
 		}
 		break;
 
@@ -365,10 +367,10 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 			root["entertainment"]["device"]["media"]["foldername"] = folderName;
 			root["entertainment"]["device"]["media"]["foldertype"] = folderType;
 			root["entertainment"]["device"]["media"]["folderid"] = folderId;
-
+#ifdef DEBUG
 			wxString debugMessage = wxString::Format("Folder Name: %s Folder Id: %d", folderName, folderId);
 			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
-
+#endif // DEBUG
 
 		}		
 		break;
@@ -1040,10 +1042,11 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 		int request = root["entertainment"]["device"]["media"]["request"].AsInt();
 		int folderId = root["entertainment"]["device"]["media"]["folderid"].AsInt();
 		
-		// BUG BUG Remove
+		// BUG BUG DEBUG Remove
+#ifdef DEBUG
 		wxString debugMessage = wxString::Format("Send folder request: FolderId: %d, Folder Session Id: %d RQST: %d", folderId, folderSessionId, request);
 		debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
-
+#endif // DEBUG
 		// A3 99 09 00 05 00 00 00 00 01 02
 
 		// 0 just gets message 16, ?
@@ -1090,10 +1093,11 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 			message.payload.push_back(sessionId);
 			message.payload.push_back(folderSessionId);
 
-			// BUG BUG Remove
+			// BUG BUG DEBUG Remove
+#ifdef DEBUG
 			wxString debugMessage = wxString::Format("Sent Ack, Session Id: %d, Folder Session Id: %d", sessionId, folderSessionId);
 			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
-
+#endif // DEBUG
 			canMessages->push_back(message);
 			return TRUE;
 		}
@@ -1140,10 +1144,11 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 			message.payload.push_back(0xFF);
 
 			canMessages->push_back(message);
-
+			// BUG BUG DEBUG REMOVE
+#ifdef DEBUG
 			wxString debugMessage = wxString::Format("Sent Confirm SessionId: %d, Folder Id %d, Records: %d", sessionId, folderId, recordsReceived);
 			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
-
+#endif
 
 			return TRUE;
 		}

@@ -26,7 +26,7 @@
 // Version History: 
 // 1.0 Initial Release of Bi-directional Gateway
 // 1.1 - 04/07/2021 Add AIS conversion
-// 1.2 - 04/04/2022 Add DSC & MOB conversion, Fix incorrect GGA PGN (caused random depth values), Fix APB flags
+// 1.2 - 20/05/2022 Add DSC & MOB conversion, Fix incorrect GGA PGN (caused random depth values), Fix APB flags
 //       Use NMEA 0183 v4.11 XDR standard transducer names
 
 #include "twocanencoder.h"
