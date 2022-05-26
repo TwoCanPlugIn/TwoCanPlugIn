@@ -1198,7 +1198,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 			wxLogMessage(_T("TwoCan Network, Unique ID: %d"), deviceInformation.uniqueId);
 			wxLogMessage(_T("TwoCan Network, Class: %d"), deviceInformation.deviceClass);
 			wxLogMessage(_T("TwoCan Network, Function: %d"), deviceInformation.deviceFunction);
-			wxLogMessage(_T("TwoCan Network, Industry %d"), deviceInformation.industryGroup);
+			wxLogMessage(_T("TwoCan Network, Industry: %d"), deviceInformation.industryGroup);
 			
 #endif
 		

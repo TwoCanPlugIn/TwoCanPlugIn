@@ -198,7 +198,7 @@ void TwoCan::SetNMEASentence(wxString &sentence) {
 				TwoCanUtils::EncodeCanHeader(&id, &it.header);
 				returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Plugin, Error sending converted NMEA 183 sentence %d"), returnCode);
+					wxLogMessage(_T("TwoCan Plugin, Error sending converted NMEA 183 sentence: %d"), returnCode);
 				}
 				wxThread::Sleep(CONST_TEN_MILLIS);
 				
@@ -257,7 +257,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 								TwoCanUtils::EncodeCanHeader(&id, &it.header);
 								returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 								if (returnCode != TWOCAN_RESULT_SUCCESS) {
-									wxLogMessage(_T("TwoCan Plugin, Error sending MOB message %d"), returnCode);
+									wxLogMessage(_T("TwoCan Plugin, Error sending MOB message: %d"), returnCode);
 								}
 								wxThread::Sleep(CONST_TEN_MILLIS);
 							}
@@ -333,7 +333,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 								TwoCanUtils::EncodeCanHeader(&id, &it.header);
 								returnCode = twoCanDevice->TransmitFrame(id, it.payload.data());
 								if (returnCode != TWOCAN_RESULT_SUCCESS) {
-									wxLogMessage(_T("TwoCan Plugin, Error sending Waypoint export message %d"), returnCode);
+									wxLogMessage(_T("TwoCan Plugin, Error sending Waypoint export message: %d"), returnCode);
 								}
 								wxThread::Sleep(CONST_TEN_MILLIS);
 							}
@@ -379,7 +379,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 				if (payload.size() > 0) {
 					int returnCode = twoCanDevice->FragmentFastMessage(&header, payload.size(), payload.data());
 					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage("TwoCan Plugin, Error sending raw message %d", returnCode);
+						wxLogMessage("TwoCan Plugin, Error sending raw message: %d", returnCode);
 					}
 					else {
 						wxLogMessage("TwoCan Plugin, Sent raw message %s", message_body);
@@ -438,11 +438,8 @@ void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 				std::vector<byte> *payload = (std::vector<byte> *) event.GetClientData();
 				int returnCode = twoCanDevice->FragmentFastMessage(&header, payload->size(), payload->data());
 				if (returnCode != TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage("TwoCan Plugin, Error sending expired DSC message %d", returnCode);
+					wxLogMessage("TwoCan Plugin, Error sending expired DSC message: %d", returnCode);
 				}
-
-				wxMessageBox(wxString::Format("Expired DSC: %d", payload->size()));
-				
 			}
 			break;
 
