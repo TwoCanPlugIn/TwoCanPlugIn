@@ -43,6 +43,7 @@
 // 2.0 - 04/07/2021 Bi-directional gateway (incl AIS)
 // 2.1 - 20/05/2022 Minor fix to GGA/DBT in Gateway, DSC & MOB Sentences, Waypoint creation, epoch time fixes (time_t)0
 // wxWidgets 3.15 support for MacOSX, Fusion Media control, OCPN Messaging for NMEA 2000 Transmit, Extend PGN 130312 for Engine Exhaust
+// 2.11 - 30/06/2022 - Change Attitude XDR sentence from HEEL to ROLL to mate with dashboard plugin
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //
@@ -2384,11 +2385,11 @@ bool TwoCanDevice::DecodePGN127257(const byte *payload, std::vector<wxString> *n
 		}
 
 		if (TwoCanUtils::IsDataValid(pitch)) {
-			xdrString.Append(wxString::Format("A,%0.2f,D,PTCH,", RADIANS_TO_DEGREES((float)pitch / 10000)));
+			xdrString.Append(wxString::Format("A,%0.2f,D,PITCH,", RADIANS_TO_DEGREES((float)pitch / 10000)));
 		}
 
 		if (TwoCanUtils::IsDataValid(roll)) {
-			xdrString.Append(wxString::Format("A,%0.2f,D,HEEL,", RADIANS_TO_DEGREES((float)roll / 10000)));
+			xdrString.Append(wxString::Format("A,%0.2f,D,ROLL,", RADIANS_TO_DEGREES((float)roll / 10000)));
 		}
 
 		if (xdrString.length() > 0) {
