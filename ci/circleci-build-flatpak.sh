@@ -24,6 +24,8 @@ fi
 
 sudo apt-get -q -y --allow-unauthenticated --allow-downgrades --allow-remove-essential --allow-change-held-packages update
 
+sudo apt-get -q -y install libwxgtk3.0-gtk3-dev
+
 #PLUGIN=bsb4
 
 sudo apt --allow-unauthenticated --allow-downgrades --allow-remove-essential --allow-change-held-packages install flatpak flatpak-builder
