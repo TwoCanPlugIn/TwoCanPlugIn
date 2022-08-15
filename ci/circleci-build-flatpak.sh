@@ -24,8 +24,6 @@ fi
 
 sudo apt-get -q -y --allow-unauthenticated --allow-downgrades --allow-remove-essential --allow-change-held-packages update
 
-sudo apt-get -q -y install libwxgtk3.0-gtk3-dev
-
 #PLUGIN=bsb4
 
 sudo apt --allow-unauthenticated --allow-downgrades --allow-remove-essential --allow-change-held-packages install flatpak flatpak-builder
@@ -38,6 +36,13 @@ if [ -n "$CI" ]; then
 
     # Install flatpak and flatpak-builder
     sudo apt install flatpak flatpak-builder
+	
+	sudo apt-get install libgtk-3-dev
+
+	sudo apt-get install --reinstall pkg-config
+	sudo /usr/share/pkg-config-dpkghook update
+	
+	pkg-config --cflags gtk+-3.0
 fi
 
 flatpak remote-add --user --if-not-exists \
