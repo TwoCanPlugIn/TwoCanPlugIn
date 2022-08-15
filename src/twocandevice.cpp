@@ -43,7 +43,8 @@
 // 2.0 - 04/07/2021 Bi-directional gateway (incl AIS)
 // 2.1 - 20/05/2022 Minor fix to GGA/DBT in Gateway, DSC & MOB Sentences, Waypoint creation, epoch time fixes (time_t)0
 // wxWidgets 3.15 support for MacOSX, Fusion Media control, OCPN Messaging for NMEA 2000 Transmit, Extend PGN 130312 for Engine Exhaust
-// 2.11 - 30/06/2022 - Change Attitude XDR sentence from HEEL to ROLL to mate with dashboard plugin
+// 2.11 - 30/06/2022 - Change Attitude XDR sentence from HEEL to ROLL, Support DPT instead of DBT for depth,
+// to mate with dashboard plugin. Prioritise GPS if multiple sources
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //
@@ -83,6 +84,12 @@ TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_JOINABLE) 
 
 	// Until engineInstance > 0 then assume a single engined vessel
 	IsMultiEngineVessel = FALSE;
+
+	// Initialize Preferred GPS Sources
+	preferredGPS.sourceAddress = CONST_GLOBAL_ADDRESS;
+	preferredGPS.hdop = USHRT_MAX;
+	preferredGPS.hdopRetry = 0;
+	preferredGPS.lastUpdate = wxDateTime::Now();
 	
 	// Any raw logging ?
 	if (logLevel > FLAGS_LOG_NONE) {
@@ -1422,19 +1429,19 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 
 	case 129025: // Position - Rapid Update
 		if (supportedPGN & FLAGS_GLL) {
-			result = DecodePGN129025(payload, &nmeaSentences);
+			result = DecodePGN129025(payload, &nmeaSentences, header.source);
 		}
 		break;
 	
 	case 129026: // COG, SOG - Rapid Update
 		if (supportedPGN & FLAGS_VTG) {
-			result = DecodePGN129026(payload, &nmeaSentences);
+			result = DecodePGN129026(payload, &nmeaSentences, header.source);
 		}
 		break;
 	
 	case 129029: // GNSS Position
 		if (supportedPGN & FLAGS_GGA) {
-			result = DecodePGN129029(payload, &nmeaSentences);
+			result = DecodePGN129029(payload, &nmeaSentences, header.source);
 		}
 		break;
 	
@@ -2742,13 +2749,24 @@ bool TwoCanDevice::DecodePGN128267(const byte *payload, std::vector<wxString> *n
 
 		if (TwoCanUtils::IsDataValid(depth)) {
 			
-			// BUG BUG FIX
-			//nmeaSentences->push_back(wxString::Format("$IIDPT,%.2f,%.2f,%.2f", (float)depth / 100, (float)offset / 100, \
-			//((maxRange != 0xFFFF) && (maxRange > 0)) ? maxRange / 100 : (int)NULL);
-		
+			// OpenCPN Dashboard now accepts NMEA 183 DPT sentences. (at least noticed in 5.6.x) 
+			wxString depthSentence;
+
+			depthSentence = wxString::Format("$IIDPT,%.2f,%.2f", (float)depth / 100, (float)offset / 1000);
+			if (maxRange != 0xFF) {
+				depthSentence.Append(",%d", maxRange * 10);
+			}
+			else {
+				depthSentence.Append(",");
+			}
+			
+			nmeaSentences->push_back(depthSentence);
+			
+			// Deprecated
 			// OpenCPN Dashboard only accepts DBT sentence
-			nmeaSentences->push_back(wxString::Format("$IIDBT,%.2f,f,%.2f,M,%.2f,F", CONVERT_METRES_FEET * (double)depth / 100, \
-				(double)depth / 100, CONVERT_METRES_FATHOMS * (double)depth / 100));
+			//nmeaSentences->push_back(wxString::Format("$IIDBT,%.2f,f,%.2f,M,%.2f,F", CONVERT_METRES_FEET * (double)depth / 100, \
+			//	(double)depth / 100, CONVERT_METRES_FATHOMS * (double)depth / 100));
+			
 			return TRUE;
 		}
 		else {
@@ -2817,9 +2835,9 @@ bool TwoCanDevice::DecodePGN128275(const byte *payload, std::vector<wxString> *n
 // $--GLL, llll.ll, a, yyyyy.yy, a, hhmmss.ss, A, a*hh<CR><LF>
 //                                           Status A valid, V invalid
 //                                               mode - note Status = A if Mode is A (autonomous) or D (differential)
-bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *nmeaSentences) {
-	if (payload != NULL) {
-		
+bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *nmeaSentences, byte address) {
+	if ((payload != NULL) && (address == preferredGPS.sourceAddress)) {
+
 		int latitude;
 		latitude = (int)payload[0] | ((int)payload[1] << 8) | ((int)payload[2] << 16) | ((int)payload[3] << 24);
 
@@ -2847,7 +2865,7 @@ bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *n
 			wxDateTime tm = now - gpsTimeOffset;
 
 			nmeaSentences->push_back(wxString::Format("$IIGLL,%02d%07.4f,%c,%03d%07.4f,%c,%s,%c,%c", abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S', \
-				abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', tm.Format("%H%M%S.00",wxDateTime::UTC).ToAscii(), gpsMode, ((gpsMode == 'A') || (gpsMode == 'D')) ? 'A' : 'V'));
+				abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W', tm.Format("%H%M%S.00", wxDateTime::UTC).ToAscii(), gpsMode, ((gpsMode == 'A') || (gpsMode == 'D')) ? 'A' : 'V'));
 			return TRUE;
 		}
 		else {
@@ -2861,8 +2879,8 @@ bool TwoCanDevice::DecodePGN129025(const byte *payload, std::vector<wxString> *n
 
 // Decode PGN 129026 NMEA COG SOG Rapid Update
 // $--VTG,x.x,T,x.x,M,x.x,N,x.x,K,a*hh<CR><LF>
-bool TwoCanDevice::DecodePGN129026(const byte *payload, std::vector<wxString> *nmeaSentences) {
-	if (payload != NULL) {
+bool TwoCanDevice::DecodePGN129026(const byte *payload, std::vector<wxString> *nmeaSentences, byte address) {
+	if ((payload != NULL) && (address == preferredGPS.sourceAddress)) {
 
 		byte sid;
 		sid = payload[0];
@@ -2956,7 +2974,7 @@ bool TwoCanDevice::DecodePGN129026(const byte *payload, std::vector<wxString> *n
 //                  |                       |   |        |  | status
 //                Validity                 SOG COG Variation FAA Mode
 
-bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *nmeaSentences) {
+bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *nmeaSentences, byte address) {
 	if (payload != NULL) {
 
 		byte sid;
@@ -3032,6 +3050,53 @@ bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *n
 				referenceStationAge = (payload[45] | (payload[46] << 8));
 			}
 
+			// Automagic preference if multiple GPS sources present
+			// Initial reception
+			if (preferredGPS.sourceAddress == CONST_GLOBAL_ADDRESS) {
+				preferredGPS.sourceAddress = address;
+				preferredGPS.lastUpdate = wxDateTime::Now();
+				preferredGPS.hdop = hDOP;
+				preferredGPS.hdopRetry = 0;
+			}
+			else {
+				// Current GPS source
+				if (address == preferredGPS.sourceAddress) {
+					preferredGPS.lastUpdate = wxDateTime::Now();
+					preferredGPS.hdop = hDOP;
+				}
+				// An alternative GPS source
+				else {
+					// Current source has not been updated in the last 30 seconds, failover
+					if (wxDateTime::Now() > preferredGPS.lastUpdate + wxTimeSpan::Seconds(30)) {
+						preferredGPS.sourceAddress = address;
+						preferredGPS.lastUpdate = wxDateTime::Now();
+						preferredGPS.hdop = hDOP;
+						preferredGPS.hdopRetry = 0;
+					}
+					// The current source has a greater HDOP than the alternative
+					else if (preferredGPS.hdop > hDOP) {
+						// And has more than ten successive better hdop values, failover
+						if (preferredGPS.hdopRetry > 10) {
+							preferredGPS.hdopRetry = 0;
+							preferredGPS.sourceAddress = address;
+							preferredGPS.lastUpdate = wxDateTime::Now();
+							preferredGPS.hdop = hDOP;
+						}
+						else {
+							preferredGPS.hdopRetry++;
+							// The current source is to be kept until the alternative has more than ten successive better hdop values
+							return FALSE;
+						}
+					}
+					else {
+						// The current source is to be kept
+						return FALSE;
+					}
+
+				}
+				
+			}
+
 			nmeaSentences->push_back(wxString::Format("$IIGGA,%s,%02.0f%07.4f,%c,%03.0f%07.4f,%c,%d,%d,%.2f,%.1f,M,%.1f,M,,", \
 				epoch.Format("%H%M%S").ToAscii(), fabs(latitudeDegrees), fabs(latitudeMinutes), latitudeDegrees >= 0 ? 'N' : 'S', \
 				fabs(longitudeDegrees), fabs(longitudeMinutes), longitudeDegrees >= 0 ? 'E' : 'W', \
@@ -3046,9 +3111,10 @@ bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *n
 					fabs(longitudeDegrees), fabs(longitudeMinutes), longitudeDegrees >= 0 ? 'E' : 'W', \
 					(float)vesselSOG * CONVERT_MS_KNOTS / 100, RADIANS_TO_DEGREES((float)vesselCOG) * 0.0001f, tm.Format("%d%m%y").ToAscii(), \
 					RADIANS_TO_DEGREES((float)magneticVariation) * 0.0001f, FAA_MODE_AUTONOMOUS, GPS_MODE_AUTONOMOUS));
-					
+
 			}
 			*/
+
 			return TRUE;
 
 			// BUG BUG for the time being ignore reference stations, too lazy to code this

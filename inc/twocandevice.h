@@ -184,6 +184,14 @@ typedef struct FastMessageEntry {
 	byte *data; // pointer to memory allocated for the data. Note: must be freed when IsFree is set to TRUE.
 } FastMessageEntry;
 
+// Used to determine the preferred GPS if multiple sources present (eg. GPS receiver and AIS transceiver)
+typedef struct PreferredGPS {
+	byte sourceAddress;
+	unsigned short hdop;
+	unsigned int hdopRetry;
+	wxDateTime lastUpdate;
+} PreferredGPS;
+
 // Implements a NMEA 2000 Network device
 class TwoCanDevice : public wxThread {
 
@@ -259,6 +267,8 @@ private:
 	// COG, SOG, again used in NMEA 183 RMC sentence
 	unsigned short vesselCOG;
 	unsigned short vesselSOG;
+	// If Multiple GPS Sources present, automagically prioritise
+	PreferredGPS preferredGPS;
 
 	// Statistics
 	int receivedFrames;
@@ -388,13 +398,13 @@ private:
 	bool DecodePGN128275(const byte *payload, std::vector<wxString> *nmeaSentences);
 
 	// Decode PGN 129025 NMEA Position Rapid Update
-	bool DecodePGN129025(const byte *payload, std::vector<wxString> *nmeaSentences);
+	bool DecodePGN129025(const byte *payload, std::vector<wxString> *nmeaSentences, byte address);
 
 	// Decode PGN 129026 NMEA COG SOG Rapid Update
-	bool DecodePGN129026(const byte *payload, std::vector<wxString> *nmeaSentences);
+	bool DecodePGN129026(const byte *payload, std::vector<wxString> *nmeaSentences, byte address);
 
 	// Decode PGN 129029 NMEA GNSS Position
-	bool DecodePGN129029(const byte *payload, std::vector<wxString> *nmeaSentences);
+	bool DecodePGN129029(const byte *payload, std::vector<wxString> *nmeaSentences, byte address);
 
 	// Decode PGN 129033 NMEA Date & Time
 	bool DecodePGN129033(const byte *payload, std::vector<wxString> *nmeaSentences);
