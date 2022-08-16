@@ -37,12 +37,12 @@ if [ -n "$CI" ]; then
     # Install flatpak and flatpak-builder
     sudo apt install flatpak flatpak-builder
 	
-	sudo apt-get install libgtk-3-dev
+	#sudo apt-get install libgtk-3-dev
 
-	sudo apt-get install --reinstall pkg-config
-	sudo /usr/share/pkg-config-dpkghook update
+	#sudo apt-get install --reinstall pkg-config
+	#sudo /usr/share/pkg-config-dpkghook update
 	
-	pkg-config --cflags gtk+-3.0
+	#pkg-config --cflags gtk+-3.0
 fi
 
 flatpak remote-add --user --if-not-exists \
