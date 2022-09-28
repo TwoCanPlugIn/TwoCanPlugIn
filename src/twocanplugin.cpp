@@ -289,7 +289,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 		}
 	}
 
-	// Handle request to export waypoints via NMEA 2000 - initiated by Two Tools plugin
+	// Handle request to export waypoints via NMEA 2000 - initiated by TwoCan Toys plugin
 	// Not used as the Toys plugin uses the TWOCAN_TRAMSIT_MESSAGE mechanism
 	else if (message_id == _T("TWOCAN_EXPORT_WAYPOINTS")) {
 		if ((deviceMode == TRUE) && (enableWaypoint == TRUE) && (twoCanDevice != nullptr) && (twoCanEncoder != nullptr)) {
@@ -344,7 +344,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 		}
 	}
 
-	// Allow a plugin to send NMEA 2000 frames onto the network
+	// Allow any plugin to send NMEA 2000 frames onto the network
 	else if (message_id == _T("TWOCAN_TRANSMIT_FRAME")) {
 		if ((deviceMode == TRUE) && (twoCanDevice != nullptr)) {
 			wxJSONValue root;
@@ -389,10 +389,11 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 		}
 	}
 
-	// Handle Autopilot Plugin dialog commands
-	// Not yet implemented
-	else if (message_id == _T("TWOCAN_AUTOPILOT_COMMAND")) {
+	// Handle TwoCan Autopilot Plugin dialog commands
+	else if (message_id == _T("TWOCAN_AUTOPILOT_REQUEST")) {
+	wxMessageBox("Rx AP REQUEST");
 		if ((deviceMode == TRUE) && (enableAutopilot == TRUE) && (twoCanDevice != nullptr) && (twoCanAutopilot != nullptr)) {
+			wxMessageBox("AP REQUEST ACTIONED");
 			std::vector<CanMessage> messages;
 			unsigned int id;
 			int returnCode;
@@ -495,6 +496,7 @@ void TwoCan::ShowPreferencesDialog(wxWindow* parent) {
 
 // Loads a previously saved configuration
 bool TwoCan::LoadConfiguration(void) {
+	wxString temp;
 	if (configSettings) {
 		configSettings->SetPath(_T("/PlugIns/TwoCan"));
 		configSettings->Read(_T("Adapter"), &canAdapter, _T("None"));
@@ -506,8 +508,16 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("Gateway"), &enableGateway, FALSE);
 		configSettings->Read(_T("Waypoint"), &enableWaypoint, FALSE);
 		configSettings->Read(_T("Music"), &enableMusic, FALSE);
+		configSettings->Read(_T("Autopilot"), &enableAutopilot, FALSE);
+		configSettings->Read(_T("RelayPGN"), &temp, wxEmptyString);
+		// Douwe's fix. He wants some PGN transmitted in raw to his plugin
+		if (!temp.IsEmpty()) {
+			wxStringTokenizer tokenizer(temp, _T(","));
+			while (tokenizer.HasMoreTokens()) {
+				relayedPGN.push_back(wxAtoi(tokenizer.GetNextToken()));
+			}
+		}
 		// Not ready to implement yet
-		//configSettings->Read(_T("Autopilot"), &enableAutopilot, FALSE);
 		//configSettings->Read(_T("AutopilotBrand"), &autopilotManufacturer, 0);
 		//configSettings->Read(_T("SignalK"), &enableSignalK, FALSE);
 		return TRUE;
@@ -542,11 +552,11 @@ bool TwoCan::SaveConfiguration(void) {
 		configSettings->Write(_T("Address"), networkAddress);
 		configSettings->Write(_T("Heartbeat"), enableHeartbeat);
 		configSettings->Write(_T("Gateway"), enableGateway);
-		
+		configSettings->Write(_T("Autopilot"), enableAutopilot);
 		configSettings->Write(_T("Waypoint"), enableWaypoint);
 		configSettings->Write(_T("Music"), enableMusic);
+		
 		// Not ready to implement yet....
-		//configSettings->Write(_T("Autopilot"), enableAutopilot);
 		//configSettings->Read(_T("AutopilotBrand"), autopilotManufacturer);
 		//configSettings->Write(_T("SignalK"), enableSignalK);
 
@@ -633,7 +643,7 @@ void TwoCan::StartDevice(void) {
 
 			// Autopilot Integration
 			if ((deviceMode == TRUE) && (enableAutopilot == TRUE)) {
-				twoCanAutopilot = new TwoCanAutopilot(autopilotManufacturer);
+				twoCanAutopilot = new TwoCanAutoPilot(autopilotManufacturer);
 				wxLogMessage(_T("TwoCan Plugin, Created TwoCan Autopilot interface"));
 			}
 

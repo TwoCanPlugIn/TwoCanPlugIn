@@ -17,6 +17,8 @@
 //
 // NMEA2000� is a registered Trademark of the National Marine Electronics Association
 
+#define DEBUG
+
 #ifndef TWOCAN_MEDIA_H
 #define TWOCAN_MEDIA_H
 

@@ -98,6 +98,7 @@ void TwoCanEncoder::OnDseTimerExpired(wxEvent &event) {
 }
 
 // BUG BUG Duplicated code from twocandevice.cpp. Should refactor & deduplicate
+/*
 void TwoCanEncoder::FragmentFastMessage(CanHeader *header, std::vector<byte> *payload, std::vector<CanMessage> *canMessages) {
 	size_t payloadLength = payload->size();
 	std::vector<byte> data;
@@ -167,6 +168,7 @@ void TwoCanEncoder::FragmentFastMessage(CanHeader *header, std::vector<byte> *pa
 	}
 	
 }
+*/
 
 bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *canMessages) {
 	CanHeader header;
@@ -198,16 +200,16 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_NAV)) {
 					// if (EncodePGN127237(&nmeaParser, &payload)) { // Heading/Track Control
 					//	header.pgn = 127237;
-					//	FragmentFastMessage(&header, &payload, canMessages);
+					//	TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					// }
 					if (EncodePGN129283(&nmeaParser, &payload)) {
 						header.pgn = 129283;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN129284(&nmeaParser, &payload)) {
 						header.pgn = 129284;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				return TRUE;
 				}
@@ -237,25 +239,25 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_ZDA)) {
 					if (EncodePGN126992(&nmeaParser, &payload)) {
 						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN129033(&nmeaParser, &payload)) {
 						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				if (!(supportedPGN & FLAGS_XTE)) {
 					if (EncodePGN129283(&nmeaParser, &payload)) {
 						header.pgn = 129283;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 
 				if (!(supportedPGN & FLAGS_NAV)) {
 					if (EncodePGN129284(&nmeaParser, &payload)) {
 						header.pgn = 129284;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				
@@ -273,26 +275,26 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_ZDA)) {
 					if (EncodePGN126992(&nmeaParser, &payload)) {
 						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 	
 					if (EncodePGN129033(&nmeaParser, &payload)) {
 						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 	
 				if (!(supportedPGN & FLAGS_XTE)) {
 					if (EncodePGN129283(&nmeaParser, &payload)) {
 						header.pgn = 129283;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 	
 				if (!(supportedPGN & FLAGS_NAV)) {
 					if (EncodePGN129284(&nmeaParser, &payload)) {
 						header.pgn = 129284;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 	
@@ -322,7 +324,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_DPT)) {
 					if (EncodePGN128267(&nmeaParser, &payload)) {
 						header.pgn = 128267;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -339,7 +341,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_DPT)) {
 					if (EncodePGN128267(&nmeaParser, &payload)) {
 						header.pgn = 128267;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -356,7 +358,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_DSC)) {
 					if (EncodePGN129808(&nmeaParser, &payload)) {
 						header.pgn = 129808;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -388,7 +390,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 						dseTimer->Stop();
 						// Transmit the completed PGN 129808 message
 						header.pgn = 129808;
-						FragmentFastMessage(&header, &dscPayload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, dscPayload, canMessages);
 						return TRUE;
 					}
 				}
@@ -417,24 +419,24 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_ZDA)) {
 					if (EncodePGN126992(&nmeaParser, &payload)) {
 						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN129033(&nmeaParser, &payload)) {
 						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 
 				if (!(supportedPGN & FLAGS_GGA)) {
 					if (EncodePGN129025(&nmeaParser, &payload)) {
 						header.pgn = 129025;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN129029(&nmeaParser, &payload)) {
 						header.pgn = 129029;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 
@@ -455,23 +457,23 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_ZDA)) {
 					if (EncodePGN126992(&nmeaParser, &payload)) {
 						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 					if (EncodePGN129033(&nmeaParser, &payload)) {
 						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				// Position
 				if (!(supportedPGN & FLAGS_GLL)) {
 					if (EncodePGN129025(&nmeaParser, &payload)) {
 						header.pgn = 129025;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN129029(&nmeaParser, &payload)) {
 						header.pgn = 129029;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -490,12 +492,12 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				
 					if (EncodePGN126992(&nmeaParser, &payload)) {
 						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN129033(&nmeaParser, &payload)) {
 						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 
@@ -504,12 +506,12 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 					
 					if (EncodePGN129025(&nmeaParser, &payload)) {
 						header.pgn = 129025;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN129029(&nmeaParser, &payload)) {
 						header.pgn = 129029;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 
@@ -527,12 +529,12 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_GGA)) {
 					if (EncodePGN129029(&nmeaParser, &payload)) {
 						header.pgn = 129029;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 					
 					//if (EncodePGN129539(&nmeaParser, &payload)) {
 					//	header.pgn = 129539;
-					//	FragmentFastMessage(&header, &payload, canMessages);
+					//	TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					//}
 				}
 				return TRUE;
@@ -549,7 +551,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_GGA)) {
 					if (EncodePGN129540(&nmeaParser, &payload)) {
 						header.pgn = 129540;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -566,17 +568,17 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_HDG)) {
 					if (EncodePGN127250(&nmeaParser, &payload)) {
 						header.pgn = 127250;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				
 					if (EncodePGN127258(&nmeaParser, &payload)) {
 						header.pgn = 127258;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN130577(&nmeaParser, &payload)) {
 						header.pgn = 130577;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 					
@@ -595,12 +597,12 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				
 					if (EncodePGN127250(&nmeaParser, &payload)) {
 						header.pgn = 127250;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN130577(&nmeaParser, &payload)) {
 						header.pgn = 130577;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -618,12 +620,12 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			
 					if (EncodePGN127250(&nmeaParser, &payload)) {
 						header.pgn = 127250;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				
 					if (EncodePGN130577(&nmeaParser, &payload)) {
 						header.pgn = 130577;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -641,7 +643,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 
 					if (EncodePGN127233(&nmeaParser, &payload)) {
 						header.pgn = 127233;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -659,12 +661,12 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 	
 					if (EncodePGN130310(&nmeaParser, &payload)) {
 						header.pgn = 130310;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN130311(&nmeaParser, &payload)) {
 						header.pgn = 130311;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -682,7 +684,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				
 					if (EncodePGN130306(&nmeaParser, &payload)) {
 						header.pgn = 130306;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -700,7 +702,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		
 					if (EncodePGN130306(&nmeaParser, &payload)) {
 						header.pgn = 130306;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -717,14 +719,14 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_XTE)) {
 					if (EncodePGN129283(&nmeaParser, &payload)) {
 						header.pgn = 129283;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 
 				if (!(supportedPGN & FLAGS_NAV)) {
 					if (EncodePGN129284(&nmeaParser, &payload)) {
 						header.pgn = 129284;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -741,48 +743,48 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_ZDA)) {
 					if (EncodePGN126992(&nmeaParser, &payload)) {
 						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN129033(&nmeaParser, &payload)) {
 						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 
 				//if (EncodePGN127250(&nmeaParser, &payload)) {
 				//	header.pgn = 127250;
-				//	FragmentFastMessage(&header, &payload, canMessages);
+				//	TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 				//}
 
 				//if (EncodePGN127258(&nmeaParser, &payload)) {
 				//	header.pgn = 127258;
-				//	FragmentFastMessage(&header, &payload, canMessages);
+				//	TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 				//}
 
 				if (!(supportedPGN & FLAGS_GGA)) {
 					if (EncodePGN129025(&nmeaParser, &payload)) {
 						header.pgn = 129025;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				
 				if (!(supportedPGN & FLAGS_VTG)) {
 					if (EncodePGN129026(&nmeaParser, &payload)) {
 						header.pgn = 129026;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 
 				//if (EncodePGN129029(&nmeaParser, &payload)) {
 				//	header.pgn = 129029;
-				//	FragmentFastMessage(&header, &payload, canMessages);
+				//	TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 				//}
 
 
 				//if (EncodePGN130577(&nmeaParser, &payload)) {
 				//	header.pgn = 130577;
-				//	FragmentFastMessage(&header, &payload, canMessages);
+				//	TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 				//}
 				return TRUE;
 			}
@@ -798,7 +800,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_ROT)) {
 					if (EncodePGN127251(&nmeaParser, &payload)) {
 						header.pgn = 127251;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -815,7 +817,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_ENG)) {
 					if (EncodePGN127488(&nmeaParser, &payload)) {
 						header.pgn = 127488;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -833,7 +835,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			
 					if (EncodePGN127245(&nmeaParser, &payload)) {
 						header.pgn = 127245;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -875,7 +877,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			if (!(supportedPGN & FLAGS_AIS)) {
 				if (nmeaParser.Parse()) {
 					if (aisDecoder->ParseAisMessage(nmeaParser.Vdm, &payload, &header.pgn)) {
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 					return TRUE;
 				}
@@ -906,7 +908,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				// BUG BUG What Flags ??
 				if (EncodePGN130577(&nmeaParser, &payload)) {
 					header.pgn = 130577;
-					FragmentFastMessage(&header, &payload, canMessages);
+					TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 				}
 				return TRUE;
 			}
@@ -922,13 +924,13 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_VHW)) {
 					if (EncodePGN128259(&nmeaParser, &payload) == TRUE) {
 						header.pgn = 128259;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				if (!(supportedPGN & FLAGS_HDG)) {
 					if (EncodePGN127250(&nmeaParser, &payload) == TRUE) {
 						header.pgn = 127250;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -945,7 +947,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_VHW)) {
 					if (EncodePGN128275(&nmeaParser, &payload)) {
 						header.pgn = 128275;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -962,12 +964,12 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_VTG)) {
 					if (EncodePGN129026(&nmeaParser, &payload)) {
 						header.pgn = 129026;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN130577(&nmeaParser, &payload)) {
 						header.pgn = 130577;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;				
@@ -1008,7 +1010,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if ((!(supportedPGN & FLAGS_RTE)) || (enableWaypoint == TRUE)) {
 					if (EncodePGN130074(&nmeaParser, &payload)) {
 						header.pgn = 130074;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 				}
@@ -1048,7 +1050,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 								}
 								if (EncodePGN127257(yaw, pitch, roll, &payload)) {
 									header.pgn = 127257;
-									FragmentFastMessage(&header, &payload, canMessages);
+									TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 								}
 							
 							}
@@ -1122,7 +1124,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										payload.push_back(engineTorque & 0xFF);
 
 										header.pgn = 127489;
-										FragmentFastMessage(&header, &payload, canMessages);
+										TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 									}
 								}
 							
@@ -1158,7 +1160,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										payload.push_back((engineTrim >> 8) & 0xFF);
 
 										header.pgn = 127488;
-										FragmentFastMessage(&header, &payload, canMessages);
+										TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 									}
 								}						
 							}
@@ -1195,7 +1197,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										payload.push_back((engineTrim >> 8) & 0xFF);
 
 										header.pgn = 127488;
-										FragmentFastMessage(&header, &payload, canMessages);
+										TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 									}
 								
 									if (nmeaParser.Xdr.TransducerInfo[i].TransducerName.StartsWith(_T("ENGINEOIL#"), &remainingString)) {
@@ -1254,7 +1256,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										payload.push_back(engineTorque & 0xFF);
 
 										header.pgn = 127489;
-										FragmentFastMessage(&header, &payload, canMessages);
+										TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 									}
 								}						
 							}
@@ -1291,7 +1293,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										payload.push_back(sequenceId);
 
 										header.pgn = 127508;
-										FragmentFastMessage(&header, &payload, canMessages);
+										TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 									}
 								}
 							}
@@ -1326,7 +1328,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										payload.push_back(sequenceId);
 
 										header.pgn = 127508;
-										FragmentFastMessage(&header, &payload, canMessages);
+										TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 									}
 								}
 								
@@ -1386,7 +1388,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 										payload.push_back(engineTorque & 0xFF);
 
 										header.pgn = 127489;
-										FragmentFastMessage(&header, &payload, canMessages);
+										TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 									}
 								}
 							}
@@ -1446,7 +1448,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 									payload.push_back((tankCapacity >> 24) & 0xFF);
 
 									header.pgn = 127505;
-									FragmentFastMessage(&header, &payload, canMessages);
+									TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 
 								}
 							}
@@ -1468,7 +1470,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_XTE)) {
 					if (EncodePGN129283(&nmeaParser, &payload)) {
 						header.pgn = 129283;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 				}
 				return TRUE;
@@ -1486,12 +1488,12 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_ZDA)) {
 					if (EncodePGN126992(&nmeaParser, &payload)) {
 						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 
 					if (EncodePGN129033(&nmeaParser, &payload)) {
 						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
+						TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
 					}
 	
 				}

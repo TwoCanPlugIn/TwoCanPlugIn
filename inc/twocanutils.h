@@ -70,18 +70,18 @@
 
 // For this device's ISO Address Claim 
 // BUG BUG Should be user configurable
-#define CONST_MANUFACTURER_CODE 2019 // I assume proper numbers are issued by NMEA
-#define CONST_DEVICE_FUNCTION 130 // BUG BUG Should have an enum for all of the NMEA 2000 device function codes
-#define CONST_DEVICE_CLASS 120 // BUG BUG Should have an enum for all of the NMEA 2000 device class codes
+#define CONST_MANUFACTURER_CODE 1857 //2019 // I assume proper numbers are issued by NMEA
+#define CONST_DEVICE_FUNCTION 140 //130 // BUG BUG Should have an enum for all of the NMEA 2000 device function codes
+#define CONST_DEVICE_CLASS 40 //120 // BUG BUG Should have an enum for all of the NMEA 2000 device class codes
 #define CONST_MARINE_INDUSTRY 4
 
 // For this device's NMEA Product Information
 // BUG BUG Should be user configurable
 #define CONST_DATABASE_VERSION 2100
-#define CONST_PRODUCT_CODE 1770 // Trivia - Captain Cook discovers Australia !
+#define CONST_PRODUCT_CODE 20010//1770 // Trivia - Captain Cook discovers Australia !
 #define CONST_CERTIFICATION_LEVEL 0 // We have not been certified, although I think we support the PGN's required for level 1
-#define CONST_LOAD_EQUIVALENCY 1 // PC is self powered, so assume little or no drain on NMEA 2000 network
-#define CONST_MODEL_ID "TwoCan plugin"
+#define CONST_LOAD_EQUIVALENCY 4 // 1 // PC is self powered, so assume little or no drain on NMEA 2000 network
+#define CONST_MODEL_ID "AP44 Autopilot Controller" //"TwoCan plugin"
 
 // Maximum number of multi-frame Fast Messages we can support in the Fast Message Buffer, just an arbitary number
 #define CONST_MAX_MESSAGES 100
@@ -260,6 +260,7 @@
 #define FLAGS_AUTOPILOT_RAYMARINE 2 
 #define FLAGS_AUTOPILOT_NAVICO 3 
 #define FLAGS_AUTOPILOT_FURUNO 4
+#define FLAGS_AUTOPILOT_NAC3 5
 
 // Bit values to match 2000 Active Mode features and the options checklistbox control
 #define FLAGS_MODE_HEARTBEAT 0
@@ -344,9 +345,11 @@ public:
 	// Convert a string of hex characters to the corresponding byte array
 	static int ConvertHexStringToByteArray(const byte *hexstr, const unsigned int len, byte *buf);
 	// Generates the ID for Fast Messages. 3 high bits are ID, lower 5 bits are the sequence number
-	static byte GenerateID(unsigned char previousSID);
+	static byte GenerateID(byte previousSID);
 	// Calculate the number of microsoeconds since Posix Epoch
 	static unsigned long long GetTimeInMicroseconds(void);
+	// Fragments a message > 8 bytes into a series of 8 byte frames
+	static void FragmentFastMessage(const CanHeader &header, const std::vector<byte> &payload, std::vector<CanMessage> *canMessages);
 	// BUG BUG Any other conversion functions required ??
 
 	// Used to generate the unique id for Windows versions (Note the Linux version is defined in twocansocket

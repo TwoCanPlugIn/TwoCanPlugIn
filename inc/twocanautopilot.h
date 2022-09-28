@@ -41,43 +41,106 @@
 // If we are in Active Mode, whether we can control an Autpilot. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine, 4 Furuno
 extern int autopilotManufacturer; 
 
+// Map of the devices on the network. Iterated to fimd the address of an autopilot controller
+extern NetworkInformation networkMap[CONST_MAX_DEVICES];
+
 // A 1 byte CAN bus network address for this device if it is an Active device (0-253)
 extern int networkAddress;
 
+// Autopilot commands
 #define AUTOPILOT_CHANGE_STATUS 0
 #define AUTOPILOT_CHANGE_COURSE 1
-#define AUTOPILOT_CHANGE_MANUFACTURER 2
+#define AUTOPILOT_CHANGE_WIND 2
+#define AUTOPILOT_CHANGE_MANUFACTURER 3
+#define AUTOPILOT_KEEP_ALIVE 4
 
 // These must match the UI radio box values
-#define AUTOPILOT_POWER_OFF 0
-#define AUTOPILOT_POWER_STANDBY 1
-#define AUTOPILOT_MODE_HEADING 2
+// Autopilot Modes
+#define AUTOPILOT_POWER_STANDBY 0
+#define AUTOPILOT_MODE_COMPASS 1
+#define AUTOPILOT_MODE_NAV 2
 #define AUTOPILOT_MODE_WIND 3
-#define AUTOPILOT_MODE_GPS 4
+#define AUTOPILOT_MODE_NODRIFT 4
+
+typedef enum _AUTOPILOT_MODE {
+	STANDBY,
+	COMPASS,
+	NAV,
+	WIND,
+	NODRIFT
+} AUTOPILOT_MODE;
+
 
 // These are also defined in twocansettings as a hashmap
 #define RAYMARINE_MANUFACTURER_CODE 1851
-#define SIMARD_MANUFACTURER_CODE 1857
+#define SIMRAD_MANUFACTURER_CODE 1857
 #define GARMIN_MANUFACTURER_CODE 229
+#define NAVICO_MANUFACTURER_CODE 275
+#define BANDG_MANUFACTURER_CODE 381
+#define FURUNO_MANUFACTURER_CODE 1851
 
 #define MARINE_INDUSTRY_CODE 4;
 
+typedef enum _AUTOPILOT_MANUFACTURER {
+	RAYMARINE = 1851,
+	SIMRAD = 1857,
+	GARMIN = 229,
+	NAVICO = 275,
+	BANDG = 381,
+	FURUNO = 1851
+} AUTOPILOT_MANUFACTURER;
+
+
+#define NAC3_DIRECTION_PORT 2
+#define NAC3_DIRECTION_STBD 3
+#define NAC3_DIRECTION_UNUSED 255;
 
 // The TwoCan Autopilot
-class TwoCanAutopilot {
+class TwoCanAutoPilot {
 
 public:
 	// The constructor
-	TwoCanAutopilot(int mode);
+	TwoCanAutoPilot(int mode);
 
 	// and destructor
-	~TwoCanAutopilot(void);
+	~TwoCanAutoPilot(void);
 
-	// Generates NMEA 2000 autopilot messages
+	bool FindAutopilot(unsigned int autopilotAddress);
+
+	// Generates NMEA 2000 autopilot messages depending on the manufacturer
+	// Commands are issued by TwoCanAutopilot plugin or anything else
+	// that sends TWOCAN_AUTOPILOT_REQUEST messages
 	bool EncodeAutopilotCommand(wxString message_body, std::vector<CanMessage> *nmeaMessages);
 
+	// Raymarine Evolution Autopilot Heading
+	bool DecodeRaymarineAutopilotHeading(const int pgn, const byte *payload, wxString *jsonResponse);
+
+	// Raymarine Evolution Autopilot Wind
+	bool DecodeRaymarineAutopilotWind(const int pgn, const byte *payload, wxString *jsonResponse);
+
+	// Raymarine Evolution Autopilot Mode
+	bool DecodeRaymarineAutopilotMode(const byte *payload, wxString *jsonResponse);
+
+	// Raymarine Seatalk Datagrams
+	bool DecodeRaymarineSeatalk(const byte *payload, wxString *jsonResponse);
+
+	// Navico NAC-2/3
+	bool DecodeNAC3Autopilot(const byte *payload, wxString *jsonResponse);
+
+	// Simrad AC12
+	bool DecodeAC12Autopilot(const byte *payload, wxString *jsonResponse);
+
+	// Garmin Reactor
+	bool DecodeGarminAutopilot(const byte *payload, wxString *jsonResponse);
+
+	// Rudder Angle - Decoded in twocandevice.cpp, but encode the autopilot json here
+	bool DecodeRudderAngle(const int rudderanglw, wxString *jsonResponse);
+
 protected:
+
 private:
+	// The network address of the autopilot controller
+	byte autopilotAddress;
 
 };
 #endif

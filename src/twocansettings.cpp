@@ -164,9 +164,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
 	chkGateway->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
-	// BUG BUG Not yet implemented
-	chkMedia->Enable(FALSE);
-	chkAutopilot->Enable(FALSE);
+	
 	if (deviceMode == TRUE) {
 		chkHeartbeat->SetValue(enableHeartbeat);
 		chkGateway->SetValue(enableGateway);
@@ -181,6 +179,10 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 		chkAutopilot->SetValue(FALSE);
 		chkMedia->SetValue(FALSE);
 	}
+
+	// BUG BUG Not yet implemented
+	//chkMedia->Enable(FALSE);
+	//chkAutopilot->Enable(FALSE);
 
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
