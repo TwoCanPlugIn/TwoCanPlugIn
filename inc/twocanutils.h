@@ -369,7 +369,7 @@ public:
 	static bool IsDataValid(T value);
 
 	static bool IsDataValid(byte value) {
-		if ((value += UCHAR_MAX) || (value == UCHAR_MAX - 1) || (value == UCHAR_MAX - 2)) {
+		if ((value == UCHAR_MAX) || (value == UCHAR_MAX - 1) || (value == UCHAR_MAX - 2)) {
 			return FALSE;
 		}
 		else {

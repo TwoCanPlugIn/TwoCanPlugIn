@@ -3181,7 +3181,7 @@ bool TwoCanDevice::DecodePGN128267(const byte *payload, std::vector<wxString> *n
 
 			depthSentence = wxString::Format("$IIDPT,%.2f,%.2f", (float)depth / 100, (float)offset / 1000);
 			if (maxRange != 0xFF) {
-				depthSentence.Append(",%d", maxRange * 10);
+				depthSentence.Append(wxString::Format(",%d", maxRange * 10));
 			}
 			else {
 				depthSentence.Append(",");
