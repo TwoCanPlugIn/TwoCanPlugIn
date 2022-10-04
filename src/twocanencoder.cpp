@@ -370,19 +370,19 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 					}
 
 					if (EncodePGN129033(&nmeaParser, &payload)) {
-						header.pgn = 128267;
+						header.pgn = 129033;
 						FragmentFastMessage(&header, &payload, canMessages);
 					}
 				}
 
 				if (!(supportedPGN & FLAGS_GGA)) {
 					if (EncodePGN129025(&nmeaParser, &payload)) {
-						header.pgn = 128267;
+						header.pgn = 129025;
 						FragmentFastMessage(&header, &payload, canMessages);
 					}
 
 					if (EncodePGN129029(&nmeaParser, &payload)) {
-						header.pgn = 128267;
+						header.pgn = 129029;
 						FragmentFastMessage(&header, &payload, canMessages);
 					}
 				}
@@ -419,7 +419,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 					}
 
 					if (EncodePGN129029(&nmeaParser, &payload)) {
-						header.pgn = 128267;
+						header.pgn = 129029	;
 						FragmentFastMessage(&header, &payload, canMessages);
 					}
 				}
@@ -624,6 +624,24 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			return FALSE;
 		}
 
+		// VWR Wind relative to Vessel
+		else if (nmeaParser.LastSentenceIDReceived == _T("VWR")) {
+		if (nmeaParser.Parse()) {
+			if (!(supportedPGN & FLAGS_MWV)) {
+
+				if (EncodePGN130306(&nmeaParser, &payload)) {
+					header.pgn = 130306;
+					FragmentFastMessage(&header, &payload, canMessages);
+				}
+			}
+			return TRUE;
+		}
+		else {
+			wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
+		}
+		return FALSE;
+		}
+
 		// MWV Wind Speed & Angle
 		else if (nmeaParser.LastSentenceIDReceived == _T("MWV")) {
 			if (nmeaParser.Parse()) {
@@ -763,7 +781,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				if (!(supportedPGN & FLAGS_RSA)) {
 			
 					if (EncodePGN127245(&nmeaParser, &payload)) {
-						header.pgn = 128267;
+						header.pgn = 127245;
 						FragmentFastMessage(&header, &payload, canMessages);
 					}
 				}
@@ -2960,6 +2978,30 @@ bool TwoCanEncoder::EncodePGN130306(const NMEA0183 *parser, std::vector<byte> *n
 
 		return TRUE;
 	}
+	else if (parser->LastSentenceIDParsed == _T("VWR")) {
+
+		n2kMessage->push_back(sequenceId);
+
+		unsigned short windSpeed = (unsigned short)(100 * parser->Vwr.WindSpeedms);
+		n2kMessage->push_back(windSpeed & 0xFF);
+		n2kMessage->push_back((windSpeed >> 8) & 0xFF);
+
+		unsigned short windAngle;
+		if (parser->Vwr.DirectionOfWind == LEFTRIGHT::Left) {
+			windAngle = (unsigned short)(10000 * DEGREES_TO_RADIANS(360 - parser->Vwr.WindDirectionMagnitude));
+		}
+		else {
+			windAngle = (unsigned short)(10000 * DEGREES_TO_RADIANS(parser->Vwr.WindDirectionMagnitude));
+		}
+		n2kMessage->push_back(windAngle & 0xFF);
+		n2kMessage->push_back((windAngle >> 8) & 0xFF);
+
+		byte windReference = parser->Mwv.Reference == "T" ? WIND_REFERENCE_TRUE : parser->Mwv.Reference == "R" ? WIND_REFERENCE_APPARENT : UCHAR_MAX;
+		n2kMessage->push_back(windReference & 0x07);
+
+		return TRUE;
+	}
+
 	return FALSE;	
 }
 
