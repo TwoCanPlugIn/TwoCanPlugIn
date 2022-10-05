@@ -50,8 +50,7 @@ if(APPLE)
         RUNTIME
         LIBRARY DESTINATION OpenCPN.app/Contents/PlugIns)
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
-        install(DIRECTORY data DESTINATION OpenCPN.app/Contents/SharedSupport/plugins/${PACKAGE_NAME}
-		PATTERN "*.dll" EXCLUDE)
+        install(DIRECTORY data DESTINATION OpenCPN.app/Contents/SharedSupport/plugins/${PACKAGE_NAME})
     endif()
 
     find_package(ZLIB REQUIRED)
@@ -97,8 +96,7 @@ if(WIN32)
     endif(EXISTS ${PROJECT_SOURCE_DIR}/UserIcons)
 
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
-        install(DIRECTORY data DESTINATION "${INSTALL_DIRECTORY}"
-		PATTERN "*.dylib" EXCLUDE)
+        install(DIRECTORY data DESTINATION "${INSTALL_DIRECTORY}")
         message(STATUS "${CMLOC}Install Data: ${INSTALL_DIRECTORY}")
     endif(EXISTS ${PROJECT_SOURCE_DIR}/data)
 
@@ -115,10 +113,7 @@ if(UNIX AND NOT APPLE)
     install(TARGETS ${PACKAGE_NAME} LIBRARY DESTINATION ${PREFIX_PARENTLIB})
 
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
-        install(DIRECTORY data DESTINATION ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME}
-		PATTERN "drivers" EXCLUDE
-		PATTERN "*.dll" EXCLUDE
-		PATTERN "*.dylib" EXCLUDE)
+        install(DIRECTORY data DESTINATION ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME})
         message(STATUS "${CMLOC}Install data: ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME}")
     endif()
     if(EXISTS ${PROJECT_SOURCE_DIR}/UserIcons)

@@ -41,6 +41,8 @@ TwoCanEncoder::TwoCanEncoder(wxEvtHandler *handler) {
 
 TwoCanEncoder::~TwoCanEncoder(void) {
 	delete aisDecoder;
+	dseTimer->Unbind(wxEVT_TIMER, &TwoCanEncoder::OnDseTimerExpired, this);
+	delete dseTimer;
 }
 
 void TwoCanEncoder::RaiseEvent(int pgn, std::vector<byte> *data) {
@@ -711,6 +713,24 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
 			}
 			return FALSE;
+		}
+
+		// VWR Velocity Wind Relative
+		else if (nmeaParser.LastSentenceIDReceived == _T("VWR")) {
+		if (nmeaParser.Parse()) {
+			if (!(supportedPGN & FLAGS_MWV)) {
+
+				if (EncodePGN130306(&nmeaParser, &payload)) {
+					header.pgn = 130306;
+					TwoCanUtils::FragmentFastMessage(header, payload, canMessages);
+				}
+			}
+			return TRUE;
+		}
+		else {
+			wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
+		}
+		return FALSE;
 		}
 
 		// RMB Recommended Minimum Navigation Information
@@ -2616,78 +2636,117 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 // and 
 // $--WPL,llll.ll,a,yyyyy.yy,a,c--c
 bool TwoCanEncoder::EncodePGN129285(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+
+	n2kMessage->clear();
 	
 	// Need to construct a route/waypoint thingy......
-	// This is what we are sent
-	//'$ECWPL,4740.899,N,12224.470,W,001*72',
-	//'$ECWPL,4741.661,N,12226.537,W,One*0F',
-	//'$ECWPL,4742.669,N,12226.395,W,Two*02',
-	//'$ECWPL,4745.423,N,12225.527,W,Three*07',
-	//'$ECWPL,4741.008,N,12224.334,W,005*70',
-	//'$ECRTE,3,1,c,Route One,001,One*6C',
-	//'$ECRTE,3,2,c,Route One,Two,Three*18',
-	//'$ECRTE,3,3,c,Route One,005*02')
+	// This is sent when we are navigating to an active route or waypoint
 
-	// Use the Plugin_Route
-	/*
-	unsigned short rps;
-	rps = n2kMessage[0] | (n2kMessage[1] << 8);
+	unsigned short rps = USHRT_MAX;
+	n2kMessage->push_back(rps & 0xFF);
+	n2kMessage->push_back((rps >> 8) & 0xFF);
 
-	unsigned short nItems;
-	nItems = n2kMessage[2] | (n2kMessage[3] << 8);
+	int nItems = 2; // We will just specify origin & destination waypoint
+	n2kMessage->push_back(nItems & 0xFF);
+	n2kMessage->push_back((nItems >> 8) & 0xFF);
 
-	unsigned short databaseVersion;
-	databaseVersion = n2kMessage[4] | (n2kMessage[5] << 8);
+	unsigned short databaseVersion = USHRT_MAX;
+	n2kMessage->push_back(databaseVersion & 0xFF);
+	n2kMessage->push_back((databaseVersion >> 8) & 0xFF);
 
-	unsigned short routeID;
-	routeID = n2kMessage[6] | (n2kMessage[7] << 8);
+	// BUG BUG FIXME
+	unsigned short routeId = 1234;
+	n2kMessage->push_back(routeId & 0xFF);
+	n2kMessage->push_back((routeId >> 8) & 0xFF);
 
-	unsigned char direction; // I presume forward/reverse
-	direction = n2kMessage[8] & 0xC0;
+	unsigned char direction = 0; // I presume forward/reverse
+	unsigned char supplementaryInfo = 0xFF;
+	n2kMessage->push_back(((direction << 5) & 0xE0) | ((supplementaryInfo << 3) & 0x18) | 0x07);
 
-	unsigned char supplementaryInfo;
-	supplementaryInfo = n2kMessage[8] & 0x30;
+	// As we need to iterate repeated fields with variable length strings
+	// can't use hardcoded indexes into the payload
+	int index = 9;
 
-	// NMEA reserved
-	// unsigned short reservedA = n2kMessage[8} & 0x0F;
+	// BUG BUG FIXME
+	std::string routeName = "Route 1";
+	n2kMessage->push_back(routeName.size() + 2); // Length includes length & encodong bytes
+	index++;
+	
+	n2kMessage->push_back(0x01); // 1 indicates ASCII Encoding
+	index++;
 
-	std::string routeName;
-	// BUG BUG If this is null terminated, just use strcpy
-	for (int i = 0; i < 255; i++) {
-		if (isprint(n2kMessage[9 + i])) {
-			routeName.append(1, n2kMessage[9 + i]);
-		}
+	for (size_t i = 0; i < routeName.size(); i++) {
+		n2kMessage->push_back(routeName.at(i));
+		index++;
 	}
 
-	// NMEA reserved n2kMessage[264]
-	//unsigned int reservedB = n2kMessage[264];
+	// Reserved Value
+	n2kMessage->push_back(0xFF);
+	index++;
 
-	// repeated fields
-	for (unsigned int i = 0; i < nItems; i++) {
-		int waypointID;
-		waypointID = n2kMessage[265 + (i * 265)] | (n2kMessage[265 + (i * 265) + 1] << 8);
+	unsigned short originId = 0;
+	// repeated fields for the two sets of waypoints
+	n2kMessage->push_back(originId & 0xFF);
+	n2kMessage->push_back((originId >> 8) & 0xFF);
+	index += 2;
 
-		std::string waypointName;
-		for (int j = 0; j < 255; j++) {
-			if (isprint(n2kMessage[265 + (i * 265) + 266 + j])) {
-				waypointName.append(1, n2kMessage[265 + (i * 265) + 266 + j]);
-			}
-		}
+	//BUG BUG FIXME
+	std::string originName = "Start";
+	n2kMessage->push_back(originName.size() + 2);
+	index++;
+	
+	n2kMessage->push_back(0x01); // 1 indicates SCII encoding
+	index++;
 
-		double latitude = n2kMessage[265 + (i * 265) + 257] | (n2kMessage[265 + (i * 265) + 258] << 8) | (n2kMessage[265 + (i * 265) + 259] << 16) | (n2kMessage[265 + (i * 265) + 260] << 24);
-		int latitudeDegrees = (int)latitude;
-		double latitudeMinutes = (latitude - latitudeDegrees) * 60;
-
-		double longitude = n2kMessage[265 + (i * 265) + 261] | (n2kMessage[265 + (i * 265) + 262] << 8) | (n2kMessage[265 + (i * 265) + 263] << 16) | (n2kMessage[265 + (i * 265) + 264] << 24);
-		int longitudeDegrees = (int)longitude;
-		double longitudeMinutes = (longitude - longitudeDegrees) * 60;
-
-		nmeaSentences->push_back(wxString::Format("$IIWPL,%02d%05.2f,%c,%03d%05.2f,%c,%s",
-			abs(latitudeDegrees), fabs(latitudeMinutes), latitude >= 0 ? 'N' : 'S',
-			abs(longitudeDegrees), fabs(longitudeMinutes), longitude >= 0 ? 'E' : 'W',
-			waypointName.c_str()));
+	for (size_t i = 0; i < originName.size(); i++) {
+		n2kMessage->push_back(originName.at(i));
+		index++;
 	}
-	*/
+
+	// Leave Origin Position as null
+	n2kMessage->push_back(0xFF);
+	n2kMessage->push_back(0xFF);
+	n2kMessage->push_back(0xFF);
+	n2kMessage->push_back(0x7F);
+
+	n2kMessage->push_back(0xFF);
+	n2kMessage->push_back(0xFF);
+	n2kMessage->push_back(0xFF);
+	n2kMessage->push_back(0x7F);
+
+	index += 8;
+
+	// BUG BUG FIXME
+	unsigned short destinationId = 999;
+	n2kMessage->push_back(destinationId & 0xFF);
+	n2kMessage->push_back((destinationId >> 8) & 0xFF);
+	index += 2;
+
+	// BUG BUG FIXME
+	std::string destinationName = "Finish";
+	n2kMessage->push_back(destinationName.size() + 2);
+	index++;
+	n2kMessage->push_back(0x01); // 1 indicates SCII encoding
+	index++;
+	for (size_t i = 0; i < destinationName.size(); i++) {
+		n2kMessage->push_back(destinationName.at(i));
+		index++;
+	}
+
+	// BUG BUG FIXME
+	int destinationLatitude = 0x7FFFFFFF;
+	n2kMessage->push_back(destinationLatitude & 0xFF);
+	n2kMessage->push_back((destinationLatitude >> 8) & 0xFF);
+	n2kMessage->push_back((destinationLatitude >> 16) & 0xFF);
+	n2kMessage->push_back((destinationLatitude >> 24) & 0xFF);
+
+	int destinationLongitude = 0x7FFFFFFF;
+	n2kMessage->push_back(destinationLongitude & 0xFF);
+	n2kMessage->push_back((destinationLongitude >> 8) & 0xFF);
+	n2kMessage->push_back((destinationLongitude >> 16) & 0xFF);
+	n2kMessage->push_back((destinationLongitude >> 24) & 0xFF);
+
+
 	return TRUE;
 
 }
@@ -3179,7 +3238,30 @@ bool TwoCanEncoder::EncodePGN130306(const NMEA0183 *parser, std::vector<byte> *n
 
 		return TRUE;
 	}
-	return FALSE;	
+	else if (parser->LastSentenceIDParsed == _T("VWR")) {
+
+		n2kMessage->push_back(sequenceId);
+
+		unsigned short windSpeed = (unsigned short)(parser->Vwr.WindSpeedms);
+		n2kMessage->push_back(windSpeed & 0xFF);
+		n2kMessage->push_back((windSpeed >> 8) & 0xFF);
+
+		unsigned short windAngle;
+		if (parser->Vwr.DirectionOfWind == LEFTRIGHT::Left) {
+			windAngle = (unsigned short)(10000 * DEGREES_TO_RADIANS(360 - parser->Vwr.WindDirectionMagnitude));
+		}
+		else {
+			windAngle = (unsigned short)(10000 * DEGREES_TO_RADIANS(parser->Vwr.WindDirectionMagnitude));
+		}
+		n2kMessage->push_back(windAngle & 0xFF);
+		n2kMessage->push_back((windAngle >> 8) & 0xFF);
+
+		byte windReference = WIND_REFERENCE_APPARENT;
+		n2kMessage->push_back(windReference & 0x07);
+
+		return TRUE;
+	}
+	return FALSE;
 }
 
 // Encode payload for PGN 130310 NMEA Water & Air Temperature and Pressure

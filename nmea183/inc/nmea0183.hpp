@@ -116,6 +116,7 @@
 #include "vdm.hpp"
 #include "vhw.hpp"
 #include "vlw.hpp"
+#include "vwr.hpp"
 //#include "VPW.hpp"
 //#include "VTG.hpp"
 #include "wcv.hpp"
@@ -206,6 +207,7 @@ class NMEA0183
    VDR Vdr;
    VHW Vhw;
    VLW Vlw;
+   VWR Vwr;
    //VPW Vpw;
    VTG Vtg;
    WCV Wcv;

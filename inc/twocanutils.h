@@ -70,18 +70,19 @@
 
 // For this device's ISO Address Claim 
 // BUG BUG Should be user configurable
-#define CONST_MANUFACTURER_CODE 1857 //2019 // I assume proper numbers are issued by NMEA
-#define CONST_DEVICE_FUNCTION 140 //130 // BUG BUG Should have an enum for all of the NMEA 2000 device function codes
-#define CONST_DEVICE_CLASS 40 //120 // BUG BUG Should have an enum for all of the NMEA 2000 device class codes
+#define CONST_MANUFACTURER_CODE 2019 // I assume proper numbers are issued by NMEA
+#define CONST_DEVICE_FUNCTION 130 // BUG BUG Should have an enum for all of the NMEA 2000 device function codes
+#define CONST_DEVICE_CLASS 120 // BUG BUG Should have an enum for all of the NMEA 2000 device class codes
 #define CONST_MARINE_INDUSTRY 4
 
 // For this device's NMEA Product Information
 // BUG BUG Should be user configurable
+// Change for production, pretending to be a AP44 Controller
 #define CONST_DATABASE_VERSION 2100
-#define CONST_PRODUCT_CODE 20010//1770 // Trivia - Captain Cook discovers Australia !
+#define CONST_PRODUCT_CODE 1770 // Trivia - Captain Cook discovers Australia !
 #define CONST_CERTIFICATION_LEVEL 0 // We have not been certified, although I think we support the PGN's required for level 1
-#define CONST_LOAD_EQUIVALENCY 4 // 1 // PC is self powered, so assume little or no drain on NMEA 2000 network
-#define CONST_MODEL_ID "AP44 Autopilot Controller" //"TwoCan plugin"
+#define CONST_LOAD_EQUIVALENCY 1 // PC is self powered, so assume little or no drain on NMEA 2000 network
+#define CONST_MODEL_ID "TwoCan plugin"
 
 // Maximum number of multi-frame Fast Messages we can support in the Fast Message Buffer, just an arbitary number
 #define CONST_MAX_MESSAGES 100
@@ -97,9 +98,9 @@
 #define CONST_DROPPEDFRAME_PERIOD 5
 
 // Some time intervals 
-#define CONST_TEN_MILLIS 10
-#define CONST_ONE_SECOND 100 * CONST_TEN_MILLIS
-#define CONST_ONE_MINUTE 60 * CONST_ONE_SECOND
+#define CONST_TEN_MILLIS 1
+#define CONST_ONE_SECOND 1000 // * CONST_TEN_MILLIS
+#define CONST_ONE_MINUTE 60000 // * CONST_ONE_SECOND
 
 // NMEA 2000 priorities - derived from observation. As priority is only 3 bits, values range from 0-7
 #define CONST_PRIORITY_MEDIUM 6 // seen for 60928 ISO Address Claim, 59904 ISO Request
@@ -254,13 +255,14 @@
 #define FLAGS_LOG_YACHTDEVICES 4 // Found some samples from their Voyage Data Recorder
 #define FLAGS_LOG_CSV 5 // Comma Separted Variables
 
-// Bit values to determine in what Autpilot Brand is selected
-#define FLAGS_AUTOPILOT_NONE 0
-#define FLAGS_AUTOPILOT_GARMIN 1 
-#define FLAGS_AUTOPILOT_RAYMARINE 2 
-#define FLAGS_AUTOPILOT_NAVICO 3 
-#define FLAGS_AUTOPILOT_FURUNO 4
-#define FLAGS_AUTOPILOT_NAC3 5
+// BUG BUG Order must match that of the Radio Box items
+typedef enum _AUTOPILOT_MODEL {
+	GARMIN = 0,
+	RAYMARINE = 1,
+	SIMRAD = 2,
+	NAVICO = 3,
+	FURUNO = 4
+} AUTOPILOT_MODEL;
 
 // Bit values to match 2000 Active Mode features and the options checklistbox control
 #define FLAGS_MODE_HEARTBEAT 0

@@ -164,6 +164,9 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
 	chkGateway->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
+	chkAutopilot->Enable(chkDeviceMode->IsChecked());
+	chkMedia->Enable(chkDeviceMode->IsChecked());
+	rdoBoxAutopilot->Enable(enableAutopilot); // BUG BUG Whhy is it not observing chkAutopilot->IsChecked() ??
 	
 	if (deviceMode == TRUE) {
 		chkHeartbeat->SetValue(enableHeartbeat);
@@ -171,6 +174,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 		chkWaypoint->SetValue(enableWaypoint);
 		chkAutopilot->SetValue(enableAutopilot);
 		chkMedia->SetValue(enableMusic);
+		rdoBoxAutopilot->SetSelection(autopilotModel);
 	}
 	else {
 		chkHeartbeat->SetValue(FALSE);
@@ -178,11 +182,8 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 		chkWaypoint->SetValue(FALSE);
 		chkAutopilot->SetValue(FALSE);
 		chkMedia->SetValue(FALSE);
+		rdoBoxAutopilot->SetSelection(AUTOPILOT_MODEL::NAVICO);
 	}
-
-	// BUG BUG Not yet implemented
-	//chkMedia->Enable(FALSE);
-	//chkAutopilot->Enable(FALSE);
 
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
@@ -232,7 +233,19 @@ void TwoCanSettings::OnChoiceInterfaces(wxCommandEvent &event) {
 // Select NMEA 2000 parameter group numbers to be converted to their respective NMEA 0183 sentences
 void TwoCanSettings::OnCheckPGN(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
-} 
+}
+// Display information on NMEA 2000 devices found on the network
+void TwoCanSettings::OnDoubleClick(wxGridEvent &event) {
+	int rowNumber = event.GetRow();
+	if (networkMap[rowNumber].uniqueId > 0) {
+		wxMessageBox(wxString::Format("Model: %s\nProduct Code: %d\nH/W Version: %s\nS/W Version: %s\nSerial Number: %s",
+			networkMap[rowNumber].productInformation.modelId,
+			networkMap[rowNumber].productInformation.productCode,
+			networkMap[rowNumber].productInformation.modelVersion,
+			networkMap[rowNumber].productInformation.softwareVersion,
+			networkMap[rowNumber].productInformation.serialNumber));
+	}
+}
 
 // Enable Logging of Raw NMEA 2000 frames
 void TwoCanSettings::OnChoiceLogging(wxCommandEvent &event) {
@@ -266,11 +279,12 @@ void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
 	chkGateway->SetValue(enableGateway);
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->SetValue(enableWaypoint);
-	// BUG BUG Not yet implemented
-	// chkMedia->Enable(chkDeviceMode->IsChecked());
-	// chkMedia->SetValue(enableMusic);
-	// chkAutopilot->Enable(chkDeviceMode->IsChecked());
-	// chkAutopilot->SetValue(enableAutopilot);
+	chkMedia->Enable(chkDeviceMode->IsChecked());
+	chkMedia->SetValue(enableMusic);
+	chkAutopilot->Enable(chkDeviceMode->IsChecked());
+	chkAutopilot->SetValue(enableAutopilot);
+	rdoBoxAutopilot->Enable(chkAutopilot->IsChecked());
+	rdoBoxAutopilot->SetSelection(autopilotModel);
 	this->settingsDirty = TRUE;
 }
 
@@ -286,6 +300,14 @@ void TwoCanSettings::OnCheckGateway(wxCommandEvent &event) {
 
 // Set whether the device integrates with NMEA 2000 autopilots
 void TwoCanSettings::OnCheckAutopilot(wxCommandEvent &event) {
+	this->settingsDirty = TRUE;
+	// Toggle the Autopilot Model Radio Box
+	rdoBoxAutopilot->Enable(chkAutopilot->IsChecked());
+}
+
+// Selection of teh Autopilot Model.
+// BUG BUG At present only NAC3 is tested
+void TwoCanSettings::OnAutopilotModelChanged(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
 
@@ -380,6 +402,7 @@ void TwoCanSettings::SaveSettings(void) {
 	enableAutopilot = FALSE;
 	if (chkAutopilot->IsChecked()) {
 		enableAutopilot = TRUE;
+		autopilotModel =  rdoBoxAutopilot->GetSelection();
 	}
 
 	enableMusic = FALSE;

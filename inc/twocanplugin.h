@@ -86,8 +86,9 @@ bool enableSignalK;
 bool enableMusic;
 // If we can control an autopilot
 bool enableAutopilot;
-// If we are in Active Mode, what model of autopilot we control. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine
-int autopilotManufacturer; 
+// If we are in Active Mode, what model of autopilot we control. 
+// 0 - None, 1, Garmin, 2 Simrad AC12, 3 Raymarine 4 Furuno, 5 NAC3
+int autopilotModel; 
 // If any logging is to be performed and in what format (twocan raw, candump, canboat, yacht devices or csv)
 int logLevel;
 // A 29bit number that uniqiuely identifies the TwoCan device if it is an Active Device

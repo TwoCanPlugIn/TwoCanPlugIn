@@ -147,6 +147,9 @@ extern bool enableMusic;
 // If we are in Active Mode, whether we can control an Autpilot.
 extern bool enableAutopilot; 
 
+// If we can control an autopilot, which model
+extern int autopilotModel;
+
 // Whether to Log raw NMEA 2000 messages
 extern int logLevel;
 
@@ -344,6 +347,9 @@ private:
 	// Decode PGN 65280 Manufacturer Proprietary Message
 	bool DecodePGN65280(const byte *payload);
 
+	// Decode PGN 65305 Manufacturer Proprietary Message - Navico Autopilot Mode and Status
+	bool DecodePGN65305(const byte *payload);
+
 	// Decode PGN 65309 Manufacturer Proprietary Message - B&G WS302 Battery Status
 	bool DecodePGN65309(const byte *payload);
 
@@ -535,6 +541,9 @@ private:
 
 	// Decode Manufacturer Proprietary Fast Message
 	bool DecodePGN130824(const byte *payload);
+
+	// Decode Manufacturer Proprietary Fast Message - Navico NAC3 Autopilot
+	bool DecodePGN130850(const byte *payload, std::vector<wxString> *nmeaSentences);
 	
 	// Transmit an ISO Request
 	int SendISORequest(const byte destination, const unsigned int pgn);
