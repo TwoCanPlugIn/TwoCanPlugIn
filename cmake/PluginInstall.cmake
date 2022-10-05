@@ -50,7 +50,8 @@ if(APPLE)
         RUNTIME
         LIBRARY DESTINATION OpenCPN.app/Contents/PlugIns)
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
-        install(DIRECTORY data DESTINATION OpenCPN.app/Contents/SharedSupport/plugins/${PACKAGE_NAME})
+        install(DIRECTORY data DESTINATION OpenCPN.app/Contents/SharedSupport/plugins/${PACKAGE_NAME}
+		PATTERN "*.dll" EXCLUDE)
     endif()
 
     find_package(ZLIB REQUIRED)
@@ -100,6 +101,12 @@ if(WIN32)
         message(STATUS "${CMLOC}Install Data: ${INSTALL_DIRECTORY}")
     endif(EXISTS ${PROJECT_SOURCE_DIR}/data)
 
+	if(EXISTS ${PROJECT_SOURCE_DIR}/data)
+        install(DIRECTORY data DESTINATION "${INSTALL_DIRECTORY}"
+		PATTERN "*.dylib" EXCLUDE)
+        message(STATUS "${CMLOC}Install Data: ${INSTALL_DIRECTORY}")
+    endif(EXISTS ${PROJECT_SOURCE_DIR}/data)
+
     # fix for missing dll's FILE(GLOB gtkdll_files "${CMAKE_CURRENT_SOURCE_DIR}/buildwin/gtk/*.dll") INSTALL(FILES ${gtkdll_files} DESTINATION ".") FILE(GLOB expatdll_files
     # "${CMAKE_CURRENT_SOURCE_DIR}/buildwin/expat-2.1.0/*.dll") INSTALL(FILES ${expatdll_files} DESTINATION ".")
 
@@ -114,14 +121,19 @@ if(UNIX AND NOT APPLE)
 
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
         install(DIRECTORY data DESTINATION ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME})
+		PATTERN "drivers" EXCLUDE
+		PATTERN "*.dll" EXCLUDE
+		PATTERN "*.dylib" EXCLUDE)
         message(STATUS "${CMLOC}Install data: ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME}")
     endif()
+
     if(EXISTS ${PROJECT_SOURCE_DIR}/UserIcons)
         install(DIRECTORY UserIcons DESTINATION ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME})
         set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/script/postinst")
         set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/script/postinst")
         message(STATUS "${CMLOC}Install UserIcons: ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME}")
     endif()
+
 endif(UNIX AND NOT APPLE)
 
 if(APPLE)
