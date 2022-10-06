@@ -417,11 +417,6 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 						header.pgn = 129025;
 						FragmentFastMessage(&header, &payload, canMessages);
 					}
-
-					if (EncodePGN129029(&nmeaParser, &payload)) {
-						header.pgn = 129029	;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
 				}
 				return TRUE;
 			}
@@ -432,6 +427,8 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		}
 
 		// GNS GNSS Fix Data
+		// BUG BUG No GNS parser
+
 		else if (nmeaParser.LastSentenceIDReceived == _T("GNS")) {
 			if (nmeaParser.Parse()) {
 				// Date and Time
@@ -471,14 +468,10 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		}
 
 		// GSA GNSS DOP and Active Satellites
+		// BUG BUG No GSA parser
 		else if (nmeaParser.LastSentenceIDReceived == _T("GSA")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_GGA)) {
-					if (EncodePGN129029(&nmeaParser, &payload)) {
-						header.pgn = 129029;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
-					
 					//if (EncodePGN129539(&nmeaParser, &payload)) {
 					//	header.pgn = 129539;
 					//	FragmentFastMessage(&header, &payload, canMessages);
@@ -2195,202 +2188,7 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 
 		return TRUE;		
 	}
-
-	else if (parser->LastSentenceIDParsed == _T("GLL")) {
-
-		n2kMessage->push_back(sequenceId);
-
-		unsigned short daysSinceEpoch;
-		unsigned int secondsSinceMidnight;
 	
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
-
-		wxDateTime now;
-		now.ParseDateTime(parser->Gga.UTCTime);
-
-		wxTimeSpan dateDiff = now - epoch;
-
-		daysSinceEpoch = dateDiff.GetDays();
-		secondsSinceMidnight = (dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue();
-
-		n2kMessage->push_back(daysSinceEpoch & 0xFF);
-		n2kMessage->push_back((daysSinceEpoch >> 8) & 0xFF);
-
-		n2kMessage->push_back(secondsSinceMidnight & 0xFF);
-		n2kMessage->push_back((secondsSinceMidnight >> 8) & 0xFF);
-		n2kMessage->push_back((secondsSinceMidnight >> 16) & 0xFF);
-		n2kMessage->push_back((secondsSinceMidnight >> 24) & 0xFF);
-	
-		long long latitude = parser->Gga.Position.Latitude.Latitude;
-		if (parser->Gga.Position.Latitude.Northing == South) {
-			latitude = -latitude;
-		}
-		n2kMessage->push_back(latitude & 0xFF);
-		n2kMessage->push_back((latitude >> 8) & 0xFF);
-		n2kMessage->push_back((latitude >> 16) & 0xFF);
-		n2kMessage->push_back((latitude >> 24) & 0xFF);
-		n2kMessage->push_back((latitude >> 32) & 0xFF);
-		n2kMessage->push_back((latitude >> 40) & 0xFF);
-		n2kMessage->push_back((latitude >> 48) & 0xFF);
-		n2kMessage->push_back((latitude >> 56) & 0xFF);
-
-		long long longitude = parser->Gga.Position.Longitude.Longitude ;
-		if (parser->Gga.Position.Longitude.Easting == West) {
-			longitude = -longitude;
-		}
-		n2kMessage->push_back(longitude & 0xFF);
-		n2kMessage->push_back((longitude >> 8) & 0xFF);
-		n2kMessage->push_back((longitude >> 16) & 0xFF);
-		n2kMessage->push_back((longitude >> 24) & 0xFF);
-		n2kMessage->push_back((longitude >> 32) & 0xFF);
-		n2kMessage->push_back((longitude >> 40) & 0xFF);
-		n2kMessage->push_back((longitude >> 48) & 0xFF);
-		n2kMessage->push_back((longitude >> 56) & 0xFF);
-	
-		long long altitude = parser->Gga.AntennaAltitudeMeters * 1e6;
-
-		n2kMessage->push_back(altitude & 0xFF);
-		n2kMessage->push_back((altitude >> 8) & 0xFF);
-		n2kMessage->push_back((altitude >> 16) & 0xFF);
-		n2kMessage->push_back((altitude >> 24) & 0xFF);
-		n2kMessage->push_back((altitude >> 32) & 0xFF);
-		n2kMessage->push_back((altitude >> 40) & 0xFF);
-		n2kMessage->push_back((altitude >> 48) & 0xFF);
-		n2kMessage->push_back((altitude >> 56) & 0xFF);
-
-		n2kMessage->push_back((parser->Gga.GPSQuality << 4) & 0xF0);
-	
-		//fixIntegrity;
-		n2kMessage->push_back(1 & 0x03);
-
-		n2kMessage->push_back(parser->Gga.NumberOfSatellitesInUse);
-
-		unsigned short hDOP = 100 * parser->Gga.HorizontalDilutionOfPrecision;
-		n2kMessage->push_back(hDOP & 0xFF);
-		n2kMessage->push_back((hDOP >> 8) & 0xFF);
-
-		//PDOP
-		n2kMessage->push_back(0xFF);
-		n2kMessage->push_back(0xFF);
-
-		unsigned short geoidalSeparation = 100 * parser->Gga.GeoidalSeparationMeters;
-		n2kMessage->push_back(geoidalSeparation & 0xFF);
-		n2kMessage->push_back((geoidalSeparation >> 8) & 0xFF);
-
-		// BUG BUG How to determine the correct number of reference stations
-		// GGA only provides 1 (or perhaps none ?)
-		// possibly check if parser->Gga.DifferentialReferenceStationID is NaN
-	
-		n2kMessage->push_back(1);
-	
-		unsigned short referenceStationType = 0; //0 = GPS
-		unsigned short referenceStationID = parser->Gga.DifferentialReferenceStationID;
-		unsigned short referenceStationAge = parser->Gga.AgeOfDifferentialGPSDataSeconds;
-
-		n2kMessage->push_back( ((referenceStationType << 4) & 0xF0) | (referenceStationID & 0x0F) ); 
-		n2kMessage->push_back((referenceStationID >> 4) & 0xFF);
-		n2kMessage->push_back(referenceStationAge & 0xFF);
-		n2kMessage->push_back((referenceStationAge >> 8) & 0xFF);
-
-		return TRUE;		
-	}
-
-	else if (parser->LastSentenceIDParsed == _T("GSA")) {
-
-		n2kMessage->push_back(sequenceId);
-
-		unsigned short daysSinceEpoch;
-		unsigned int secondsSinceMidnight;
-	
-		wxDateTime epoch;
-		epoch.ParseDateTime("00:00:00 01-01-1970");
-
-		wxDateTime now;
-		now.ParseDateTime(parser->Gga.UTCTime);
-
-		wxTimeSpan dateDiff = now - epoch;
-
-		daysSinceEpoch = dateDiff.GetDays();
-		secondsSinceMidnight = (dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue();
-
-		n2kMessage->push_back(daysSinceEpoch & 0xFF);
-		n2kMessage->push_back((daysSinceEpoch >> 8) & 0xFF);
-
-		n2kMessage->push_back(secondsSinceMidnight & 0xFF);
-		n2kMessage->push_back((secondsSinceMidnight >> 8) & 0xFF);
-		n2kMessage->push_back((secondsSinceMidnight >> 16) & 0xFF);
-		n2kMessage->push_back((secondsSinceMidnight >> 24) & 0xFF);
-	
-		long long latitude = parser->Gga.Position.Latitude.Latitude;
-		if (parser->Gga.Position.Latitude.Northing == South) {
-			latitude = -latitude;
-		}
-		n2kMessage->push_back(latitude & 0xFF);
-		n2kMessage->push_back((latitude >> 8) & 0xFF);
-		n2kMessage->push_back((latitude >> 16) & 0xFF);
-		n2kMessage->push_back((latitude >> 24) & 0xFF);
-		n2kMessage->push_back((latitude >> 32) & 0xFF);
-		n2kMessage->push_back((latitude >> 40) & 0xFF);
-		n2kMessage->push_back((latitude >> 48) & 0xFF);
-		n2kMessage->push_back((latitude >> 56) & 0xFF);
-
-		long long longitude = parser->Gga.Position.Longitude.Longitude ;
-		if (parser->Gga.Position.Longitude.Easting == West) {
-			longitude = -longitude;
-		}
-		n2kMessage->push_back(longitude & 0xFF);
-		n2kMessage->push_back((longitude >> 8) & 0xFF);
-		n2kMessage->push_back((longitude >> 16) & 0xFF);
-		n2kMessage->push_back((longitude >> 24) & 0xFF);
-		n2kMessage->push_back((longitude >> 32) & 0xFF);
-		n2kMessage->push_back((longitude >> 40) & 0xFF);
-		n2kMessage->push_back((longitude >> 48) & 0xFF);
-		n2kMessage->push_back((longitude >> 56) & 0xFF);
-	
-		long long altitude = parser->Gga.AntennaAltitudeMeters * 1e6;
-
-		n2kMessage->push_back(altitude & 0xFF);
-		n2kMessage->push_back((altitude >> 8) & 0xFF);
-		n2kMessage->push_back((altitude >> 16) & 0xFF);
-		n2kMessage->push_back((altitude >> 24) & 0xFF);
-		n2kMessage->push_back((altitude >> 32) & 0xFF);
-		n2kMessage->push_back((altitude >> 40) & 0xFF);
-		n2kMessage->push_back((altitude >> 48) & 0xFF);
-		n2kMessage->push_back((altitude >> 56) & 0xFF);
-
-		n2kMessage->push_back((parser->Gga.GPSQuality << 4) & 0xF0);
-	
-		//fixIntegrity;
-		n2kMessage->push_back(1 & 0x03);
-
-		n2kMessage->push_back(parser->Gga.NumberOfSatellitesInUse);
-
-		unsigned short hDOP = 100 * parser->Gga.HorizontalDilutionOfPrecision;
-		n2kMessage->push_back(hDOP & 0xFF);
-		n2kMessage->push_back((hDOP >> 8) & 0xFF);
-
-		//PDOP
-		n2kMessage->push_back(0xFF);
-		n2kMessage->push_back(0xFF);
-
-		unsigned short geoidalSeparation = 100 * parser->Gga.GeoidalSeparationMeters;
-		n2kMessage->push_back(geoidalSeparation & 0xFF);
-		n2kMessage->push_back((geoidalSeparation >> 8) & 0xFF);
-
-		n2kMessage->push_back(1);
-	
-		unsigned short referenceStationType = 0; //0 = GPS
-		unsigned short referenceStationID = parser->Gga.DifferentialReferenceStationID;
-		unsigned short referenceStationAge = parser->Gga.AgeOfDifferentialGPSDataSeconds;
-
-		n2kMessage->push_back( ((referenceStationType << 4) & 0xF0) | (referenceStationID & 0x0F) ); 
-		n2kMessage->push_back((referenceStationID >> 4) & 0xFF);
-		n2kMessage->push_back(referenceStationAge & 0xFF);
-		n2kMessage->push_back((referenceStationAge >> 8) & 0xFF);
-
-		return TRUE;		
-	}
 	return FALSE;
 }
 
