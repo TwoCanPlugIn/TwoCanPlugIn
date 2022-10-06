@@ -120,6 +120,7 @@
 //#include "VPW.hpp"
 //#include "VTG.hpp"
 #include "wcv.hpp"
+#include "vwr.hpp"
 //#include "WNC.hpp"
 #include "xdr.hpp"
 #include "xte.hpp"
