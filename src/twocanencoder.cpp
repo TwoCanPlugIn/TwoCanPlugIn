@@ -2122,7 +2122,7 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 		n2kMessage->push_back((secondsSinceMidnight >> 16) & 0xFF);
 		n2kMessage->push_back((secondsSinceMidnight >> 24) & 0xFF);
 	
-		long long latitude = parser->Gga.Position.Latitude.Latitude;
+		std::int64_t latitude = (int)(parser->Gga.Position.Latitude.Latitude * 1e16);
 		if (parser->Gga.Position.Latitude.Northing == South) {
 			latitude = -latitude;
 		}
@@ -2135,7 +2135,7 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 		n2kMessage->push_back((latitude >> 48) & 0xFF);
 		n2kMessage->push_back((latitude >> 56) & 0xFF);
 
-		long long longitude = parser->Gga.Position.Longitude.Longitude ;
+		std::int64_t longitude = (int)(parser->Gga.Position.Longitude.Longitude * 1e16);
 		if (parser->Gga.Position.Longitude.Easting == West) {
 			longitude = -longitude;
 		}
@@ -2148,7 +2148,7 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 		n2kMessage->push_back((longitude >> 48) & 0xFF);
 		n2kMessage->push_back((longitude >> 56) & 0xFF);
 	
-		long long altitude = parser->Gga.AntennaAltitudeMeters * 1e6;
+		std::int64_t altitude = parser->Gga.AntennaAltitudeMeters * 1e6;
 
 		n2kMessage->push_back(altitude & 0xFF);
 		n2kMessage->push_back((altitude >> 8) & 0xFF);
