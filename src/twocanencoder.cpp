@@ -472,10 +472,10 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("GSA")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_GGA)) {
-					//if (EncodePGN129539(&nmeaParser, &payload)) {
-					//	header.pgn = 129539;
-					//	FragmentFastMessage(&header, &payload, canMessages);
-					//}
+					if (EncodePGN129539(&nmeaParser, &payload)) {
+						header.pgn = 129539;
+						FragmentFastMessage(&header, &payload, canMessages);
+					}
 				}
 				return TRUE;
 			}
@@ -2531,6 +2531,31 @@ bool TwoCanEncoder::EncodePGN129285(const NMEA0183 *parser, std::vector<byte> *n
 	*/
 	return TRUE;
 
+}
+
+// Encode patload for PGN 129539 HNSS Dilution of Precision
+bool TwoCanEncoder::EncodePGN129539(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+
+	n2kMessage->push_back(sequenceId);
+
+	// desired mode unknow, so set to all 1's eg. 0x07
+	byte actualMode = parser->Gsa.OperatingMode == GSA::OPERATING_MODE::Automatic ? 3 : 1 ;
+	// 0 = 1D, 1 =2D, 2 = 3D, 3 =Auto
+	n2kMessage->push_back(0x07 | ((actualMode << 3) & 0x38) | 0xC0);
+
+	short hDOP = (short)parser->Gsa.HDOP * 100;
+	n2kMessage->push_back(hDOP & 0xFF);
+	n2kMessage->push_back((hDOP >> 8) & 0xFF);
+
+	short vDOP = (short)parser->Gsa.VDOP * 100;
+	n2kMessage->push_back(vDOP & 0xFF);
+	n2kMessage->push_back((vDOP >> 8) & 0xFF);
+
+	short pDOP = (short)parser->Gsa.PDOP * 100;
+	n2kMessage->push_back(pDOP & 0xFF);
+	n2kMessage->push_back((pDOP >> 8) & 0xFF);
+
+	return TRUE;
 }
 
 // Encode payload for PGN 129540 GNSS Satellites in View

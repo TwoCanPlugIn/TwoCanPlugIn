@@ -78,6 +78,7 @@
 #include "dpt.hpp"
 //#include "FSI.hpp"
 #include "gga.hpp"
+#include "gsa.hpp"
 //#include "GLC.hpp"
 #include "gll.hpp"
 //#include "GXA.hpp"
@@ -172,6 +173,7 @@ class NMEA0183
    GGA Gga;
    //GLC Glc;
    GLL Gll;
+   GSA Gsa;
    GSV Gsv;
    //GXA Gxa;
    HDG Hdg;

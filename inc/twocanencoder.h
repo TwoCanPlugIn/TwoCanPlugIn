@@ -134,6 +134,9 @@ public:
 	// Encode PGN 129285 Navigation Route/WP Information
 	bool EncodePGN129285(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
+	// Encode PGN 129539 GNSS Dilution of Precision
+	bool EncodePGN129539(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
+
 	// Encode PGN 129540 GNSS Satellites in View
 	bool EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
