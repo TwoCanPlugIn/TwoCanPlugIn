@@ -44,7 +44,7 @@
 // 2.1 - 20/05/2022 Minor fix to GGA/DBT in Gateway, DSC & MOB Sentences, Waypoint creation, epoch time fixes (time_t)0
 // wxWidgets 3.15 support for MacOSX, Fusion Media control, OCPN Messaging for NMEA 2000 Transmit, Extend PGN 130312 for Engine Exhaust
 // 2.11 - 30/06/2022 - Change Attitude XDR sentence from HEEL to ROLL, Support DPT instead of DBT for depth,
-// to mate with dashboard plugin. Prioritise GPS if multiple sources
+// to mate with dashboard plugin. Prioritise GPS if multiple sources, Fix to PGN 129284 (distance)
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //
@@ -797,9 +797,9 @@ void TwoCanDevice::RaiseEvent(wxString sentence) {
 // 130074 - Waypoint List
 // 130323 - Meteorological Data
 // 130577 - Direction Data
-// 130920
-// 130822
-// 130824
+// 130820 - Manufacturer Proprietary (Fusion Media Player)
+// 130822 - Manufacturer Proprietary
+// 130824 - Manufacturer Proprietary (NAC-3 Autopilot)
 
 // Checks whether a frame is a single frame message or multiframe Fast Packet message
 bool TwoCanDevice::IsFastMessage(const CanHeader header) {
@@ -3792,7 +3792,7 @@ bool TwoCanDevice::DecodePGN129284(const byte * payload, std::vector<wxString> *
 		byte sid;
 		sid = payload[0];
 
-		unsigned short distance;
+		unsigned int distance;
 		distance = payload[1] | (payload[2] << 8) | (payload[3] << 16) | (payload[4] << 24);
 
 		byte bearingRef; // 0 = Magnetic, 1 = True
