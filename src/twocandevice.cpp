@@ -45,6 +45,9 @@
 // wxWidgets 3.15 support for MacOSX, Fusion Media control, OCPN Messaging for NMEA 2000 Transmit, Extend PGN 130312 for Engine Exhaust
 // 2.11 - 30/06/2022 - Change Attitude XDR sentence from HEEL to ROLL, Support DPT instead of DBT for depth,
 // to mate with dashboard plugin. Prioritise GPS if multiple sources, Fix to PGN 129284 (distance)
+// 2.2 - 20/03/2023 - Fix PGN  127251 (ROT) - forgot to convert to minutes, 
+// Fix PGN 129038 (AIS Class A) - incorrect scale factor for ROT, Fix PGN 129810 (AIS Class B Static) - Append GPS Fixing Device
+// 2.3 - 30/06/2023 - Support OpenCPN 5.8.x (Breaking change as now dependent on wxWidgets 3.2.x)
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //
@@ -2345,7 +2348,7 @@ bool TwoCanDevice::DecodePGN127251(const byte *payload, std::vector<wxString> *n
 		// -ve sign means turning to port
 		
 		if (TwoCanUtils::IsDataValid(rateOfTurn)) {
-			nmeaSentences->push_back(wxString::Format("$IIROT,%.2f,A", RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8)));
+			nmeaSentences->push_back(wxString::Format("$IIROT,%.2f,A", RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8 * 60)));
 			return TRUE;
 		}
 		else {
@@ -3255,16 +3258,16 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		}
 		else {
 			// Greater or less than 708 degrees/min
-			if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60) > 708) {
+			if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-5) * 60) > 708) {
 				AISRateOfTurn = 127;
 			}
 
-			else if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60) < -708) {
+			else if ((RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-5) * 60) < -708) {
 				AISRateOfTurn = -127;
 			}
 
 			else {
-				AISRateOfTurn = 4.733 * sqrt(RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-8) * 60);
+				AISRateOfTurn = 4.733 * sqrt(RADIANS_TO_DEGREES((float)rateOfTurn * 3.125e-5) * 60);
 			}
 		}
 			
@@ -5031,6 +5034,12 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 		char aisChannel;
 		aisChannel = (transceiverInformation & 0x01) ? 'B' : 'A';
 
+		byte sid;
+		sid = payload[34];
+
+		byte gpsFixingDevice;
+		gpsFixingDevice = payload[33] & 0x1F;
+
 		AISInsertInteger(binaryData, 0, 6, messageID);
 		AISInsertInteger(binaryData, 6, 2, repeatIndicator);
 		AISInsertInteger(binaryData, 8, 30, userID);
@@ -5042,7 +5051,8 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 141, 9, (shipLength / 10) - (refBow / 10));
 		AISInsertInteger(binaryData, 150, 6, (shipBeam / 10) - (refStarboard / 10));
 		AISInsertInteger(binaryData, 156, 6, refStarboard / 10);
-		AISInsertInteger(binaryData, 162 ,6 , 0); //spare
+		AISInsertInteger(binaryData, 162, 4, gpsFixingDevice);
+		AISInsertInteger(binaryData, 166 ,2 , 0); //spare
 		
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
 		if (transceiverInformation & 0x04) {

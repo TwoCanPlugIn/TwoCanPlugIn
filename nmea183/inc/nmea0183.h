@@ -133,7 +133,8 @@ typedef enum _transducertype
    PressureTransducer            = 'P',
    FlowRateTransducer            = 'R',
    TachometerTransducer          = 'T',
-   VolumeTransducer              = 'V'
+   VolumeTransducer              = 'V',
+   GenericTransducer             = 'G'
 } TRANSDUCER_TYPE;
 
 typedef enum _routetype
