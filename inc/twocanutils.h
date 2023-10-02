@@ -254,12 +254,15 @@
 #define FLAGS_LOG_YACHTDEVICES 4 // Found some samples from their Voyage Data Recorder
 #define FLAGS_LOG_CSV 5 // Comma Separted Variables
 
-// Bit values to determine in what Autpilot Brand is selected
-#define FLAGS_AUTOPILOT_NONE 0
-#define FLAGS_AUTOPILOT_GARMIN 1 
-#define FLAGS_AUTOPILOT_RAYMARINE 2 
-#define FLAGS_AUTOPILOT_NAVICO 3 
-#define FLAGS_AUTOPILOT_FURUNO 4
+// Autpilot Models
+typedef enum _AUTOPILOT_MODEL {
+	NONE = 0,
+	GARMIN = 1,
+	RAYMARINE = 2,
+	SIMRAD_AC12 = 3,
+	NAVICO_NAC3 = 4,
+	FURUNO = 5
+} AUTOPILOT_MODEL;
 
 // Bit values to match 2000 Active Mode features and the options checklistbox control
 #define FLAGS_MODE_HEARTBEAT 0

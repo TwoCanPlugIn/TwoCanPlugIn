@@ -54,6 +54,10 @@ if(APPLE)
 		PATTERN "*.dll" EXCLUDE)
     endif()
 
+    if(EXISTS ${PROJECT_SOURCE_DIR}/UserIcons)
+        install(DIRECTORY UserIcons DESTINATION OpenCPN.app/Contents/SharedSupport/plugins/${PACKAGE_NAME})
+    endif()
+
     find_package(ZLIB REQUIRED)
     target_link_libraries(${PACKAGE_NAME} ${ZLIB_LIBRARIES})
 

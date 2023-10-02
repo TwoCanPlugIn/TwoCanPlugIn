@@ -66,7 +66,6 @@ class TwoCanSettingsBase : public wxDialog
 		wxStaticText* labelFunction;
 		wxChoice* cmbLogging;
 		wxPanel* panelAutopilot;
-		wxCheckBox* chkAutopilotOption;
 		wxRadioBox* rdoBoxAutopilot;
 		wxPanel* panelDebug;
 		wxStaticText* labelDebug;

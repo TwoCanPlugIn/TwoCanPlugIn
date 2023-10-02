@@ -65,9 +65,9 @@ const std::vector<byte> raymarineTrack = {0x0d, 0x3b, 0x9f, 0xf0, 0x81, 0x84, 0x
 const std::vector<byte>raymarineHeading = {0x14, 0x01, 0x50, 0xff, 0x00, 0xf8, 0x03, 0x01, 0x3b, 0x07, 0x03, 0x04, 0x06, 0x00, 0x00};
 
 // TwoCan Autopilot
-TwoCanAutopilot::TwoCanAutopilot(int manufacturer) {
+TwoCanAutopilot::TwoCanAutopilot(AUTOPILOT_MODEL manufacturer) {
     // Save the autopilot model, 0 - None, 1 - Garmin, 2 - Navico, 3 - Raymarine
-    autopilotManufacturer = manufacturer;
+    autopilotModel = manufacturer;
 }
 
 TwoCanAutopilot::~TwoCanAutopilot(void) {
@@ -108,7 +108,7 @@ bool TwoCanAutopilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 		else if (root["autopilot"].HasMember("manufacturer")) {
 			commandId = AUTOPILOT_CHANGE_MANUFACTURER;
 			commandValue = root["autopilot"]["manufacturer"].AsInt();
-			autopilotManufacturer = commandValue;
+			autopilotModel = (AUTOPILOT_MODEL)commandValue;
 			wxMessageBox(wxString::Format("AUTOPILOT MANUFACTURER CHANGE: %d", commandValue), "TwoCanPlugin Debug");
 		}
 
@@ -119,8 +119,8 @@ bool TwoCanAutopilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 		}
 
 		// Now parse the commands and generate the approprite PGN's
-		switch (autopilotManufacturer) {
-			case FLAGS_AUTOPILOT_GARMIN:
+		switch (autopilotModel) {
+		case AUTOPILOT_MODEL::GARMIN:
 				switch (commandId) {
 					case AUTOPILOT_CHANGE_STATUS:
 						if (commandValue == AUTOPILOT_POWER_OFF) {
@@ -145,7 +145,7 @@ bool TwoCanAutopilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 				} // end switch command
 				break; // end case garmin
 		
-			case FLAGS_AUTOPILOT_RAYMARINE:
+		case AUTOPILOT_MODEL::RAYMARINE:
 				switch (commandId) {
 					case AUTOPILOT_CHANGE_STATUS:
 						if (commandValue == AUTOPILOT_POWER_OFF) {
@@ -194,7 +194,7 @@ bool TwoCanAutopilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 				} // end switch command
 				break; // end case raymarine
 
-			case FLAGS_AUTOPILOT_NAVICO:
+		case AUTOPILOT_MODEL::NAVICO_NAC3:
 				switch (commandId) {
 					case AUTOPILOT_CHANGE_STATUS:
 						if (commandValue == AUTOPILOT_POWER_OFF) {
@@ -219,7 +219,7 @@ bool TwoCanAutopilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 				} // end switch command
 				break; // end case navico
 
-			case FLAGS_AUTOPILOT_FURUNO:
+		case AUTOPILOT_MODEL::FURUNO:
 				switch (commandId) {
 					case AUTOPILOT_CHANGE_STATUS:
 						if (commandValue == AUTOPILOT_POWER_OFF) {

@@ -506,10 +506,8 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("Gateway"), &enableGateway, FALSE);
 		configSettings->Read(_T("Waypoint"), &enableWaypoint, FALSE);
 		configSettings->Read(_T("Music"), &enableMusic, FALSE);
-		// Not ready to implement yet
-		//configSettings->Read(_T("Autopilot"), &enableAutopilot, FALSE);
-		//configSettings->Read(_T("AutopilotBrand"), &autopilotManufacturer, 0);
-		//configSettings->Read(_T("SignalK"), &enableSignalK, FALSE);
+		configSettings->Read(_T("Autopilot"), &enableAutopilot, FALSE);
+		autopilotModel = (AUTOPILOT_MODEL)configSettings->ReadLong(_T("AutopilotModel"), AUTOPILOT_MODEL::NONE);
 		return TRUE;
 	}
 	else {
@@ -524,7 +522,7 @@ bool TwoCan::LoadConfiguration(void) {
 		enableMusic = FALSE;
 		enableSignalK = FALSE;
 		enableAutopilot = FALSE;
-		autopilotManufacturer = 0;
+		autopilotModel = AUTOPILOT_MODEL::NONE;
 
 		// BUG BUG Automagically find an installed adapter
 		canAdapter = _T("None");
@@ -542,14 +540,11 @@ bool TwoCan::SaveConfiguration(void) {
 		configSettings->Write(_T("Address"), networkAddress);
 		configSettings->Write(_T("Heartbeat"), enableHeartbeat);
 		configSettings->Write(_T("Gateway"), enableGateway);
-		
 		configSettings->Write(_T("Waypoint"), enableWaypoint);
 		configSettings->Write(_T("Music"), enableMusic);
-		// Not ready to implement yet....
-		//configSettings->Write(_T("Autopilot"), enableAutopilot);
-		//configSettings->Read(_T("AutopilotBrand"), autopilotManufacturer);
-		//configSettings->Write(_T("SignalK"), enableSignalK);
-
+		configSettings->Write(_T("Autopilot"), enableAutopilot);
+		configSettings->Write(_T("AutopilotModel"), (int)autopilotModel);
+		
 		return TRUE;
 	}
 	else {
@@ -633,7 +628,7 @@ void TwoCan::StartDevice(void) {
 
 			// Autopilot Integration
 			if ((deviceMode == TRUE) && (enableAutopilot == TRUE)) {
-				twoCanAutopilot = new TwoCanAutopilot(autopilotManufacturer);
+				twoCanAutopilot = new TwoCanAutopilot(autopilotModel);
 				wxLogMessage(_T("TwoCan Plugin, Created TwoCan Autopilot interface"));
 			}
 

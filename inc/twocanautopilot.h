@@ -38,8 +38,11 @@
 #include <wx/jsonreader.h>
 #include <wx/jsonwriter.h>
 
-// If we are in Active Mode, whether we can control an Autpilot. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine, 4 Furuno
-extern int autopilotManufacturer; 
+// If we are in Active Mode, whether we can control an Autopilot. 
+extern bool enableAutopilot;
+// If we can control an AUtopilot, what model. 
+// 0 - None, 1 Garmin, 2 Raymarine, 3 Simrad AC-12, 4 Navico NAC-3, 5 Furuno
+extern AUTOPILOT_MODEL autopilotModel; 
 
 // A 1 byte CAN bus network address for this device if it is an Active device (0-253)
 extern int networkAddress;
@@ -68,7 +71,7 @@ class TwoCanAutopilot {
 
 public:
 	// The constructor
-	TwoCanAutopilot(int mode);
+	TwoCanAutopilot(AUTOPILOT_MODEL model);
 
 	// and destructor
 	~TwoCanAutopilot(void);

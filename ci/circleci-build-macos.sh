@@ -15,9 +15,24 @@ for pkg in cairo cmake gettext libarchive libexif python wget; do
     brew link --overwrite $pkg || brew install $pkg
 done
 
-# Force the MacOSX ennvironment for the two libraries
-export MACOSX_DEPLOYMENT_TARGET=10.9
-echo $MACOSX_DEPLOYMENT_TARGET
+if [ -n "$WX_VER" ] && [ "$WX_VER" -eq "32" ]; then
+    echo "Building for WXVERSION 32";
+    WX_URL=https://download.opencpn.org/s/Djqm4SXzYjF8nBw/download
+    WX_DOWNLOAD=/tmp/wx321_opencpn50_macos1010.tar.xz
+    WX_EXECUTABLE=/tmp/wx321_opencpn50_macos1010/bin/wx-config
+    WX_CONFIG="--prefix=/tmp/wx321_opencpn50_macos1010"
+    MACOSX_DEPLOYMENT_TARGET=10.10
+else
+    echo "Building for WXVERSION 315";
+    WX_URL=https://download.opencpn.org/s/MCiRiq4fJcKD56r/download
+    WX_DOWNLOAD=/tmp/wx315_opencpn50_macos1010.tar.xz
+    WX_EXECUTABLE=/tmp/wx315_opencpn50_macos1010/bin/wx-config
+    WX_CONFIG="--prefix=/tmp/wx315_opencpn50_macos1010"
+    MACOSX_DEPLOYMENT_TARGET=10.10
+fi
+
+# Custom additions
+# Build the Kvaser and Rusoku Libraries
 # Note to self, we use my fork of the libraries as the makefile has been changed with the
 # addition of the cflag -mmacosx-deployment_target=10.9
 # Build the Rusoku Toucan Library
@@ -73,23 +88,6 @@ do
    # there should only be one file, but in anycase exit after the first
   break
 done
-
-
-if [ -n "$WXVERSION" ] && [ "$WXVERSION" -eq "315" ]; then
-    echo "Building for WXVERSION 315";
-    WX_URL=https://download.opencpn.org/s/MCiRiq4fJcKD56r/download
-    WX_DOWNLOAD=/tmp/wx315_opencpn50_macos1010.tar.xz
-    WX_EXECUTABLE=/tmp/wx315_opencpn50_macos1010/bin/wx-config
-    WX_CONFIG="--prefix=/tmp/wx315_opencpn50_macos1010"
-    MACOSX_DEPLOYMENT_TARGET=10.10
-else
-    echo "Building for WXVERSION 312";
-    WX_URL=https://download.opencpn.org/s/rwoCNGzx6G34tbC/download
-    WX_DOWNLOAD=/tmp/wx312B_opencpn50_macos109.tar.xz
-    WX_EXECUTABLE=/tmp/wx312B_opencpn50_macos109/bin/wx-config
-    WX_CONFIG="--prefix=/tmp/wx312B_opencpn50_macos109"
-    MACOSX_DEPLOYMENT_TARGET=10.9
-fi
 
 # Download required binaries using wget, since curl causes an issue with Xcode 13.1 and some specific certificates.
 # Inspect the response code to see if the file is downloaded properly.
