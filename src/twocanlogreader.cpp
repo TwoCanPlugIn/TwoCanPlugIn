@@ -27,6 +27,7 @@
 // 1.8 - 10/05/2020 Derived from abstract class, support for Mac OSX
 // 2.0 - 04-07-2921 Support slcan, vcan and can socketCAN interfaces in log file
 // 2.1 - 20-12-2021 Support SignalK Server Raw Log Files
+// 2.2 - 02-09-2023 Support Raymarine Axiom Log Files
 
 #include <twocanlogreader.h>
 
@@ -36,6 +37,7 @@ TwoCanLogReader::TwoCanLogReader(wxMessageQueue<std::vector<byte>> *messageQueue
 	//TwoCanRegex.assign(CONST_TWOCAN_REGEX);
 	//CanDumpRegex.assign(CONST_CANDUMP_REGEX);
 	//YachtDevicesRegex.assign(CONST_YACHTDEVICES_REGEX);
+	//RaymarineRegex.assign(CONST_RAYMARINE_REGEX);
 }
 
 TwoCanLogReader::~TwoCanLogReader() {
@@ -79,30 +81,30 @@ int TwoCanLogReader::Close(void) {
 }
 
 void TwoCanLogReader::ParseTwoCan(std::string str) {
-	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
+	if (regularExpression.Matches(str,wxRE_DEFAULT)) {
 	// BUG BUG I'm sure strtok is more efficient !!
-		canFrame[0] = std::strtoul(twoCanRegEx.GetMatch(str,1), NULL, 16);
-		canFrame[1] = std::strtoul(twoCanRegEx.GetMatch(str,2), NULL, 16);
-		canFrame[2] = std::strtoul(twoCanRegEx.GetMatch(str,3), NULL, 16);
-		canFrame[3] = std::strtoul(twoCanRegEx.GetMatch(str,4), NULL, 16);
-		canFrame[4] = std::strtoul(twoCanRegEx.GetMatch(str,5), NULL, 16);
-		canFrame[5] = std::strtoul(twoCanRegEx.GetMatch(str,6), NULL, 16);
-		canFrame[6] = std::strtoul(twoCanRegEx.GetMatch(str,7), NULL, 16);
-		canFrame[7] = std::strtoul(twoCanRegEx.GetMatch(str,8), NULL, 16);
-		canFrame[8] = std::strtoul(twoCanRegEx.GetMatch(str,9), NULL, 16);
-		canFrame[9] = std::strtoul(twoCanRegEx.GetMatch(str,10), NULL, 16);
-		canFrame[10] = std::strtoul(twoCanRegEx.GetMatch(str,11), NULL, 16);
-		canFrame[11] = std::strtoul(twoCanRegEx.GetMatch(str,12), NULL, 16);
+		canFrame[0] = std::strtoul(regularExpression.GetMatch(str,1), NULL, 16);
+		canFrame[1] = std::strtoul(regularExpression.GetMatch(str,2), NULL, 16);
+		canFrame[2] = std::strtoul(regularExpression.GetMatch(str,3), NULL, 16);
+		canFrame[3] = std::strtoul(regularExpression.GetMatch(str,4), NULL, 16);
+		canFrame[4] = std::strtoul(regularExpression.GetMatch(str,5), NULL, 16);
+		canFrame[5] = std::strtoul(regularExpression.GetMatch(str,6), NULL, 16);
+		canFrame[6] = std::strtoul(regularExpression.GetMatch(str,7), NULL, 16);
+		canFrame[7] = std::strtoul(regularExpression.GetMatch(str,8), NULL, 16);
+		canFrame[8] = std::strtoul(regularExpression.GetMatch(str,9), NULL, 16);
+		canFrame[9] = std::strtoul(regularExpression.GetMatch(str,10), NULL, 16);
+		canFrame[10] = std::strtoul(regularExpression.GetMatch(str,11), NULL, 16);
+		canFrame[11] = std::strtoul(regularExpression.GetMatch(str,12), NULL, 16);
 	}
 	return;
 }
 
 // Fix included for V2.0 supports matching of slcan, vcan or can
 void TwoCanLogReader::ParseCanDump(std::string str) {
-	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
-		unsigned long temp = std::strtoul(twoCanRegEx.GetMatch(str,2), NULL, 16);
+	if (regularExpression.Matches(str,wxRE_DEFAULT)) {
+		unsigned long temp = std::strtoul(regularExpression.GetMatch(str,2), NULL, 16);
 		memcpy(&canFrame[0],&temp, 4);
-		wxString tmpString = twoCanRegEx.GetMatch(str,3).c_str();
+		wxString tmpString = regularExpression.GetMatch(str,3).c_str();
 		byte tmpChar[tmpString.size()];
         memcpy(&tmpChar[0], tmpString,tmpString.size());
        	TwoCanUtils::ConvertHexStringToByteArray(&tmpChar[0], 8, &canFrame[4]);
@@ -113,13 +115,13 @@ void TwoCanLogReader::ParseCanDump(std::string str) {
 // Parses both Kees format from Canboat and Raw format from SignalK Server
 // Only difference is the header/date time fields, the remaining fields are the same
 void TwoCanLogReader::ParseKees(std::string str) {
-	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
+	if (regularExpression.Matches(str,wxRE_DEFAULT)) {
 		CanHeader header;
 		
-		header.source = atoi(twoCanRegEx.GetMatch(str,3));
-		header.destination = atoi(twoCanRegEx.GetMatch(str,4));
-		header.pgn = atoi(twoCanRegEx.GetMatch(str,2));
-		header.priority = atoi(twoCanRegEx.GetMatch(str,1));
+		header.source = atoi(regularExpression.GetMatch(str,3));
+		header.destination = atoi(regularExpression.GetMatch(str,4));
+		header.pgn = atoi(regularExpression.GetMatch(str,2));
+		header.priority = atoi(regularExpression.GetMatch(str,1));
 		
 		// BUG BUG Should create a function EncodeCanHeader
 		// Encodes a 29 bit CAN header
@@ -128,57 +130,82 @@ void TwoCanLogReader::ParseKees(std::string str) {
 		canFrame[1] = (canFrame[2] > 239) ? (header.pgn & 0xFF) : header.destination;
 		canFrame[0] = header.source;
 		
-		canFrame[4] = std::strtoul(twoCanRegEx.GetMatch(str,6), NULL, 16);
-		canFrame[5] = std::strtoul(twoCanRegEx.GetMatch(str,7), NULL, 16);
-		canFrame[6] = std::strtoul(twoCanRegEx.GetMatch(str,8), NULL, 16);
-		canFrame[7] = std::strtoul(twoCanRegEx.GetMatch(str,9), NULL, 16);
-		canFrame[8] = std::strtoul(twoCanRegEx.GetMatch(str,10), NULL, 16);
-		canFrame[9] = std::strtoul(twoCanRegEx.GetMatch(str,11), NULL, 16);
-		canFrame[10] = std::strtoul(twoCanRegEx.GetMatch(str,12), NULL, 16);
-		canFrame[11] = std::strtoul(twoCanRegEx.GetMatch(str,13), NULL, 16);
+		canFrame[4] = std::strtoul(regularExpression.GetMatch(str,6), NULL, 16);
+		canFrame[5] = std::strtoul(regularExpression.GetMatch(str,7), NULL, 16);
+		canFrame[6] = std::strtoul(regularExpression.GetMatch(str,8), NULL, 16);
+		canFrame[7] = std::strtoul(regularExpression.GetMatch(str,9), NULL, 16);
+		canFrame[8] = std::strtoul(regularExpression.GetMatch(str,10), NULL, 16);
+		canFrame[9] = std::strtoul(regularExpression.GetMatch(str,11), NULL, 16);
+		canFrame[10] = std::strtoul(regularExpression.GetMatch(str,12), NULL, 16);
+		canFrame[11] = std::strtoul(regularExpression.GetMatch(str,13), NULL, 16);
 	}
 	return;
 }
 
 void TwoCanLogReader::ParseYachtDevices(std::string str) {
-	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
-		unsigned long temp = std::strtoul(twoCanRegEx.GetMatch(str,1), NULL, 16);
+	if (regularExpression.Matches(str,wxRE_DEFAULT)) {
+		unsigned long temp = std::strtoul(regularExpression.GetMatch(str,1), NULL, 16);
 		memcpy(&canFrame[0], &temp, 4);
-		canFrame[4] = std::strtoul(twoCanRegEx.GetMatch(str,2), NULL, 16);
-		canFrame[5] = std::strtoul(twoCanRegEx.GetMatch(str,3), NULL, 16);
-		canFrame[6] = std::strtoul(twoCanRegEx.GetMatch(str,4), NULL, 16); 
-		canFrame[7] = std::strtoul(twoCanRegEx.GetMatch(str,5), NULL, 16);
-		canFrame[8] = std::strtoul(twoCanRegEx.GetMatch(str,6), NULL, 16);
-		canFrame[9] = std::strtoul(twoCanRegEx.GetMatch(str,7), NULL, 16);
-		canFrame[10] = std::strtoul(twoCanRegEx.GetMatch(str,8), NULL, 16);
-		canFrame[11] = std::strtoul(twoCanRegEx.GetMatch(str,9), NULL, 16);
+		canFrame[4] = std::strtoul(regularExpression.GetMatch(str,2), NULL, 16);
+		canFrame[5] = std::strtoul(regularExpression.GetMatch(str,3), NULL, 16);
+		canFrame[6] = std::strtoul(regularExpression.GetMatch(str,4), NULL, 16); 
+		canFrame[7] = std::strtoul(regularExpression.GetMatch(str,5), NULL, 16);
+		canFrame[8] = std::strtoul(regularExpression.GetMatch(str,6), NULL, 16);
+		canFrame[9] = std::strtoul(regularExpression.GetMatch(str,7), NULL, 16);
+		canFrame[10] = std::strtoul(regularExpression.GetMatch(str,8), NULL, 16);
+		canFrame[11] = std::strtoul(regularExpression.GetMatch(str,9), NULL, 16);
+	}
+	return;
+}
+
+void TwoCanLogReader::ParseRaymarine(std::string str) {
+	if (regularExpression.Matches(str, wxRE_DEFAULT)) {
+		// Copy the 4 byte header
+		canFrame[0] = std::strtoul(regularExpression.GetMatch(str,1), NULL, 16);
+		canFrame[1] = std::strtoul(regularExpression.GetMatch(str,2), NULL, 16);
+		canFrame[2] = std::strtoul(regularExpression.GetMatch(str,3), NULL, 16);
+		canFrame[3] = std::strtoul(regularExpression.GetMatch(str,4), NULL, 16);
+		// Copy the 8 byte payload
+		canFrame[4] = std::strtoul(regularExpression.GetMatch(str,5), NULL, 16);
+		canFrame[5] = std::strtoul(regularExpression.GetMatch(str,6), NULL, 16);
+		canFrame[6] = std::strtoul(regularExpression.GetMatch(str,7), NULL, 16);
+		canFrame[7] = std::strtoul(regularExpression.GetMatch(str,8), NULL, 16);
+		canFrame[8] = std::strtoul(regularExpression.GetMatch(str,9), NULL, 16);
+		canFrame[9] = std::strtoul(regularExpression.GetMatch(str,10), NULL, 16);
+		canFrame[10] = std::strtoul(regularExpression.GetMatch(str,11), NULL, 16);
+		canFrame[11] = std::strtoul(regularExpression.GetMatch(str,12), NULL, 16);
 	}
 	return;
 }
 
 int TwoCanLogReader::TestFormat(std::string line) {
 	// BUG BUG Should check that the Regular Expression is valid
-	// eg. twoCanRegEx.IsValid()
-	twoCanRegEx.Compile(CONST_TWOCAN_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
-	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
+	// eg. regularExpression.IsValid()
+	regularExpression.Compile(CONST_TWOCAN_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
+	if (regularExpression.Matches(line,wxRE_DEFAULT)) {
 		return TwoCanRaw;
 	}
-	twoCanRegEx.Compile(CONST_CANDUMP_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
-	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
+	regularExpression.Compile(CONST_CANDUMP_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	if (regularExpression.Matches(line,wxRE_DEFAULT)) {
 		return CanDump;
 	}
-	twoCanRegEx.Compile(CONST_KEES_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
-	if (twoCanRegEx.Matches(line,wxRE_DEFAULT))  {
+	regularExpression.Compile(CONST_KEES_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	if (regularExpression.Matches(line,wxRE_DEFAULT))  {
 		return Kees;
 	}
-	twoCanRegEx.Compile(CONST_SIGNALK_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
-	if (twoCanRegEx.Matches(line, wxRE_DEFAULT)) {
+	regularExpression.Compile(CONST_SIGNALK_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	if (regularExpression.Matches(line, wxRE_DEFAULT)) {
 		return Kees;
 	}
-	twoCanRegEx.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
-	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
+	regularExpression.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
+	if (regularExpression.Matches(line,wxRE_DEFAULT)) {
 		return YachtDevices;
 	}
+	regularExpression.Compile(CONST_RAYMARINE_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	if (regularExpression.Matches(line, wxRE_DEFAULT)) {
+		return Raymarine;
+	}
+
 	return Undefined;
 }
 
@@ -201,6 +228,9 @@ void TwoCanLogReader::Read() {
 					break;
 				case YachtDevices:
 					ParseYachtDevices(inputLine);
+					break;
+				case Raymarine:
+					ParseRaymarine(inputLine);
 					break;
 				case Undefined:
 					// should log invalid log file format message here.

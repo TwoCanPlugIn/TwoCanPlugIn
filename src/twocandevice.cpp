@@ -1620,7 +1620,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		}
 		break;
 
-	case 130832: // Meteorological Data
+	case 130323: // Meteorological Data
 		if (supportedPGN & FLAGS_MET) {
 			DecodePGN130323(payload, &nmeaSentences);
 		}
