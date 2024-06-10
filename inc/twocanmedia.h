@@ -17,6 +17,8 @@
 //
 // NMEA2000� is a registered Trademark of the National Marine Electronics Association
 
+#define DEBUG
+
 #ifndef TWOCAN_MEDIA_H
 #define TWOCAN_MEDIA_H
 
@@ -89,13 +91,13 @@ typedef enum mediaStatus {
 	// 25 = present & paired (BT)
 } FUSION_MEDIA_STATUS;
 
-typedef enum folderType {
+typedef enum fileType {
 	VIRTUALFOLDER = 0x49,
 	DEVICEFOLDER = 0x41,
 	MTPFOLDER = 0x47,
 	PHYSICALFOLDER = 0x4F,
 	MUSICTRACK = 0x17
-} MEDIA_FILE_TYPE;
+} FUSION_FILE_TYPE;
 
 class TwoCanMedia {
 

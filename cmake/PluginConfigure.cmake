@@ -129,7 +129,7 @@ if(NOT SKIP_VERSION_CONFIG)
         message(STATUS "${CMLOC}PLUGIN_EXTRA_FORMBUILDER_HEADERS: Found")
         configure_file(${PLUGIN_EXTRA_FORMBUILDER_HEADERS} ${BUILD_INCLUDE_PATH}/include/extra_formbuilder_headers.h)
     endif()
-    configure_file(cmake/in-files/version.h.in ${BUILD_INCLUDE_PATH}/include/twocanversion.h)
+    configure_file(cmake/in-files/version.h.in ${BUILD_INCLUDE_PATH}/include/version.h)
     configure_file(cmake/in-files/wxWTranslateCatalog.h.in ${BUILD_INCLUDE_PATH}/include/wxWTranslateCatalog.h)
     include_directories(${BUILD_INCLUDE_PATH}/include)
     if(MINGW)
@@ -143,10 +143,8 @@ message(STATUS "${CMLOC}ENV BUILD_GTK3: $ENV{BUILD_GTK3}")
 string(TOUPPER "$ENV{BUILD_GTK3}" BUILD_GTK3_TEMP)
 set(ENV{BUILD_GTK3} ${BUILD_GTK3_TEMP})
 unset(BUILD_GTK3_TEMP)
-string(TOUPPER "$ENV{BUILD_ENV}" BUILD_ENV_TEMP)
-message(STATUS "${CMLOC}BUILD_ENV: $ENV{BUILD_ENV}, BUILD_ENV_TEMP ${BUILD_ENV_TEMP}, OCPN_TARGET: $ENV{OCPN_TARGET}")
 message(STATUS "${CMLOC}Doing build_gtk3: $ENV{BUILD_GTK3}")
-if("$ENV{BUILD_GTK3}" STREQUAL "TRUE" AND ( ("${BUILD_ENV_TEMP}" STREQUAL "UBUNTU" AND NOT "$ENV{OCPN_TARGET}" STREQUAL "jammy") OR "$ENV{OCPN_TARGET}" STREQUAL "buster-armhf"))
+if("$ENV{BUILD_GTK3}" STREQUAL "TRUE")
     set(PKG_TARGET_GTK "gtk3")
     message(STATUS "${CMLOC}Found gtk3")
 else()
@@ -181,6 +179,7 @@ else()
     endif(MINGW)
 endif()
 
+<<<<<<< HEAD
 message(STATUS "${CMLOC}ARCH: ${ARCH}")
 
 if("${PKG_BUILD_TARGET}" STREQUAL "")
@@ -277,9 +276,19 @@ message(STATUS "${CMLOC}PACKAGING_NAME_XML: ${PACKAGING_NAME_XML}")
 set(PKG_TARGET_FULL "${PKG_TARGET}${PKG_TARGET_GTK}${PKG_TARGET_WX_VER}${PKG_TARGET_ARCH}")
 message(STATUS "${CMLOC}PKG_TARGET_FULL: ${PKG_TARGET_FULL}")
 message(STATUS "${CMLOC}PKG_BUILD_TARGET: ${PKG_BUILD_TARGET}")
+=======
+set(PKG_BUILD_TARGET "${PKG_TARGET}")
+set(PKG_BUILD_GTK "${PKG_TARGET_GTK}")
+if(NOT "${PKG_TARGET_GTK}"  STREQUAL "")
+    set(PKG_TARGET_GTK "-${PKG_TARGET_GTK}")
+endif()
+set(PKG_TARGET_FULL "${PKG_TARGET}${PKG_TARGET_GTK}${PKG_TARGET_ARCH}")
+message(STATUS "${CMLOC}PKG_TARGET_FULL: ${PKG_TARGET}${PKG_TARGET_GTK}${PKG_TARGET_ARCH}")
+message(STATUS "${CMLOC}PKG_BUILD_TARGET: ${PKG_TARGET}")
+>>>>>>> autopilot
 message(STATUS "${CMLOC}PKG_BUILD_GTK: ${PKG_TARGET_GTK}")
-message(STATUS "${CMLOC}PKG_BUILT_WITH_GTK: ${PKG_BUILT_WITH_GTK}")
 message(STATUS "${CMLOC}*.in files generated in ${CMAKE_CURRENT_BINARY_DIR}")
+message(STATUS "${CMLOC}PACKAGING_NAME_XML: ${PACKAGING_NAME_XML}")
 configure_file(${PROJECT_SOURCE_DIR}/cmake/in-files/plugin.xml.in ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGING_NAME_XML}.xml)
 configure_file(${PROJECT_SOURCE_DIR}/cmake/in-files/pkg_version.sh.in ${CMAKE_CURRENT_BINARY_DIR}/pkg_version.sh)
 configure_file(${PROJECT_SOURCE_DIR}/cmake/in-files/cloudsmith-upload.sh.in ${CMAKE_CURRENT_BINARY_DIR}/cloudsmith-upload.sh @ONLY)
@@ -289,10 +298,20 @@ if(OCPN_FLATPAK_CONFIG)
     #set(SDK_VER $ENV{SDK_VER})
     #  Hack for temporary "beta" status of 20.08 runtime
     #  See new substitution variable in cmake/in-files/org.opencpn.OpenCPN.Plugin.yaml.in
+<<<<<<< HEAD
     message(STATUS "${CMLOC}FLATPAK_BRANCH: ${FLATPAK_BRANCH}")
     set(RUNTIME_VERSION ${FLATPAK_BRANCH})
 
     message(STATUS "${CMLOC}Checking OCPN_FLATPAK_CONFIG: ${OCPN_FLATPAK_CONFIG}, SDK_VER: ${SDK_VER}, WX_VER: ${WX_VER}")
+=======
+    if("${SDK_VER}"  STREQUAL "20.08")
+        set(RUNTIME_VERSION "beta")
+    else("${SDK_VER}"  STREQUAL "20.08")
+        set(RUNTIME_VERSION "stable")
+    endif("${SDK_VER}"  STREQUAL "20.08")
+
+    message(STATUS "${CMLOC}Checking OCPN_FLATPAK_CONFIG: ${OCPN_FLATPAK_CONFIG}, SDK_VER: ${SDK_VER}")
+>>>>>>> autopilot
     configure_file(${PROJECT_SOURCE_DIR}/cmake/in-files/org.opencpn.OpenCPN.Plugin.yaml.in ${CMAKE_CURRENT_BINARY_DIR}/flatpak/org.opencpn.OpenCPN.Plugin.${PACKAGE}.yaml)
 
     message(STATUS "${CMLOC}Done OCPN_FLATPAK CONFIG")
@@ -348,11 +367,18 @@ if(MINGW)
 endif(MINGW)
 
 if(APPLE)
+<<<<<<< HEAD
     string(APPEND CMAKE_CXX_FLAGS " -Wall -Wno-unused -fexceptions -Wno-overloaded-virtual")
     string(APPEND CMAKE_CXX_FLAGS " -g -fno-strict-aliasing")
     string(APPEND CMAKE_CXX_FLAGS " -Wno-deprecated -Wno-deprecated-declarations -Wno-unknown-pragmas")
     string(APPEND CMAKE_CXX_FLAGS " -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_")
     string(APPEND CMAKE_CXX_FLAGS " -DAPPLE")
+=======
+    add_definitions("-Wall -Wno-unused -fexceptions -Wno-overloaded-virtual")
+    add_definitions(" -g -fno-strict-aliasing")
+    add_definitions(" -Wno-deprecated -Wno-deprecated-declarations -Wno-unknown-pragmas")
+    add_definitions(" -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_")
+>>>>>>> autopilot
 endif(APPLE)
 
 # Add some definitions to satisfy MS
@@ -644,6 +670,29 @@ else(NOT QT_ANDROID)
     include_directories(BEFORE ${qt_android_include})
 
 endif(NOT QT_ANDROID)
+
+if(NOT WIN32 AND NOT APPLE AND NOT QT_ANDROID)
+    find_package(GTK2)
+
+    if(GTK2_FOUND AND NOT "$ENV{BUILD_GTK3}" STREQUAL "TRUE")
+        set(wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --toolkit=gtk2)
+        include_directories(${GTK2_INCLUDE_DIRS})
+        set(GTK_LIBRARIES ${GTK2_LIBRARIES})
+        message(STATUS "${CMLOC}Building against GTK2...")
+    else(GTK2_FOUND AND NOT "$ENV{BUILD_GTK3}" STREQUAL "TRUE")
+        find_package(GTK3)
+        if(GTK3_FOUND)
+            include_directories(${GTK3_INCLUDE_DIRS})
+            set(GTK_LIBRARIES ${GTK3_LIBRARIES})
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__WXGTK3__")
+            set(wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --toolkit=gtk3)
+            message(STATUS "${CMLOC}Building against GTK3...")
+        else(GTK3_FOUND)
+            message(STATUS "${CMLOC} Unix: Neither FATAL_ERROR GTK2 nor GTK3")
+        endif(GTK3_FOUND)
+    endif(GTK2_FOUND AND NOT "$ENV{BUILD_GTK3}" STREQUAL "TRUE")
+    set(EXTRA_LIBS ${EXTRA_LIBS} ${GTK_LIBRARIES})
+endif(NOT WIN32 AND NOT APPLE AND NOT QT_ANDROID)
 
 find_package(Gettext REQUIRED)
 

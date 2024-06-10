@@ -33,9 +33,10 @@ TwoCanMedia::TwoCanMedia() {
 	sessionId = FUSION_MEDIA_PORT::unknown;
 	sourceId = FUSION_MEDIA_PORT::unknown;
 	usbMapping = FUSION_MEDIA_PORT::unknown;
+	folderSessionId = rand() %	255;
 
 	// BUG BUG DEBUG REMOVE
-#ifdef DEBUG
+#ifdef MEDIA_DEBUG
 	// Initialize UDP socket for debug spew
 	addrLocal.Hostname();
 	addrPeer.Hostname("127.0.0.1");
@@ -46,7 +47,7 @@ TwoCanMedia::TwoCanMedia() {
 
 TwoCanMedia::~TwoCanMedia(void) {
 	// BUG BUG DEBUG REMOVE
-#ifdef DEBUG
+#ifdef MEDIA_DEBUG
 	debugSocket->Close();
 #endif // DEBUG
 }
@@ -59,6 +60,8 @@ TwoCanMedia::~TwoCanMedia(void) {
 bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonResponse) {
 	wxJSONValue root;
 	wxJSONWriter writer;
+
+	root.Clear();
 
 	// Each input source has a name & corresponding number
 	wxString sourceName;
@@ -118,7 +121,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 
 		}
 
-		// if a usb device, set the mapping. The usb port could be connected to a USB or iPod device
+		// if a usb device, set the mapping. The usb port could be connected to a USB, MTP or iPod device
 		// provide the client with the name of the current device
 		if ((sessionId == FUSION_MEDIA_PORT::ipod) || (sessionId == FUSION_MEDIA_PORT::mtp) || (sessionId == FUSION_MEDIA_PORT::usb)) {
 			root["entertainment"]["device"]["source"]["name"] = GetMediaSourceById(FUSION_MEDIA_PORT::usb);
@@ -152,6 +155,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		else {
 			root["entertainment"]["device"]["source"]["name"] = GetMediaSourceById(sessionId);;
 		}
+		
 		root["entertainment"]["device"]["source"]["sessionid"] = sessionId;
 
 		trackStatus = payload[5];
@@ -163,6 +167,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		}
 		else {
 			root["entertainment"]["device"]["power"] = true;
+
 			if ((trackStatus & 0x01) == 0x01) {
 				root["entertainment"]["device"]["playing"] = true;
 			}
@@ -187,10 +192,12 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 			trackId = payload[7] | (payload[8] << 8) | (payload[9] << 16) | (payload[10] << 24);
 			totalTracks = payload[11] | (payload[12] << 8) | (payload[13] << 16) | (payload[14] << 24);
 			trackLength = 1e-3 * (payload[15] | (payload[16] << 8) | (payload[17] << 16) | (payload[18] << 24));
+			elapsedTime = 1e-3 * (payload[19] | (payload[20] << 8) | (payload[21] << 16) | (payload[22] << 24));
 
 			root["entertainment"]["device"]["track"]["number"] = trackId;
 			root["entertainment"]["device"]["track"]["tracks"] = totalTracks;
 			root["entertainment"]["device"]["track"]["length"] = trackLength;
+			root["entertainment"]["device"]["track"]["elapsedtime"] = elapsedTime;
 		}
 
 		break;
@@ -214,7 +221,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		}
 		root["entertainment"]["device"]["source"]["sessionid"] = sessionId;
 
-		if ((payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24)) == trackId) {
+		//if ((payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24)) == trackId) {
 			trackName.Clear();
 			for (size_t i = 0; i < payload[9]; i++) {
 				trackName.append(1, payload[10 + i]);
@@ -224,7 +231,8 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 
 			root["entertainment"]["device"]["source"]["sessionid"] = sessionId;
 			root["entertainment"]["device"]["track"]["name"] = trackName;
-		}
+			root["entertainment"]["device"]["track"]["number"] = payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24);
+		//}
 		
 		break;
 
@@ -244,7 +252,7 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		root["entertainment"]["device"]["playing"] = true;
 
 		if ((sessionId == FUSION_MEDIA_PORT::ipod) || (sessionId == FUSION_MEDIA_PORT::mtp) || (sessionId == FUSION_MEDIA_PORT::usb)) {
-			root["entertainment"]["device"]["source"]["name"] = _T("usb");// GetMediaSourceById(FUSION_MEDIA_PORT::usb);
+			root["entertainment"]["device"]["source"]["name"] = GetMediaSourceById(FUSION_MEDIA_PORT::usb);
 			usbMapping = sessionId;
 			elapsedTime = 1e-3 * (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24));
 			root["entertainment"]["device"]["track"]["elapsedtime"] = elapsedTime;
@@ -290,16 +298,11 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		break;
 
 	case 15: // Selected Directory item
-		// A3 99 0F 80 05 00 00 00 
-		// 00 02 06
+		// A3 99 0F 80 05 00 00 00 00 02 06
 
-		// A3 99 0F 80 05 00 00 00 
-		// 00 02 06
-
-		if (sessionId == payload[4]) {
+		if ((sessionId == payload[4]) && (folderSessionId == payload[10])) {
 			folderId = payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24);
-			folderType = (MEDIA_FILE_TYPE)payload[9];
-			folderSessionId = payload[10];
+			folderType = payload[9];
 
 			if (folderType == 0x01) { // Root Folder
 				root["entertainment"]["device"]["media"]["rootfolder"] = true;
@@ -309,22 +312,28 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 			}
 			root["entertainment"]["device"]["media"]["folderid"] = folderId;
 			root["entertainment"]["device"]["media"]["foldersessionid"] = folderSessionId;
+
+			//BUG BUG DEBUG
+#ifdef MEDIA_DEBUG
+			wxString debugMessage = wxString::Format("<-- 15. Folder Id: %d Folder Type: %d Folder Session Id: %d", folderId, folderType, folderSessionId);
+			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
+#endif // DEBUG
+	
 		}
 
-		// BUG BUG We need some way to synchronize/wait, currently done in the UI.
-
+		
 		break;
 
 	case 16: // Number of items in folder
 		// A3 99 10 80 05 03 00 00 00 06
-		if (sessionId == payload[4]) { // && (folderSessionId == payload[9])) {
+		if ((sessionId == payload[4]) && (folderSessionId == payload[9])) {
 			int folderCount = payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24);
 			root["entertainment"]["device"]["media"]["count"] = folderCount;
-			root["entertainment"]["device"]["media"]["foldersessionid"] = payload[9];
+			root["entertainment"]["device"]["media"]["foldersessionid"] = folderSessionId;
 
 			//BUG BUG DEBUG
-#ifdef DEBUG
-			wxString debugMessage = wxString::Format("Folder Items: %d Folder Session Id: %d", folderCount, folderSessionId);
+#ifdef MEDIA_DEBUG
+			wxString debugMessage = wxString::Format("<-- 16. Folder Items: %d Folder Session Id: %d", folderCount, folderSessionId);
 			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
 #endif // DEBUG
 		}
@@ -351,11 +360,11 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 		// 69 6F 6E 5F 2E 6D 70 33
 		// 00
 
-		if ((sessionId == payload[4]) && (folderSessionId == payload[10])) {
+		if ((sessionId == payload[4])) { // && (folderSessionId == payload[10])) {
 
 			folderId = (payload[5] | (payload[6] << 8) | (payload[7] << 16) | (payload[8] << 24));
 
-			folderType = payload[9];
+			folderType = (FUSION_FILE_TYPE)payload[9];
 
 			int length = payload[11];
 
@@ -367,11 +376,11 @@ bool TwoCanMedia::DecodeMediaResponse(const byte *payload, wxString *jsonRespons
 			root["entertainment"]["device"]["media"]["foldername"] = folderName;
 			root["entertainment"]["device"]["media"]["foldertype"] = folderType;
 			root["entertainment"]["device"]["media"]["folderid"] = folderId;
-#ifdef DEBUG
-			wxString debugMessage = wxString::Format("Folder Name: %s Folder Id: %d", folderName, folderId);
+			root["entertainment"]["device"]["media"]["foldersessionid"] = folderSessionId;
+#ifdef MEDIA_DEBUG
+			wxString debugMessage = wxString::Format("<-- 17. File Name: %s File Id: %d File Type: %x", folderName, folderId, folderType);
 			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
 #endif // DEBUG
-
 		}		
 		break;
 
@@ -873,28 +882,16 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 
 			else if ((sessionId == FUSION_MEDIA_PORT::usb) || (sessionId == FUSION_MEDIA_PORT::mtp) || (sessionId == FUSION_MEDIA_PORT::ipod)) {
 				// Previous
-				// A3 99 09 00 05 00 00 00 00 03 01
-				// A3 99 09 00 05 01 00 00 00 04 05
+				// A3 99 03 00 05 06
 				message.payload.push_back(0xA0); 
-				message.payload.push_back(0x0B);
+				message.payload.push_back(0x06);
 				message.payload.push_back(0xA3);
 				message.payload.push_back(0x99);
-				message.payload.push_back(0x09);
+				message.payload.push_back(0x03);
 				message.payload.push_back(0x00);
 				message.payload.push_back(sessionId);
-				message.payload.push_back(0x00);	
+				message.payload.push_back(0x06);	
 
-				message.payload.clear();
-
-				message.payload.push_back(0xA1);
-				message.payload.push_back(0x00);
-				message.payload.push_back(0x00);
-				message.payload.push_back(0x00);
-				message.payload.push_back(0x03);
-				message.payload.push_back(folderSessionId);
-				message.payload.push_back(0xFF);
-				message.payload.push_back(0xFF);
-				
 				canMessages->push_back(message);
 				
 			}
@@ -952,7 +949,7 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 			source = GetMediaSourceByName(sourceName);
 		}
 
-		if (source == -1) {
+		if (source == FUSION_MEDIA_PORT::unknown) {
 			return FALSE;
 		}
 		//A3 99 02 00 03
@@ -1043,8 +1040,8 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 		int folderId = root["entertainment"]["device"]["media"]["folderid"].AsInt();
 		
 		// BUG BUG DEBUG Remove
-#ifdef DEBUG
-		wxString debugMessage = wxString::Format("Send folder request: FolderId: %d, Folder Session Id: %d RQST: %d", folderId, folderSessionId, request);
+#ifdef MEDIA_DEBUG
+		wxString debugMessage = wxString::Format("--> 9. folder request: FolderId: %d", folderId, request);
 		debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
 #endif // DEBUG
 		// A3 99 09 00 05 00 00 00 00 01 02
@@ -1094,8 +1091,8 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 			message.payload.push_back(folderSessionId);
 
 			// BUG BUG DEBUG Remove
-#ifdef DEBUG
-			wxString debugMessage = wxString::Format("Sent Ack, Session Id: %d, Folder Session Id: %d", sessionId, folderSessionId);
+#ifdef MEDIA_DEBUG
+			wxString debugMessage = wxString::Format("--> 10. Ack, Session Id: %d, Folder Session Id: %d", sessionId, folderSessionId);
 			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
 #endif // DEBUG
 			canMessages->push_back(message);
@@ -1145,8 +1142,8 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 
 			canMessages->push_back(message);
 			// BUG BUG DEBUG REMOVE
-#ifdef DEBUG
-			wxString debugMessage = wxString::Format("Sent Confirm SessionId: %d, Folder Id %d, Records: %d", sessionId, folderId, recordsReceived);
+#ifdef MEDIA_DEBUG
+			wxString debugMessage = wxString::Format("--> 11. Confirm SessionId: %d, Folder Id %d, Records: %d, Folder Session Id: %d", sessionId, folderId, recordsReceived, folderSessionId);
 			debugSocket->SendTo(addrPeer, debugMessage.data(), debugMessage.Length());
 #endif
 
@@ -1161,7 +1158,7 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 // I guess modern programmers would use std::map !!
 const wxString TwoCanMedia::GetMediaSourceById(const int sourceId) {
 	wxString sourceName = wxEmptyString;
-	switch (FUSION_MEDIA_PORT(sourceId)) {
+	switch ((FUSION_MEDIA_PORT)sourceId) {
 	case FUSION_MEDIA_PORT::am:
 		sourceName = "am";
 		break;
@@ -1197,40 +1194,41 @@ const wxString TwoCanMedia::GetMediaSourceById(const int sourceId) {
 }
 
 const int TwoCanMedia::GetMediaSourceByName(const wxString sourceName) {
-	// BUG BUG Guessing that  sxm(Sirius) is 2, ipod is 6, dab is 7 
+	// BUG BUG Guessing that  sxm(Sirius) is 2, ipod is 6, dab is 9 
 	// as unable to test/verify
 	
 	int sourceId;
-	sourceId = -1;
+	sourceId = FUSION_MEDIA_PORT::unknown;
+
 	if (sourceName == "am") {
-		sourceId = 0;
+		sourceId = FUSION_MEDIA_PORT::am;
 	}
 	else if (sourceName == "fm") {
-		sourceId = 1;
+		sourceId = FUSION_MEDIA_PORT::fm;
 	}
 	else if (sourceName == "sxm") {
-		sourceId = 2;
+		sourceId = FUSION_MEDIA_PORT::sxm;
 	}
 	else if (sourceName == "aux") {
-		sourceId = 3;
+		sourceId = FUSION_MEDIA_PORT::aux;
 	}
 	else if (sourceName == "aux2") {
-		sourceId = 4;
+		sourceId = FUSION_MEDIA_PORT::aux2;
 	}
 	else if (sourceName == "usb") {
-		sourceId = 5;
+		sourceId = FUSION_MEDIA_PORT::usb;
 	}
 	else if (sourceName == "ipod") {
-		sourceId = 6;
+		sourceId = FUSION_MEDIA_PORT::ipod;
 	}
 	else if (sourceName == "mtp") {
-		sourceId = 7;
+		sourceId = FUSION_MEDIA_PORT::mtp;
 	}
 	else if (sourceName == "bt") {
-		sourceId = 8;
+		sourceId = FUSION_MEDIA_PORT::bt;
 	}
 	else if (sourceName == "dab") {
-		sourceId = 9;
+		sourceId = FUSION_MEDIA_PORT::dab;
 	}
 	return  sourceId;
 	

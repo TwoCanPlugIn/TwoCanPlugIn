@@ -197,6 +197,7 @@ SET(NMEA183_SRC nmea183/src/apb.cpp
                 nmea183/src/vhw.cpp
                 nmea183/src/vlw.cpp
                 nmea183/src/vtg.cpp
+				nmea183/src/vwr.cpp
                 nmea183/src/wcv.cpp
                 nmea183/src/wpl.cpp
                 nmea183/src/xdr.cpp
@@ -237,6 +238,7 @@ SET(NMEA183_INC nmea183/inc/apb.hpp
                 nmea183/inc/vhw.hpp
                 nmea183/inc/vlw.hpp
                 nmea183/inc/vtg.hpp
+				nmea183/inc/vwr.hpp
                 nmea183/inc/wcv.hpp
                 nmea183/inc/wpl.hpp
                 nmea183/inc/xdr.hpp

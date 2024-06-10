@@ -77,6 +77,7 @@
 
 // For this device's NMEA Product Information
 // BUG BUG Should be user configurable
+// Change for production, pretending to be a AP44 Controller
 #define CONST_DATABASE_VERSION 2100
 #define CONST_PRODUCT_CODE 1770 // Trivia - Captain Cook discovers Australia !
 #define CONST_CERTIFICATION_LEVEL 0 // We have not been certified, although I think we support the PGN's required for level 1
@@ -97,9 +98,9 @@
 #define CONST_DROPPEDFRAME_PERIOD 5
 
 // Some time intervals 
-#define CONST_TEN_MILLIS 10
-#define CONST_ONE_SECOND 100 * CONST_TEN_MILLIS
-#define CONST_ONE_MINUTE 60 * CONST_ONE_SECOND
+#define CONST_TEN_MILLIS 1
+#define CONST_ONE_SECOND 1000 // * CONST_TEN_MILLIS
+#define CONST_ONE_MINUTE 60000 // * CONST_ONE_SECOND
 
 // NMEA 2000 priorities - derived from observation. As priority is only 3 bits, values range from 0-7
 #define CONST_PRIORITY_MEDIUM 6 // seen for 60928 ISO Address Claim, 59904 ISO Request
@@ -347,9 +348,11 @@ public:
 	// Convert a string of hex characters to the corresponding byte array
 	static int ConvertHexStringToByteArray(const byte *hexstr, const unsigned int len, byte *buf);
 	// Generates the ID for Fast Messages. 3 high bits are ID, lower 5 bits are the sequence number
-	static byte GenerateID(unsigned char previousSID);
+	static byte GenerateID(byte previousSID);
 	// Calculate the number of microsoeconds since Posix Epoch
 	static unsigned long long GetTimeInMicroseconds(void);
+	// Fragments a message > 8 bytes into a series of 8 byte frames
+	static void FragmentFastMessage(const CanHeader &header, const std::vector<byte> &payload, std::vector<CanMessage> *canMessages);
 	// BUG BUG Any other conversion functions required ??
 
 	// Used to generate the unique id for Windows versions (Note the Linux version is defined in twocansocket

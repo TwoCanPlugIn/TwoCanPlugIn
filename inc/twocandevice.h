@@ -33,6 +33,9 @@
 // Fusion Media Player
 #include "twocanmedia.h"
 
+// Autopilot
+#include "twocanautopilot.h"
+
 // Error constants and macros
 #include "twocanerror.h"
 
@@ -144,6 +147,9 @@ extern bool enableMusic;
 // If we are in Active Mode, whether we can control an Autpilot.
 extern bool enableAutopilot; 
 
+// If we can control an autopilot, which model
+extern int autopilotModel;
+
 // Whether to Log raw NMEA 2000 messages
 extern int logLevel;
 
@@ -159,6 +165,10 @@ extern int networkAddress;
 // TwoCanMedia is used to decode/encode Fusion Media Player NMEA 2000 messages
 // Works in conjunction with the media player plugin
 extern TwoCanMedia *twoCanMedia;
+
+// TwoCanAutopilot is used to decode/encode Fusion Media Player NMEA 2000 messages
+// Works in conjunction with the media player plugin
+extern TwoCanAutoPilot *twoCanAutopilot;
 
 #if defined (__WXMSW__) 
 // NMEA 2000 imported driver function prototypes
@@ -337,8 +347,32 @@ private:
 	// Decode PGN 65280 Manufacturer Proprietary Message
 	bool DecodePGN65280(const byte *payload);
 
-	// Decode PGN 65309 Manufacturer Proprietary Message
+	// Decode PGN 65305 Manufacturer Proprietary Message - Navico Autopilot Mode and Status
+	bool DecodePGN65305(const byte *payload);
+
+	// Decode PGN 65309 Manufacturer Proprietary Message - B&G WS302 Battery Status
 	bool DecodePGN65309(const byte *payload);
+
+	// Decode PGN 65312 Manufacturer Proprietary Message - B&G WS302 Wireless status
+	bool DecodePGN65312(const byte *payload);
+
+	// Decode PGN 65359 Manufacturer Proprietary Message - Setalk Autopilot Wind Reference
+	bool DecodePGN65345(const byte *payload);
+
+	// Decode PGN 65359 Manufacturer Proprietary Message - Setalk Autopilot Heading
+	bool DecodePGN65359(const byte *payload);
+
+	// Decode PGN 65360 Manufacturer Proprietary Message - Setalk Autopilot Locked Heading
+	bool DecodePGN65360(const byte *payload);
+
+	// Decode PGN 65379 Manufacturer Proprietary Message - Seatalk Autopilot Mode
+	bool DecodePGN65379(const byte *payload);
+
+	// Decode PGN 65380 Manufacturer Proprietary Message - Simrad Autopilot Mode
+	bool DecodePGN65380(const byte *payload);
+
+	// Decode PGN 126208 NMEA Group Function Command
+	bool DecodePGN126208(const int destination, const byte *payload);
 
 	// Decode PGN 126720 Manufacturer Proprietary Message
 	bool DecodePGN126720(const byte *payload);
@@ -448,6 +482,9 @@ private:
 	//	Decode PGN 129798 AIS SAR Aircraft Position Report
 	bool DecodePGN129798(const byte *payload, std::vector<wxString> *nmeaSentences);
 
+	//	Decode PGN 129799 Radio Transceiver Information
+	bool DecodePGN129799(const byte *payload, std::vector<wxString> *nmeaSentences);
+
 	//	Decode PGN 129801 AIS Addressed Safety Related Message
 	bool DecodePGN129801(const byte *payload, std::vector<wxString> *nmeaSentences);
 
@@ -504,6 +541,9 @@ private:
 
 	// Decode Manufacturer Proprietary Fast Message
 	bool DecodePGN130824(const byte *payload);
+
+	// Decode Manufacturer Proprietary Fast Message - Navico NAC3 Autopilot
+	bool DecodePGN130850(const byte *payload, std::vector<wxString> *nmeaSentences);
 	
 	// Transmit an ISO Request
 	int SendISORequest(const byte destination, const unsigned int pgn);
@@ -519,6 +559,11 @@ private:
 
 	// Transmit NMEA 2000 Supported Parameter Groups
 	int SendSupportedPGN(void);
+
+	// Emulate AP44 Pilot Controller
+	int SendAP44Heartbeat(void);
+	int SendAP44Command(int keycode);
+
 
 	// Respond to ISO Rqsts
 	int SendISOResponse(unsigned int sender, unsigned int pgn);

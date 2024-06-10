@@ -33,9 +33,6 @@
 // TwoCan device, which is our implementation of a NMEA 2000 device (Note also includes ocpnplugin.h)
 #include "twocandevice.h"
 
-// TwoCan Autopilot (Note also includes the autopilot dialog)
-#include "twocanautopilot.h"
-
 // Icons Use png2wx.pl perl script to convert png images to wxWidgets memory streams
 #include "twocanicons.h"
 
@@ -51,6 +48,8 @@
 #include <wx/wxchar.h>
 // Frame received events
 #include <wx/event.h>
+// Parsing some config entries
+#include <wx/tokenzr.h>
 
 //JSON
 #include <wx/json_defs.h>
@@ -69,7 +68,9 @@ wxString pluginDataFolder;
 wxString canAdapter;
 // Bit mask determing what NMEA 2000 PGN's are to be converted to NMEA 183 sentences
 int supportedPGN;
-// Whether the TwoCan device is a passive device (just listens) or whether it fully participates on teh NMEA 2000 network
+// What PGN's are to be relayed via OpenCPN Messaging Framework
+std::vector<int> relayedPGN;
+// Whether the TwoCan device is a passive device (just listens) or whether it fully participates on the NMEA 2000 network
 bool deviceMode;
 // Indicate whether the TwoCan Preferences diaog displays real time NMEA sentences
 bool debugWindowActive;
@@ -83,9 +84,7 @@ bool enableGateway;
 bool enableSignalK;
 // If we can control a Fusion Media Player
 bool enableMusic;
-// If we can control an autopilot
-bool enableAutopilot;
-// If we are in Active Mode, what model of autopilot we control. 
+// If we are in Active Mode, if we can control an autopilot and what model of autopilot. 
 // 0 - None, 1, Garmin, 2 Raymarine, 3 Simrad AC-12, 4 Navico NAC-3, 5 Furuno
 AUTOPILOT_MODEL autopilotModel;
 // If any logging is to be performed and in what format (twocan raw, candump, canboat, yacht devices or csv)
@@ -104,7 +103,7 @@ TwoCanMedia *twoCanMedia;
 // TwoCanAutopilot is used to decode/encode NMEA 2000 autopilot messages
 // Works in conjunction with the Autopilot plugin. Defined as a global because methods are invoked
 // from both TwoCanPlugin and TwoCanDevice
-TwoCanAutopilot *twoCanAutopilot;
+TwoCanAutoPilot *twoCanAutopilot;
 
 // The TwoCan plugin
 class TwoCan : public opencpn_plugin_116, public wxEvtHandler {

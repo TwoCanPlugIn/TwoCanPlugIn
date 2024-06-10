@@ -56,15 +56,6 @@ class TwoCanSettingsBase : public wxDialog
 		wxCheckBox* chkGateway;
 		wxCheckBox* chkWaypoint;
 		wxCheckBox* chkMedia;
-		wxStaticText* labelNetworkAddress;
-		wxStaticText* labelUniqueId;
-		wxStaticText* labelManufacturer;
-		wxStaticText* labelModelId;
-		wxStaticText* labelSoftwareVersion;
-		wxStaticText* labelDevice;
-		wxStaticText* labelFunction;
-		wxChoice* cmbLogging;
-		wxPanel* panelAutopilot;
 		wxCheckBox* chkAutopilot;
 		wxRadioBox* rdoBoxAutopilot;
 		wxChoice* cmbLogging;

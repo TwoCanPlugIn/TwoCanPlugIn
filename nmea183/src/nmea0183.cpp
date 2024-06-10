@@ -104,7 +104,9 @@ NMEA0183::NMEA0183()
    response_table.Append( (RESPONSE *) &Vhw );
    response_table.Append( (RESPONSE *) &Vlw );
    response_table.Append( (RESPONSE *) &Wcv );
+   response_table.Append( (RESPONSE *) &Vwr );
    response_table.Append( (RESPONSE *) &Wpl );
+   response_table.Append( (RESPONSE *) &Vwr );
    response_table.Append( (RESPONSE *) &Xdr );
    response_table.Append( (RESPONSE *) &Xte );
    response_table.Append( (RESPONSE *) &Zda ); 

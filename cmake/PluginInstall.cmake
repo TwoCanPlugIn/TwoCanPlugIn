@@ -101,6 +101,11 @@ if(WIN32)
     endif(EXISTS ${PROJECT_SOURCE_DIR}/UserIcons)
 
     if(EXISTS ${PROJECT_SOURCE_DIR}/data)
+        install(DIRECTORY data DESTINATION "${INSTALL_DIRECTORY}")
+        message(STATUS "${CMLOC}Install Data: ${INSTALL_DIRECTORY}")
+    endif(EXISTS ${PROJECT_SOURCE_DIR}/data)
+
+	if(EXISTS ${PROJECT_SOURCE_DIR}/data)
         install(DIRECTORY data DESTINATION "${INSTALL_DIRECTORY}"
 		PATTERN "*.dylib" EXCLUDE)
         message(STATUS "${CMLOC}Install Data: ${INSTALL_DIRECTORY}")
@@ -125,12 +130,14 @@ if(UNIX AND NOT APPLE)
 		PATTERN "*.dylib" EXCLUDE)
         message(STATUS "${CMLOC}Install data: ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME}")
     endif()
+
     if(EXISTS ${PROJECT_SOURCE_DIR}/UserIcons)
         install(DIRECTORY UserIcons DESTINATION ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME})
         set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/script/postinst")
         set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/script/postinst")
         message(STATUS "${CMLOC}Install UserIcons: ${PREFIX_PARENTDATA}/plugins/${PACKAGE_NAME}")
     endif()
+
 endif(UNIX AND NOT APPLE)
 
 if(APPLE)

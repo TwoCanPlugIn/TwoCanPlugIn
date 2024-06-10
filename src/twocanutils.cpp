@@ -98,18 +98,15 @@ int TwoCanUtils::DecodeCanHeader(const byte *buf, CanHeader *header) {
 		}
 		// Priority is bits 2,3,4 of b(3)
 		header->priority = (buf[3] & 0x1c) >> 2;
-
+        // Consider simplifying
+		//header.pgn = (result[3] & 0x01) << 16 | result[2] << 8 | (result[2] < 240 ? 0 : result[1]);
+		//header.destination = result[2] < 240 ? result[1] : 255;
+		//header.priority = (result[3] & 0x1c) >> 2;
 		return true;
 	}
 	else {
 		return false;
 	}
-}
-
-// Generates the ID for Fast Messages. 3 high bits are ID, lower 5 bits are the sequence number
-byte TwoCanUtils::GenerateID(byte previousSID) {
-    byte tmp = (previousSID >> 5) + 1;
-    return tmp == 8 ? 0: tmp << 5; 
 }
 
 // Encodes a 29 bit CAN header
@@ -120,11 +117,89 @@ int TwoCanUtils::EncodeCanHeader(unsigned int *id, const CanHeader *header) {
 		buf[2] = ((header->pgn & 0xFF00) >> 8);
 		buf[1] = (buf[2] > 239) ? (header->pgn & 0xFF) : header->destination;
 		buf[0] = header->source;
-		memcpy(id,&buf[0],4);
+		memcpy(id, &buf[0], 4);
 		return TRUE;
 	}
 	else {
 		return FALSE;
+	}
+}
+
+// Generates the ID for Fast Messages. 3 high bits are ID, lower 5 bits are the sequence number
+byte TwoCanUtils::GenerateID(byte previousSID) {
+    byte tmp = (previousSID >> 5) + 1;
+    return tmp == 8 ? 0: tmp << 5; 
+}
+
+// Fragment a NMEA 2000 message into a sequence of 8 byte frames
+// If the message <= 8 bytes, it is not fragmented. Exception is PGN 130820 for Fusion Media Players.
+void TwoCanUtils::FragmentFastMessage(const CanHeader &header, const std::vector<byte> &payload, std::vector<CanMessage> *canMessages) {
+	size_t payloadLength = payload.size();
+	std::vector<byte> data;
+	CanMessage message;
+	message.header = header;
+	bool fusionException = false;
+
+	// Fragment a fast message into a sequence of singleframe messages
+	if ((payloadLength > 8) || (fusionException)) {
+
+		// The first frame
+		// BUG BUG should maintain a map of sequential ID's for each PGN
+		byte sid = 0;
+		data.push_back(sid);
+		data.push_back(payloadLength);
+		for (std::vector<byte>::const_iterator it = payload.begin(); it != payload.begin() + 6; ++it) {
+			data.push_back(*it);
+		}
+
+		message.payload = data;
+		canMessages->push_back(message);
+
+		sid += 1;
+
+		// Intermediate frames
+		int iterations;
+		iterations = (int)((payloadLength - 6) / 7);
+		for (int i = 0; i < iterations; i++) {
+			data.clear();
+
+			data.push_back(sid);
+
+			for (std::vector<byte>::const_iterator it = payload.begin() + 6 + (i * 7); it != payload.begin() + 13 + (i * 7); ++it) {
+				data.push_back(*it);
+			}
+
+			message.payload = data;
+			canMessages->push_back(message);
+
+			sid += 1;
+		}
+
+		// Any remaining frames ?
+		int remainingBytes;
+		remainingBytes = (payloadLength - 6) % 7;
+		if (remainingBytes > 0) {
+			data.clear();
+
+			data.push_back(sid);
+
+			for (std::vector<byte>::const_iterator it = payload.end() - remainingBytes; it != payload.end(); ++it) {
+				data.push_back(*it);
+			}
+
+			// fill any unused bytes with 0xFF
+			for (int i = 0; i < (7 - remainingBytes); i++) {
+				data.push_back(0xFF);
+			}
+
+			message.payload = data;
+			canMessages->push_back(message);
+		}
+	}
+	// Not a fast message, just a single frame message
+	else {
+		message.payload = payload;
+		canMessages->push_back(message);
 	}
 }
 
