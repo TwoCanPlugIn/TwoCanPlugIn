@@ -4976,45 +4976,55 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 bool TwoCanDevice::DecodePGN129799(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != NULL) {
 
+		// Eg. 156800000 (is the frequency for VHF 16)
 		unsigned int rxFrequency;
 		rxFrequency = payload[0] | (payload[1] << 8) | (payload[2] << 16) | (payload[3] << 24);
 
 		unsigned int txFrequency;
 		txFrequency = payload[4] | (payload[5] << 8) | (payload[6] << 16) | (payload[7] << 24);
 
-		int channel;
-		channel = payload[8];
+		wxString channel; 
+		// If the HM is 0,1,2 it is a HF radio with the TM, M, H, T & U digits indicating the frequency in multiples of 100Hz. 
+		// Eg. 130770 indicates 13077 Khz
+		// If the HM is 3, the other digits indicate a HF channel.
+		// Eg. 300401 indicates HF channel 401
+		// If the HM is 4 it indicates a HF radio but a frequency using 7 digits in multiples of 10Hz.
+		// If the HM is 9, it indicates a VHF radio. The last 3 digits (with leading zero) are the channel.
+		// The third digit indicates whether ship or share station is used as simplex frequency
+		// Eg. 900016 or 9000M2 are examples for VHF
+		for (size_t i = 0; i < 6; i++) {
+			channel.append(1, payload[8 + i]);
+		}
 
-		int power;
-		power = payload[9];
-		// BUG BUG How to convert from the power value to one of
-		// // Power Level(0 = standby, 1 = lowest, 9 = highest)
+		// Watts - Maps to 0 (Standby), 1 (Low Power) 9 (High Power), For VHF could be either 1 or 25 Watts
+		byte power;
+		power = payload[14];
+	
+		unsigned short mode;
+		mode = payload[15] | (payload[16] << 8);
+		// BUG BUG Are the values similar to the DSC usage, and mapped to the following: 
+		// d = F3E / G3E simplex, telephone (0)
+		// e = F3E / G3E duplex, telephone (1)
+		// m = J3E, telephone (2)
+		// o = H3E, telephone (3)
+		// q = F1B / J2B FEC NBDP, Telex / teleprinter (4)
+		// s = F1B / J2B ARQ NBDP, Telex / teleprinter (5)
+		// t = F1B / J2B receive only, teleprinter / DSC (6)
+		// w = F1B/J2B, teleprinter/DSC (7)
+		// x = A1A Morse, tape recorder (8)
+		// { = A1A Morse, Morse key/head set (9)
+		// | = F1C/F2C/F3C, FAX-machine (10)
+		// null for no information (
 
-		int mode;
-		mode = payload[10];
-		// BUG BUG How to map mode to one of. Is it similar to the DSC usage, 
-		// d = F3E / G3E simplex, telephone 
-		// e = F3E / G3E duplex, telephone
-		// m = J3E, telephone 
-		// o = H3E, telephone
-		// q = F1B / J2B FEC NBDP, Telex / teleprinter
-		// s = F1B / J2B ARQ NBDP, Telex / teleprinter
-		// t = F1B / J2B receive only, teleprinter / DSC
-		// w = F1B/J2B, teleprinter/DSC
-		// x = A1A Morse, tape recorder
-		// { = A1A Morse, Morse key/head set
-		// | = F1C/F2C/F3C, FAX-machine 
-		// null for no information
-
-		int bandwidth;
-		bandwidth = payload[11];
+		unsigned short bandwidth;
+		bandwidth = payload[17] | (payload[18] << 8);
 		// Not fully implemented, and no idea why we would want to convert this in anycase.
-		// nmeaSentences->push_back(wxString::Format("$IIFSI,%d,%d,%d,%d ", txFrequency, rxFrequency, power, mode));
+		// nmeaSentences->push_back(wxString::Format("$IIFSI,%s,%s,%d,%d", channel, channel, power, mode));
 		// Could always send it to a compatible radio to set the frequency & power !!
 #ifndef NDEBUG
 		wxLogMessage(_T("TwoCan Device, PGN 129799, Tx Frequency: %d"), txFrequency);
 		wxLogMessage(_T("TwoCan Device, PGN 129799, RX Frequency: %d"), rxFrequency);
-		wxLogMessage(_T("TwoCan Device, PGN 129799, Channel: %d"), channel);
+		wxLogMessage(_T("TwoCan Device, PGN 129799, Channel: %s"), channel);
 		wxLogMessage(_T("TwoCan Device, PGN 129799, Power: %d"), power);
 		wxLogMessage(_T("TwoCan Device, PGN 129799, Mode: %d"), mode);
 		wxLogMessage(_T("TwoCan Device, PGN 129799, Bandwidth: %d"), bandwidth);
