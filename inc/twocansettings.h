@@ -193,7 +193,7 @@ extern bool enableHeartbeat;
 extern bool enableGateway;
 
 // If we are in active mode, whether we can control an autopilot
-extern bool enableAutopilot;
+extern int autopilotModel;
 
 // If we are in active mode, whether we can control a Fusion Media Player
 extern bool enableMusic;
@@ -234,8 +234,8 @@ protected:
 	void OnCheckHeartbeat(wxCommandEvent &event);
 	void OnCheckGateway(wxCommandEvent &event);
 	void OnCheckMedia(wxCommandEvent &event);
-	void OnCheckAutopilot(wxCommandEvent &event);
 	void OnCheckWaypoint(wxCommandEvent &event);
+	void OnAutopilotModelChanged(wxCommandEvent& event);
 	void OnPause(wxCommandEvent &event);
 	void OnCopy(wxCommandEvent &event);
 	void OnOK(wxCommandEvent &event);

@@ -39,7 +39,7 @@
 #include <wx/jsonwriter.h>
 
 // If we are in Active Mode, whether we can control an Autpilot. 0 - None, 1, Garmin, 2 Navico, 3 Raymarine, 4 Furuno
-extern int autopilotManufacturer; 
+extern int autopilotModel; 
 
 // A 1 byte CAN bus network address for this device if it is an Active device (0-253)
 extern int networkAddress;

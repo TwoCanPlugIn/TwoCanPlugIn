@@ -164,21 +164,17 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
 	chkGateway->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
-	// BUG BUG Not yet implemented
-	chkMedia->Enable(FALSE);
-	chkAutopilot->Enable(FALSE);
+	chkMedia->Enable(chkDeviceMode->IsChecked());
 	if (deviceMode == TRUE) {
 		chkHeartbeat->SetValue(enableHeartbeat);
 		chkGateway->SetValue(enableGateway);
 		chkWaypoint->SetValue(enableWaypoint);
-		chkAutopilot->SetValue(enableAutopilot);
 		chkMedia->SetValue(enableMusic);
 	}
 	else {
 		chkHeartbeat->SetValue(FALSE);
 		chkGateway->SetValue(FALSE);
 		chkWaypoint->SetValue(FALSE);
-		chkAutopilot->SetValue(FALSE);
 		chkMedia->SetValue(FALSE);
 	}
 
@@ -205,6 +201,9 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 			cmbLogging->SetStringSelection(it->first);
 		}
 	}
+
+	// Autopilot Settings
+	rdoBoxAutopilot->SetSelection(autopilotModel);
 
 	// BUG BUG I really don't understand wxWidgets sizers, but this seems to do what I want
 	wxSize newSize = this->GetSize();
@@ -282,11 +281,6 @@ void TwoCanSettings::OnCheckGateway(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
 
-// Set whether the device integrates with NMEA 2000 autopilots
-void TwoCanSettings::OnCheckAutopilot(wxCommandEvent &event) {
-	this->settingsDirty = TRUE;
-}
-
 // Set whether the device integrates with Fusion Media players
 void TwoCanSettings::OnCheckMedia(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
@@ -294,6 +288,11 @@ void TwoCanSettings::OnCheckMedia(wxCommandEvent &event) {
 
 // Set whether the device will create an OpenCPN waypoint on reception of PGN 130074
 void TwoCanSettings::OnCheckWaypoint(wxCommandEvent &event) {
+	this->settingsDirty = TRUE;
+}
+
+// Set autopilot model
+void TwoCanSettings::OnAutopilotModelChanged(wxCommandEvent& event) {
 	this->settingsDirty = TRUE;
 }
 
@@ -375,11 +374,6 @@ void TwoCanSettings::SaveSettings(void) {
 		deviceMode = TRUE;
 	}
 
-	enableAutopilot = FALSE;
-	if (chkAutopilot->IsChecked()) {
-		enableAutopilot = TRUE;
-	}
-
 	enableMusic = FALSE;
 	if (chkMedia->IsChecked()) {
 		enableMusic = TRUE;
@@ -389,6 +383,8 @@ void TwoCanSettings::SaveSettings(void) {
 	if (chkWaypoint->IsChecked()) {
 		enableWaypoint = TRUE;
 	}
+
+	autopilotModel = rdoBoxAutopilot->GetSelection();
 
 	if (cmbInterfaces->GetSelection() != wxNOT_FOUND) {
 		canAdapter = adapters[cmbInterfaces->GetStringSelection()];

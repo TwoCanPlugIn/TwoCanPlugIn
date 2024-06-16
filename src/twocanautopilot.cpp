@@ -67,7 +67,7 @@ const std::vector<byte>raymarineHeading = {0x14, 0x01, 0x50, 0xff, 0x00, 0xf8, 0
 // TwoCan Autopilot
 TwoCanAutopilot::TwoCanAutopilot(int manufacturer) {
     // Save the autopilot model, 0 - None, 1 - Garmin, 2 - Navico, 3 - Raymarine
-    autopilotManufacturer = manufacturer;
+    // autopilotModel = manufacturer;
 }
 
 TwoCanAutopilot::~TwoCanAutopilot(void) {
@@ -105,13 +105,6 @@ bool TwoCanAutopilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 			wxMessageBox(wxString::Format("AUTOPILOT COURSE CHANGE: %d", commandValue), "TwoCanPlugin Debug");
 		}
 
-		else if (root["autopilot"].HasMember("manufacturer")) {
-			commandId = AUTOPILOT_CHANGE_MANUFACTURER;
-			commandValue = root["autopilot"]["manufacturer"].AsInt();
-			autopilotManufacturer = commandValue;
-			wxMessageBox(wxString::Format("AUTOPILOT MANUFACTURER CHANGE: %d", commandValue), "TwoCanPlugin Debug");
-		}
-
 		else {
 			// Not a command we are interested in
 			wxLogMessage(_T("TwoCan Plugin, Invalid Autopilot Request: %s"), message_body);
@@ -119,7 +112,7 @@ bool TwoCanAutopilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 		}
 
 		// Now parse the commands and generate the approprite PGN's
-		switch (autopilotManufacturer) {
+		switch (autopilotModel) {
 			case FLAGS_AUTOPILOT_GARMIN:
 				switch (commandId) {
 					case AUTOPILOT_CHANGE_STATUS:

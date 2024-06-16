@@ -136,7 +136,7 @@ class TwoCanMedia {
 		int bass;
 		int midrange;
 		int treble;
-		int balance;
+		char balance;
 		wxString zone0Name;
 		wxString zone1Name;
 		wxString zone2Name;

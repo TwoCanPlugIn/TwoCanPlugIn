@@ -254,7 +254,7 @@
 #define FLAGS_LOG_YACHTDEVICES 4 // Found some samples from their Voyage Data Recorder
 #define FLAGS_LOG_CSV 5 // Comma Separted Variables
 
-// Bit values to determine in what Autpilot Brand is selected
+// Bit values to determine in what Autpilot Model is selected
 #define FLAGS_AUTOPILOT_NONE 0
 #define FLAGS_AUTOPILOT_GARMIN 1 
 #define FLAGS_AUTOPILOT_RAYMARINE 2 

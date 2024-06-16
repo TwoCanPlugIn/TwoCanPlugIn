@@ -126,9 +126,6 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	chkWaypoint = new wxCheckBox( sizerDevice->GetStaticBox(), wxID_ANY, wxT("Receive Waypoints"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerDevice->Add( chkWaypoint, 0, wxALL, 5 );
 
-	chkAutopilot = new wxCheckBox( sizerDevice->GetStaticBox(), wxID_ANY, wxT("Autopilot Integration"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerDevice->Add( chkAutopilot, 0, wxALL, 5 );
-
 	chkMedia = new wxCheckBox( sizerDevice->GetStaticBox(), wxID_ANY, wxT("Fusion Media Player Integration"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerDevice->Add( chkMedia, 0, wxALL, 5 );
 
@@ -189,10 +186,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	wxStaticBoxSizer* sizerAutopilot;
 	sizerAutopilot = new wxStaticBoxSizer( new wxStaticBox( panelAutopilot, wxID_ANY, wxT("NMEA 2000 Autopilot Settings") ), wxVERTICAL );
 
-	chkAutopilotOption = new wxCheckBox( sizerAutopilot->GetStaticBox(), wxID_ANY, wxT("Enable Autopilot Control"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerAutopilot->Add( chkAutopilotOption, 0, wxALL, 5 );
-
-	wxString rdoBoxAutopilotChoices[] = { wxT("Garmin"), wxT("Raymarine"), wxT("Navico (B&&G, Simrad)") };
+	wxString rdoBoxAutopilotChoices[] = { wxT("None"), wxT("Garmin"), wxT("Raymarine"), wxT("Navico (B&&G, Simrad)") };
 	int rdoBoxAutopilotNChoices = sizeof( rdoBoxAutopilotChoices ) / sizeof( wxString );
 	rdoBoxAutopilot = new wxRadioBox( sizerAutopilot->GetStaticBox(), wxID_ANY, wxT("Autopilot Model"), wxDefaultPosition, wxDefaultSize, rdoBoxAutopilotNChoices, rdoBoxAutopilotChoices, 1, wxRA_SPECIFY_COLS );
 	rdoBoxAutopilot->SetSelection( 1 );
@@ -307,10 +301,8 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	chkHeartbeat->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckHeartbeat ), NULL, this );
 	chkGateway->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckGateway ), NULL, this );
 	chkWaypoint->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckWaypoint ), NULL, this );
-	chkAutopilot->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	chkMedia->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMedia ), NULL, this );
 	cmbLogging->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceLogging ), NULL, this );
-	chkAutopilotOption->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	rdoBoxAutopilot->Connect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
 	btnPause->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
@@ -330,10 +322,8 @@ TwoCanSettingsBase::~TwoCanSettingsBase()
 	chkHeartbeat->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckHeartbeat ), NULL, this );
 	chkGateway->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckGateway ), NULL, this );
 	chkWaypoint->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckWaypoint ), NULL, this );
-	chkAutopilot->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	chkMedia->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMedia ), NULL, this );
 	cmbLogging->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceLogging ), NULL, this );
-	chkAutopilotOption->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	rdoBoxAutopilot->Disconnect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
 	btnPause->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
