@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Oct 26 2018)
+// C++ code generated with wxFormBuilder (version 4.2.1-0-g80c4cb6)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -49,7 +49,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	panelSettings->SetSizer( sizerPanelSettings );
 	panelSettings->Layout();
 	sizerPanelSettings->Fit( panelSettings );
-	notebookTabs->AddPage( panelSettings, wxT("Settings"), true );
+	notebookTabs->AddPage( panelSettings, wxT("Settings"), false );
 	panelNetwork = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* sizerPanelNetwork;
 	sizerPanelNetwork = new wxBoxSizer( wxVERTICAL );
@@ -82,10 +82,10 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	dataGridNetwork->SetColSize( 2, 120 );
 	dataGridNetwork->EnableDragColMove( false );
 	dataGridNetwork->EnableDragColSize( true );
-	dataGridNetwork->SetColLabelSize( 30 );
 	dataGridNetwork->SetColLabelValue( 0, wxT("Unique Id") );
 	dataGridNetwork->SetColLabelValue( 1, wxT("Manufacturer") );
 	dataGridNetwork->SetColLabelValue( 2, wxT("Model Id") );
+	dataGridNetwork->SetColLabelSize( 30 );
 	dataGridNetwork->SetColLabelAlignment( wxALIGN_LEFT, wxALIGN_CENTER );
 
 	// Rows
@@ -129,26 +129,45 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	chkMedia = new wxCheckBox( sizerDevice->GetStaticBox(), wxID_ANY, wxT("Fusion Media Player Integration"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerDevice->Add( chkMedia, 0, wxALL, 5 );
 
-	chkAutopilot = new wxCheckBox( sizerDevice->GetStaticBox(), wxID_ANY, wxT("Autopilot Integration"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerDevice->Add( chkAutopilot, 0, wxALL, 5 );
-
 
 	sizerPanelDevice->Add( sizerDevice, 0, wxEXPAND, 5 );
 
-	wxBoxSizer* sizerAutopilot;
-	sizerAutopilot = new wxBoxSizer( wxVERTICAL );
+	wxStaticBoxSizer* sizerDetails;
+	sizerDetails = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("NMEA 2000 Device Details") ), wxVERTICAL );
 
-	wxString rdoBoxAutopilotChoices[] = { wxT("Garmin (Reactor)"), wxT("Raymarine (Evo)"), wxT("Simrad (AC12)"), wxT("Navico (NAC3)"), wxT("Furuno") };
-	int rdoBoxAutopilotNChoices = sizeof( rdoBoxAutopilotChoices ) / sizeof( wxString );
-	rdoBoxAutopilot = new wxRadioBox( panelDevice, wxID_ANY, wxT("Autopilot Model"), wxDefaultPosition, wxDefaultSize, rdoBoxAutopilotNChoices, rdoBoxAutopilotChoices, 1, wxRA_SPECIFY_COLS );
-	rdoBoxAutopilot->SetSelection( 1 );
-	sizerAutopilot->Add( rdoBoxAutopilot, 0, wxALL, 5 );
+	labelNetworkAddress = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Network Address"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelNetworkAddress->Wrap( -1 );
+	sizerDetails->Add( labelNetworkAddress, 0, wxALL, 5 );
+
+	labelUniqueId = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Unique Id"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelUniqueId->Wrap( -1 );
+	sizerDetails->Add( labelUniqueId, 0, wxALL, 5 );
+
+	labelManufacturer = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Manufacturer"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelManufacturer->Wrap( -1 );
+	sizerDetails->Add( labelManufacturer, 0, wxALL, 5 );
+
+	labelModelId = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Model Id"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelModelId->Wrap( -1 );
+	sizerDetails->Add( labelModelId, 0, wxALL, 5 );
+
+	labelSoftwareVersion = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Software Version"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelSoftwareVersion->Wrap( -1 );
+	sizerDetails->Add( labelSoftwareVersion, 0, wxALL, 5 );
+
+	labelDevice = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Device Class"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelDevice->Wrap( -1 );
+	sizerDetails->Add( labelDevice, 0, wxALL, 5 );
+
+	labelFunction = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Device Function"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelFunction->Wrap( -1 );
+	sizerDetails->Add( labelFunction, 0, wxALL, 5 );
 
 
-	sizerPanelDevice->Add( sizerAutopilot, 0, wxEXPAND, 5 );
+	sizerPanelDevice->Add( sizerDetails, 0, wxEXPAND, 5 );
 
 	wxStaticBoxSizer* sizerRawLogging;
-	sizerRawLogging = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("Raw Logging") ), wxHORIZONTAL );
+	sizerRawLogging = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("Raw Logging") ), wxVERTICAL );
 
 	wxArrayString cmbLoggingChoices;
 	cmbLogging = new wxChoice( sizerRawLogging->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, cmbLoggingChoices, 0 );
@@ -163,6 +182,60 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	panelDevice->Layout();
 	sizerPanelDevice->Fit( panelDevice );
 	notebookTabs->AddPage( panelDevice, wxT("Device"), false );
+	panelAutopilot = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	wxBoxSizer* sizerPanelAutopilot;
+	sizerPanelAutopilot = new wxBoxSizer( wxVERTICAL );
+
+	wxStaticBoxSizer* ssizerAutolpilotModel;
+	ssizerAutolpilotModel = new wxStaticBoxSizer( new wxStaticBox( panelAutopilot, wxID_ANY, wxT("Autopilot Integration") ), wxVERTICAL );
+
+	wxString rdoBoxAutopilotChoices[] = { wxT("None"), wxT("Garmin (Reactor)"), wxT("Raymarine (Evo)"), wxT("Simrad (AC12)"), wxT("Navico (NAC3)"), wxT("Furuno") };
+	int rdoBoxAutopilotNChoices = sizeof( rdoBoxAutopilotChoices ) / sizeof( wxString );
+	rdoBoxAutopilot = new wxRadioBox( ssizerAutolpilotModel->GetStaticBox(), wxID_ANY, wxT("Autopilot Model"), wxDefaultPosition, wxDefaultSize, rdoBoxAutopilotNChoices, rdoBoxAutopilotChoices, 1, wxRA_SPECIFY_COLS );
+	rdoBoxAutopilot->SetSelection( 0 );
+	ssizerAutolpilotModel->Add( rdoBoxAutopilot, 0, wxALL, 5 );
+
+
+	sizerPanelAutopilot->Add( ssizerAutolpilotModel, 0, wxEXPAND, 5 );
+
+	wxStaticBoxSizer* sizerRemoteDisplays;
+	sizerRemoteDisplays = new wxStaticBoxSizer( new wxStaticBox( panelAutopilot, wxID_ANY, wxT("RemoteDisplays") ), wxVERTICAL );
+
+	checkInstrument = new wxCheckBox( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxT("Change Remote Display Backlight and Colour"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerRemoteDisplays->Add( checkInstrument, 0, wxALL, 5 );
+
+	m_staticline1 = new wxStaticLine( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+	sizerRemoteDisplays->Add( m_staticline1, 0, wxEXPAND | wxALL, 5 );
+
+	chkGarminDisplay = new wxCheckBox( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxT("Garmin"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerRemoteDisplays->Add( chkGarminDisplay, 0, wxALL, 5 );
+
+	chkRaymarineDisplay = new wxCheckBox( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxT("Raymarine"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerRemoteDisplays->Add( chkRaymarineDisplay, 0, wxALL, 5 );
+
+	checkNavicoDisplay = new wxCheckBox( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxT("Navico (Simrad, B&&G)"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerRemoteDisplays->Add( checkNavicoDisplay, 0, wxALL, 5 );
+
+
+	sizerPanelAutopilot->Add( sizerRemoteDisplays, 0, wxEXPAND, 5 );
+
+	wxStaticBoxSizer* sizerExport8;
+	sizerExport8 = new wxStaticBoxSizer( new wxStaticBox( panelAutopilot, wxID_ANY, wxT("Export Waypoints and Routes") ), wxHORIZONTAL );
+
+	btnExportWaypointd = new wxButton( sizerExport8->GetStaticBox(), wxID_ANY, wxT("Waypoints..."), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerExport8->Add( btnExportWaypointd, 0, wxALL, 5 );
+
+	btnExportRoutes = new wxButton( sizerExport8->GetStaticBox(), wxID_ANY, wxT("Routes..."), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerExport8->Add( btnExportRoutes, 0, wxALL, 5 );
+
+
+	sizerPanelAutopilot->Add( sizerExport8, 1, wxEXPAND, 5 );
+
+
+	panelAutopilot->SetSizer( sizerPanelAutopilot );
+	panelAutopilot->Layout();
+	sizerPanelAutopilot->Fit( panelAutopilot );
+	notebookTabs->AddPage( panelAutopilot, wxT("Autopilot"), true );
 	panelDebug = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* sizerPanelDebug;
 	sizerPanelDebug = new wxBoxSizer( wxVERTICAL );
@@ -223,40 +296,6 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 
 	sizerAbout->Add( sizerTextAbout, 1, wxFIXED_MINSIZE, 5 );
 
-	wxStaticBoxSizer* sizerDetails;
-	sizerDetails = new wxStaticBoxSizer( new wxStaticBox( panelAbout, wxID_ANY, wxT("NMEA 2000 Device Details") ), wxVERTICAL );
-
-	labelNetworkAddress = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Network Address"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelNetworkAddress->Wrap( -1 );
-	sizerDetails->Add( labelNetworkAddress, 0, wxALL, 5 );
-
-	labelUniqueId = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Unique Id"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelUniqueId->Wrap( -1 );
-	sizerDetails->Add( labelUniqueId, 0, wxALL, 5 );
-
-	labelManufacturer = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Manufacturer"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelManufacturer->Wrap( -1 );
-	sizerDetails->Add( labelManufacturer, 0, wxALL, 5 );
-
-	labelModelId = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Model Id"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelModelId->Wrap( -1 );
-	sizerDetails->Add( labelModelId, 0, wxALL, 5 );
-
-	labelSoftwareVersion = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Software Version"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelSoftwareVersion->Wrap( -1 );
-	sizerDetails->Add( labelSoftwareVersion, 0, wxALL, 5 );
-
-	labelDevice = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Device Class"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelDevice->Wrap( -1 );
-	sizerDetails->Add( labelDevice, 0, wxALL, 5 );
-
-	labelFunction = new wxStaticText( sizerDetails->GetStaticBox(), wxID_ANY, wxT("Device Function"), wxDefaultPosition, wxDefaultSize, 0 );
-	labelFunction->Wrap( -1 );
-	sizerDetails->Add( labelFunction, 0, wxALL, 5 );
-
-
-	sizerAbout->Add( sizerDetails, 1, wxEXPAND, 5 );
-
 
 	panelAbout->SetSizer( sizerAbout );
 	panelAbout->Layout();
@@ -303,9 +342,8 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	chkGateway->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckGateway ), NULL, this );
 	chkWaypoint->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckWaypoint ), NULL, this );
 	chkMedia->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMedia ), NULL, this );
-	chkAutopilot->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
-	rdoBoxAutopilot->Connect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
 	cmbLogging->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceLogging ), NULL, this );
+	rdoBoxAutopilot->Connect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
 	btnPause->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
 	btnOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnOK ), NULL, this );
@@ -326,9 +364,8 @@ TwoCanSettingsBase::~TwoCanSettingsBase()
 	chkGateway->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckGateway ), NULL, this );
 	chkWaypoint->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckWaypoint ), NULL, this );
 	chkMedia->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMedia ), NULL, this );
-	chkAutopilot->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
-	rdoBoxAutopilot->Disconnect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
 	cmbLogging->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceLogging ), NULL, this );
+	rdoBoxAutopilot->Disconnect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
 	btnPause->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
 	btnOK->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnOK ), NULL, this );

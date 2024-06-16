@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Oct 26 2018)
+// C++ code generated with wxFormBuilder (version 4.2.1-0-g80c4cb6)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -26,6 +26,7 @@
 #include <wx/grid.h>
 #include <wx/checkbox.h>
 #include <wx/radiobox.h>
+#include <wx/statline.h>
 #include <wx/button.h>
 #include <wx/textctrl.h>
 #include <wx/statbmp.h>
@@ -33,7 +34,6 @@
 #include <wx/dialog.h>
 
 ///////////////////////////////////////////////////////////////////////////
-
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Class TwoCanSettingsBase
@@ -56,16 +56,6 @@ class TwoCanSettingsBase : public wxDialog
 		wxCheckBox* chkGateway;
 		wxCheckBox* chkWaypoint;
 		wxCheckBox* chkMedia;
-		wxCheckBox* chkAutopilot;
-		wxRadioBox* rdoBoxAutopilot;
-		wxChoice* cmbLogging;
-		wxPanel* panelDebug;
-		wxStaticText* labelDebug;
-		wxButton* btnPause;
-		wxButton* btnCopy;
-		wxPanel* panelAbout;
-		wxStaticBitmap* bmpAbout;
-		wxStaticText* txtAbout;
 		wxStaticText* labelNetworkAddress;
 		wxStaticText* labelUniqueId;
 		wxStaticText* labelManufacturer;
@@ -73,11 +63,28 @@ class TwoCanSettingsBase : public wxDialog
 		wxStaticText* labelSoftwareVersion;
 		wxStaticText* labelDevice;
 		wxStaticText* labelFunction;
+		wxChoice* cmbLogging;
+		wxPanel* panelAutopilot;
+		wxRadioBox* rdoBoxAutopilot;
+		wxCheckBox* checkInstrument;
+		wxStaticLine* m_staticline1;
+		wxCheckBox* chkGarminDisplay;
+		wxCheckBox* chkRaymarineDisplay;
+		wxCheckBox* checkNavicoDisplay;
+		wxButton* btnExportWaypointd;
+		wxButton* btnExportRoutes;
+		wxPanel* panelDebug;
+		wxStaticText* labelDebug;
+		wxButton* btnPause;
+		wxButton* btnCopy;
+		wxPanel* panelAbout;
+		wxStaticBitmap* bmpAbout;
+		wxStaticText* txtAbout;
 		wxButton* btnOK;
 		wxButton* btnApply;
 		wxButton* btnCancel;
 
-		// Virtual event handlers, overide them in your derived class
+		// Virtual event handlers, override them in your derived class
 		virtual void OnInit( wxInitDialogEvent& event ) { event.Skip(); }
 		virtual void OnChoiceInterfaces( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckPGN( wxCommandEvent& event ) { event.Skip(); }
@@ -88,9 +95,8 @@ class TwoCanSettingsBase : public wxDialog
 		virtual void OnCheckGateway( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckWaypoint( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCheckMedia( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnCheckAutopilot( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnAutopilotModelChanged( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnChoiceLogging( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnAutopilotModelChanged( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnPause( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCopy( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
@@ -102,6 +108,7 @@ class TwoCanSettingsBase : public wxDialog
 		wxTextCtrl* txtDebug;
 
 		TwoCanSettingsBase( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("Preferences"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( 548,652 ), long style = wxDEFAULT_DIALOG_STYLE );
+
 		~TwoCanSettingsBase();
 
 };
