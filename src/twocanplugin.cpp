@@ -400,7 +400,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 
 	// Handle TwoCan Autopilot Plugin dialog commands
 	else if (message_id == _T("TWOCAN_AUTOPILOT_REQUEST")) {
-		if ((deviceMode == TRUE) && (enableAutopilot == TRUE) && (twoCanDevice != nullptr) && (twoCanAutopilot != nullptr)) {
+		if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::NONE) && (twoCanDevice != nullptr) && (twoCanAutopilot != nullptr)) {
 			std::vector<CanMessage> messages;
 			unsigned int id;
 			int returnCode;
@@ -515,8 +515,7 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("Gateway"), &enableGateway, FALSE);
 		configSettings->Read(_T("Waypoint"), &enableWaypoint, FALSE);
 		configSettings->Read(_T("Music"), &enableMusic, FALSE);
-		configSettings->Read(_T("Autopilot"), &enableAutopilot, FALSE);
-		autopilotModel = (AUTOPILOT_MODEL)configSettings->ReadLong(_T("AutopilotModel"), AUTOPILOT_MODEL::NONE);
+		autopilotModel = static_cast<AUTOPILOT_MODEL>(configSettings->ReadLong(_T("Autopilot"), AUTOPILOT_MODEL::NONE));
 		// Not ready to implement. Maybe never....
 		//configSettings->Read(_T("SignalK"), &enableSignalK, FALSE);
 		return TRUE;
@@ -532,7 +531,6 @@ bool TwoCan::LoadConfiguration(void) {
 		enableWaypoint = FALSE;
 		enableMusic = FALSE;
 		enableSignalK = FALSE;
-		enableAutopilot = FALSE;
 		autopilotModel = AUTOPILOT_MODEL::NONE;
 		// BUG BUG Automagically find an installed adapter
 		canAdapter = _T("None");
@@ -552,7 +550,7 @@ bool TwoCan::SaveConfiguration(void) {
 		configSettings->Write(_T("Gateway"), enableGateway);
 		configSettings->Write(_T("Waypoint"), enableWaypoint);
 		configSettings->Write(_T("Music"), enableMusic);
-		configSettings->Write(_T("AutopilotModel"), (int)autopilotModel);
+		configSettings->Write(_T("Autopilotl"), (int)autopilotModel);
 		return TRUE;
 	}
 	else {
@@ -596,7 +594,7 @@ void TwoCan::StopDevice(void) {
 				}
 
 				// If the autopilot interface is enabled, cleanup
-				if ((deviceMode == TRUE) && (enableAutopilot == TRUE)) {
+				if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::NONE)) {
 					if (twoCanAutopilot != nullptr) {
 						delete twoCanAutopilot;
 						twoCanAutopilot = nullptr;
@@ -635,8 +633,8 @@ void TwoCan::StartDevice(void) {
 			}
 
 			// Autopilot Integration
-			if ((deviceMode == TRUE) && (autoPilotodel != AUTOPILOT_MODEL::NONE)) {
-				twoCanAutopilot = new TwoCanAutopilot(autopilotModel);
+			if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::NONE)) {
+				twoCanAutopilot = new TwoCanAutoPilot(autopilotModel);
 				wxLogMessage(_T("TwoCan Plugin, Created TwoCan Autopilot interface"));
 			}
 

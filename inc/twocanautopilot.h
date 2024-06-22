@@ -40,7 +40,7 @@
 
 // If we can control an Autopilot, what model. 
 // 0 - None, 1 Garmin, 2 Raymarine, 3 Simrad AC-12, 4 Navico NAC-3, 5 Furuno
-extern AUTOPILOT_MODEL autopilotModel; 
+extern AUTOPILOT_MODEL autopilotModel;
 
 // Map of the devices on the network. Iterated to fimd the address of an autopilot controller
 extern NetworkInformation networkMap[CONST_MAX_DEVICES];
@@ -48,16 +48,8 @@ extern NetworkInformation networkMap[CONST_MAX_DEVICES];
 // A 1 byte CAN bus network address for this device if it is an Active device (0-253)
 extern int networkAddress;
 
-// Autopilot commands
-typedef enum _AUTOPILOT_COMMAND {
-	CHANGE_MODE,
-	CHANGE_HEADING,
-	CHANGE_WIND,
-	CHANGE_MANUFACTURER,
-	KEEP_ALIVE
-} AUTOPILOT_COMMAND;
-
-// These must match the order of the twocan autopilot dialog radio box values
+// Autopilot Modes
+// These must match the those used in TwoCan Autopilot plugin
 typedef enum _AUTOPILOT_MODE {
 	STANDBY,
 	COMPASS,
@@ -66,6 +58,13 @@ typedef enum _AUTOPILOT_MODE {
 	NODRIFT
 } AUTOPILOT_MODE;
 
+// Autopilot commands 
+typedef enum _AUTOPILOT_COMMAND {
+	CHANGE_MODE,
+	CHANGE_HEADING,
+	CHANGE_WIND,
+	KEEP_ALIVE
+} AUTOPILOT_COMMAND;
 
 // These are also defined in twocansettings as a hashmap
 // BUG BUG Not sure why they are here, do I actually use them ??
@@ -87,7 +86,7 @@ class TwoCanAutoPilot {
 
 public:
 	// The constructor
-	TwoCanAutopilot(AUTOPILOT_MODEL model);
+	TwoCanAutoPilot(AUTOPILOT_MODEL model);
 
 	// and destructor
 	~TwoCanAutoPilot(void);

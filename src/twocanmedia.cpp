@@ -999,6 +999,36 @@ bool TwoCanMedia::EncodeMediaCommand(wxString text, std::vector<CanMessage> *can
 
 	}
 
+	// UI only has a single balance control
+	if (root["entertainment"]["device"].HasMember("balance")) {
+		int balance = root["entertainment"]["device"]["balance"].AsInt();
+		message.payload.push_back(0xA0);
+		message.payload.push_back(0x06);
+		message.payload.push_back(0xA3);
+		message.payload.push_back(0x99);
+		message.payload.push_back(0x12);
+		message.payload.push_back(0x00);
+		message.payload.push_back(0x00); // zone 0
+		message.payload.push_back(balance);
+
+		canMessages->push_back(message);
+
+		message.payload.clear();
+
+		message.payload.push_back(0xA0);
+		message.payload.push_back(0x06);
+		message.payload.push_back(0xA3);
+		message.payload.push_back(0x99);
+		message.payload.push_back(0x12);
+		message.payload.push_back(0x00);
+		message.payload.push_back(0x01); // zone 1
+		message.payload.push_back(balance);
+
+		canMessages->push_back(message);
+
+		return TRUE;
+	}
+
 	if (root["entertainment"]["device"].HasMember("tone")) {
 		int bass = root["entertainment"]["device"]["tone"]["bass"].AsInt();
 		int midrange = root["entertainment"]["device"]["tone"]["midrange"].AsInt();

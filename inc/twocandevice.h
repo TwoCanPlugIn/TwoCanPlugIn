@@ -144,11 +144,8 @@ extern bool enableSignalK;
 // If we act as a Media Server
 extern bool enableMusic;
 
-// If we are in Active Mode, whether we can control an Autpilot.
-extern bool enableAutopilot; 
-
 // If we can control an autopilot, which model
-extern int autopilotModel;
+extern AUTOPILOT_MODEL autopilotModel;
 
 // Whether to Log raw NMEA 2000 messages
 extern int logLevel;

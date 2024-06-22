@@ -59,42 +59,60 @@
 
 // Plugin receives FrameReceived events from the TwoCan device
 const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT = wxNewEventType();
+
 // Globally accessible variables used by the plugin, device and the settings dialog.
+
 // OpenCPN Configuration Settings
 wxFileConfig *configSettings;
+
 // To support the new Plugin Manager which requires a new API to determine the plugin's data folder
 wxString pluginDataFolder;
+
 // The name of the TwoCan driver being used to access the CAN bus or the Log Files
 wxString canAdapter;
+
 // Bit mask determing what NMEA 2000 PGN's are to be converted to NMEA 183 sentences
 int supportedPGN;
+
 // What PGN's are to be relayed via OpenCPN Messaging Framework
 std::vector<int> relayedPGN;
+
 // Whether the TwoCan device is a passive device (just listens) or whether it fully participates on the NMEA 2000 network
 bool deviceMode;
+
 // Indicate whether the TwoCan Preferences diaog displays real time NMEA sentences
 bool debugWindowActive;
+
 // If an Active Device, whether to periodically send heartbeats
 bool enableHeartbeat;
+
 // If we can insert routes & waypoints into the OpenCPN database
 bool enableWaypoint;
+
 // If we are in active mode whether we act as a bidirectional gateway, converting NMEA183 to NMEA2000
 bool enableGateway;
+
 // If we act as a SignalK server
 bool enableSignalK;
+
 // If we can control a Fusion Media Player
 bool enableMusic;
-// If we are in Active Mode, if we can control an autopilot and what model of autopilot. 
-// 0 - None, 1, Garmin, 2 Raymarine, 3 Simrad AC-12, 4 Navico NAC-3, 5 Furuno
+
+// If we can control an autopilot and what model of autopilot
 AUTOPILOT_MODEL autopilotModel;
+
 // If any logging is to be performed and in what format (twocan raw, candump, canboat, yacht devices or csv)
 int logLevel;
+
 // A 29bit number that uniqiuely identifies the TwoCan device if it is an Active Device
 unsigned long uniqueId;
+
 // A 1 byte CAN bus network address for this device if it is an Active device (0-253)
 int networkAddress;
+
 // Maintain a map of the all of the NMEA 2000 devices on the network
 NetworkInformation networkMap[CONST_MAX_DEVICES];
+
 // TwoCanMedia is used to decode/encode Fusion Media Player NMEA 2000 messages
 // Works in conjunction with the Media Player plugin. Defined as a global because methods are invoked
 // from both TwoCanPlugin and TwoCanDevice

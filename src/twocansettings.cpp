@@ -166,23 +166,21 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
 	chkAutopilot->Enable(chkDeviceMode->IsChecked());
 	chkMedia->Enable(chkDeviceMode->IsChecked());
-	rdoBoxAutopilot->Enable(enableAutopilot); // BUG BUG Whhy is it not observing chkAutopilot->IsChecked() ??
+	rdoBoxAutopilot->Enable(chkDeviceMode->IsChecked());
 	
 	if (deviceMode == TRUE) {
 		chkHeartbeat->SetValue(enableHeartbeat);
 		chkGateway->SetValue(enableGateway);
 		chkWaypoint->SetValue(enableWaypoint);
-		chkAutopilot->SetValue(enableAutopilot);
 		chkMedia->SetValue(enableMusic);
-		rdoBoxAutopilot->SetSelection(autopilotModel);
+		rdoBoxAutopilot->SetSelection(static_cast<int>(autopilotModel));
 	}
 	else {
 		chkHeartbeat->SetValue(FALSE);
 		chkGateway->SetValue(FALSE);
 		chkWaypoint->SetValue(FALSE);
-		chkAutopilot->SetValue(FALSE);
 		chkMedia->SetValue(FALSE);
-		rdoBoxAutopilot->SetSelection(AUTOPILOT_MODEL::NAVICO);
+		rdoBoxAutopilot->SetSelection(AUTOPILOT_MODEL::NONE);
 	}
 
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
@@ -281,10 +279,8 @@ void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
 	chkWaypoint->SetValue(enableWaypoint);
 	chkMedia->Enable(chkDeviceMode->IsChecked());
 	chkMedia->SetValue(enableMusic);
-	chkAutopilot->Enable(chkDeviceMode->IsChecked());
-	chkAutopilot->SetValue(enableAutopilot);
-	rdoBoxAutopilot->Enable(chkAutopilot->IsChecked());
-	rdoBoxAutopilot->SetSelection(autopilotModel);
+	rdoBoxAutopilot->Enable(chkDeviceMode->IsChecked());
+	rdoBoxAutopilot->SetSelection(static_cast<int>(autopilotModel));
 	this->settingsDirty = TRUE;
 }
 
@@ -298,15 +294,9 @@ void TwoCanSettings::OnCheckGateway(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
 
-// Set whether the device integrates with NMEA 2000 autopilots
-void TwoCanSettings::OnCheckAutopilot(wxCommandEvent &event) {
-	this->settingsDirty = TRUE;
-	// Toggle the Autopilot Model Radio Box
-	rdoBoxAutopilot->Enable(chkAutopilot->IsChecked());
-}
-
-// Selection of teh Autopilot Model.
-// BUG BUG At present only NAC3 is tested
+// Selection of the Autopilot Model.
+// BUG BUG At present only NAC3 is implemented and tested
+// Raymarine EVO and Simrad AC-12 are implemented but untested
 void TwoCanSettings::OnAutopilotModelChanged(wxCommandEvent &event) {
 	this->settingsDirty = TRUE;
 }
@@ -399,11 +389,7 @@ void TwoCanSettings::SaveSettings(void) {
 		deviceMode = TRUE;
 	}
 
-	enableAutopilot = FALSE;
-	if (chkAutopilot->IsChecked()) {
-		enableAutopilot = TRUE;
-		autopilotModel =  rdoBoxAutopilot->GetSelection();
-	}
+	autopilotModel =  static_cast<AUTOPILOT_MODEL>(rdoBoxAutopilot->GetSelection());
 
 	enableMusic = FALSE;
 	if (chkMedia->IsChecked()) {

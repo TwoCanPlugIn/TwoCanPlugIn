@@ -192,11 +192,8 @@ extern bool enableHeartbeat;
 // If we are in active mode, whether we act as a bi-directional gateway NMEA183 -> NMEA 2000
 extern bool enableGateway;
 
-// If we are in active mode, whether we can control an autopilot
-extern bool enableAutopilot;
-
 // If we can control an autopilot, which model
-extern int autopilotModel;
+extern AUTOPILOT_MODEL autopilotModel;
 
 // If we are in active mode, whether we can control a Fusion Media Player
 extern bool enableMusic;
@@ -237,7 +234,6 @@ protected:
 	void OnCheckHeartbeat(wxCommandEvent &event);
 	void OnCheckGateway(wxCommandEvent &event);
 	void OnCheckMedia(wxCommandEvent &event);
-	void OnCheckAutopilot(wxCommandEvent &event);
 	void OnCheckWaypoint(wxCommandEvent &event);
 	void OnAutopilotModelChanged(wxCommandEvent &event);
 	void OnPause(wxCommandEvent &event);

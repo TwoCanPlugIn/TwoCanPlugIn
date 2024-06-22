@@ -525,6 +525,8 @@ bool TwoCanAutoPilot::EncodeWindAngle(const int windangle, wxString *jsonRespons
 	return FALSE;
 }
 
+// TwoCan Autopilot Plugin sends requests via OCPN Messaging to command the Autopilot
+// Eg. Engage/Disengage the autopilot, change modes, change heading and wind angle.
 bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<CanMessage> *canMessages) {
 	CanHeader header;
 	std::vector<byte>payload;
@@ -545,10 +547,6 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 
 		int commandValue;
 		int commandId;
-		
-		if (root["autopilot"].HasMember("model")) {
-			autopilotModel = root["autopilot"]["model"].AsInt();
-		}
 		
 		if (root["autopilot"].HasMember("mode")) {
 				commandId = AUTOPILOT_COMMAND::CHANGE_MODE;
