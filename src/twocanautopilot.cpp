@@ -28,6 +28,117 @@
 
 #include "twocanautopilot.h"
 
+
+// An ordered list of Raymarine Error Messages
+// Used by PGN 65288
+std::vector<std::string> RaymarineAlarmMessages = {
+			"No Alarm",
+			"Shallow Depth",
+			"Deep Depth",
+			"Shallow Anchor",
+			"Deep Anchor",
+			"Off Course",
+			"AWA High",
+			"AWA Low",
+			"AWS High",
+			"AWS Low",
+			"TWA High",
+			"TWA Low",
+			"TWS High",
+			"TWS Low",
+			"WP Arrival",
+			"Boat Speed High",
+			"Boat Speed Low",
+			"Sea Temperature High",
+			"Sea Temperature Low",
+			"Pilot Watch",
+			"Pilot Off Course",
+			"Pilot Wind Shift",
+			"Pilot Low Battery",
+			"Pilot Last Minute Of Watch",
+			"Pilot No NMEA Data",
+			"Pilot Large XTE",
+			"Pilot NMEA DataError",
+			"Pilot CU Disconnected",
+			"Pilot Auto Release",
+			"Pilot Way Point Advance",
+			"Pilot Drive Stopped",
+			"Pilot Type Unspecified",
+			"Pilot Calibration Required",
+			"Pilot Last Heading",
+			"Pilot No Pilot",
+			"Pilot Route Complete",
+			"Pilot Variable Text",
+			"GPS Failure",
+			"MOB",
+			"Seatalk1 Anchor",
+			"Pilot Swapped Motor Power",
+			"Pilot Standby Too Fast To Fish",
+			"Pilot No GPS Fix",
+			"Pilot No GPS COG",
+			"Pilot Start Up",
+			"Pilot Too Slow",
+			"Pilot No Compass",
+			"Pilot Rate Gyro Fault",
+			"Pilot Current Limit",
+			"Pilot Way Point Advance Port",
+			"Pilot Way Point Advance Stbd",
+			"Pilot No Wind Data",
+			"Pilot No Speed Data",
+			"Pilot Seatalk Fail1",
+			"Pilot Seatalk Fail2",
+			"Pilot Warning Too Fast To Fish",
+			"Pilot Auto Dockside Fail",
+			"Pilot Turn Too Fast",
+			"Pilot No Nav Data",
+			"Pilot Lost Waypoint Data",
+			"Pilot EEPROM Corrupt",
+			"Pilot Rudder Feedback Fail",
+			"Pilot Autolearn Fail1",
+			"Pilot Autolearn Fail2",
+			"Pilot Autolearn Fail3",
+			"Pilot Autolearn Fail4",
+			"Pilot Autolearn Fail5",
+			"Pilot Autolearn Fail6",
+			"Pilot Warning Cal Required",
+			"Pilot Warning OffCourse",
+			"Pilot Warning XTE",
+			"Pilot Warning Wind Shift",
+			"Pilot Warning Drive Short",
+			"Pilot Warning Clutch Short",
+			"Pilot Warning Solenoid Short",
+			"Pilot Joystick Fault",
+			"Pilot No Joystick Data",
+			"Pilot Invalid Command",
+			"AIS TX Malfunction",
+			"AIS Antenna VSWR fault",
+			"AIS Rx channel 1 malfunction",
+			"AIS Rx channel 2 malfunction",
+			"AIS No sensor position in use",
+			"AIS No valid SOG information",
+			"AIS No valid COG information",
+			"AIS 12V alarm",
+			"AIS 6V alarm",
+			"AIS Noise threshold exceeded channel A",
+			"AIS Noise threshold exceeded channel B",
+			"AIS Transmitter PA fault",
+			"AIS 3V3 alarm",
+			"AIS Rx channel 70 malfunction",
+			"AIS Heading lost/invalid",
+			"AIS internal GPS lost",
+			"AIS No sensor position",
+			"AIS Lock failure",
+			"AIS Internal GGA timeout",
+			"AIS Protocol stack restart",
+			"Pilot No IPS communications",
+			"Pilot Power-On or Sleep-Switch Reset While Engaged",
+			"Pilot Unexpected Reset While Engaged",
+			"AIS Dangerous Target",
+			"AIS Lost Target",
+			"AIS Safety Related Message (used to silence)",
+			"AIS Connection Lost",
+			"No Fix" };
+
 // TwoCan Autopilot
 TwoCanAutoPilot::TwoCanAutoPilot(AUTOPILOT_MODEL model) {
 	//BUG BUG Not sure why I am passing the autopilot model.
@@ -71,9 +182,10 @@ bool TwoCanAutoPilot::FindAutopilot(void) {
 	return result;
 }
 
-
-// Raymarine Evolution Autopilot Heading, PGN's 65359 (Heading) and 65360 Locked Heading
 // Parse the PGN, convert to JSON and send via OCPN messaging so that the UI dialog can be synchronized with the A/P state
+
+// Raymarine Evolution Autopilot Heading
+// PGN's 65359 (Heading) and 65360 (Locked Heading)
 bool TwoCanAutoPilot::DecodeRaymarineAutopilotHeading(const int pgn, const byte *payload, wxString *jsonResponse) {
 	wxJSONValue root;
 	wxJSONWriter writer;
@@ -189,6 +301,54 @@ bool TwoCanAutoPilot::DecodeRaymarineAutopilotMode(const byte *payload, wxString
 	return FALSE;
 }
 
+// Raymarine Alarm
+// PGN 65288
+bool TwoCanAutoPilot::DecodeRaymarineAutopilotAlarm(const byte* payload, wxString* jsonResponse) {
+	wxJSONValue root;
+	wxJSONWriter writer;
+
+	unsigned short manufacturerId;
+	manufacturerId = payload[0] | ((payload[1] & 0x07) << 8);;
+
+	byte reserved;
+	reserved = (payload[1] & 0x18) >> 3;
+
+	byte industryGroup;
+	industryGroup = (payload[1] & 0xE0) >> 5;
+
+	if (manufacturerId == 1851) {// Raymarine
+
+		byte sid;
+		sid = payload[2];
+
+		byte alarmStatus;
+		alarmStatus = payload[3];
+
+		byte alarmCode;
+		alarmCode = payload[4];
+
+		byte alarmGroup;
+		alarmGroup = payload[5];
+
+		unsigned short alarmPriority;
+		alarmPriority = payload[6] | (payload[7] << 8);
+
+
+		//  Instrument = 0, Autopilot = 1, Radar = 2, Chart Plotter = 3, AIS = 4
+		if (alarmGroup == 1) {
+			root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE;
+			root["autopilot"]["alarm"] = RaymarineAlarmMessages.at(alarmCode);
+
+			if (root.Size() > 0) {
+				writer.Write(root, *jsonResponse);
+				return TRUE;
+			}
+		}
+	}
+	return FALSE;
+}
+
+
 // Rayarine encodes seatalk datagrams inside PGN 126720
 bool TwoCanAutoPilot::DecodeRaymarineSeatalk(const byte *payload, wxString *jsonResponse) {
 	// Only decode a small subset of the Seatalk Datagrams
@@ -198,9 +358,7 @@ bool TwoCanAutoPilot::DecodeRaymarineSeatalk(const byte *payload, wxString *json
 
 	byte industryCode;
 	industryCode = (payload[1] & 0xE0) >> 5;
-
-	// BUG BUG Would be nice to know what these values represent
-	// Perhaps indicates Seatalk <-> SeatalkNG conversion ??
+	// 0xF0 - Seatalk Datagram, 0x81 indicates the Source, Autopilot Controller
 	if ((payload[2] == 0xF0) && (payload[3] == 0x81)) {
 
 		byte seatalkCommand;
@@ -242,13 +400,17 @@ bool TwoCanAutoPilot::DecodeRaymarineSeatalk(const byte *payload, wxString *json
 				break;
 			case 0x9C: // Compass Heading and Rudder Position
 				{
-				int u, vw, rr;
-				u = (payload[5] & 0xF0) >> 4; // Nibble 
-				vw = payload[6];
-				rr = payload[7];
-				int heading = (((u & 0x3) * 90) + ((vw & 0x3f) * 2) + (u & 0xc ? ((u & 0xc) == 0xc ? 2 : 1) : 0)) % 360;
-				bool direction = (u & 0x08) == 0x08;
-				int rudderPosition = rr;  // Two's complement ??
+				// Lower 2 bits of the high nibble of U * 90
+				int heading = (((payload[5] & 0x30) >> 4) * 90);
+				// Lower 6 bits of VW
+				heading += ((payload[6] & 0x3F) * 2);
+				// Number of bits set in the two highest bits of the low nibble of U
+				heading += (payload[5] & 0x0C) > 8 ? 2 : (payload[5] & 0x0C) == 8 ? 1 : 0;
+
+				// MSB in the high nibble of U
+				bool direction = (payload[5] & 0x80) == 0x80;
+				// Rudder position, two's complement
+				char rudderPosition = (~payload[7]) + 1;
 				}
 				break;
 		} 
@@ -260,15 +422,16 @@ bool TwoCanAutoPilot::DecodeRaymarineSeatalk(const byte *payload, wxString *json
 }
 
 // Simrad AC12
+// PGN 65380
 bool TwoCanAutoPilot::DecodeAC12Autopilot(const byte *payload, wxString *jsonResponse) {
 
 	return TRUE;
 }
 
 
-
-// Decode PGN 130850 as sent from the autopilot. Seems to be an alarm ??
-bool TwoCanAutoPilot::DecodeNAC3Alarm(const byte *payload, wxString *jsonResponse) {
+// Simrad A/P Commands
+// PGN 130850
+bool TwoCanAutoPilot::DecodeNAC3Command(const byte *payload, wxString *jsonResponse) {
 	wxJSONValue root;
 	wxJSONWriter writer;
 	int mode;
@@ -288,6 +451,7 @@ bool TwoCanAutoPilot::DecodeNAC3Alarm(const byte *payload, wxString *jsonRespons
 	byte status;
 	status = payload[6]; // 39 = OK ?? // 3A = Rudder Limit Exceeded
 
+	byte AutopilotControllerAddress;
 	autopilotControllerAddress = payload[10];
 
 	unsigned short reservedA;
@@ -340,16 +504,52 @@ bool TwoCanAutoPilot::DecodeNAC3Alarm(const byte *payload, wxString *jsonRespons
 			break;
 	}
 
-	//root["autopilot"]["model"] = AUTOPILOT_MODEL_NAC3;
-	//root["autopilot"]["mode"] = mode;
-
-	//if (root.Size() > 0) {
-	//	writer.Write(root, *jsonResponse);
-	//	return TRUE;
-	//}
-
 	return FALSE;
 }
+
+// Simrad Alarm Message
+// PGN 130856
+bool TwoCanAutoPilot::DecodeNAC3AlarmMessage(const byte* payload, wxString* jsonResponse) {
+	wxJSONValue root;
+	wxJSONWriter writer;
+
+	unsigned short manufacturerId;
+	manufacturerId = payload[0] | ((payload[1] & 0x07) << 8);
+
+	byte reserved;
+	reserved = (payload[1] & 0x18) >> 3;
+
+	byte industryGroup;
+	industryGroup = (payload[1] & 0xE0) >> 5;
+
+	if (manufacturerId == 351) { // B&G
+
+		byte command;
+		command = payload[2];
+
+		byte subCommand;
+		subCommand = payload[3];
+
+		std::string message;
+		unsigned int messageLength = payload[4];
+		if (payload[5] == 1) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
+			for (size_t i = 0; i < messageLength - 2; i++) {
+				message.append(1, payload[6 + i]);
+			}
+
+			root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO;
+			root["autopilot"]["alarm"] = message;
+
+			if (root.Size() > 0) {
+				writer.Write(root, *jsonResponse);
+				return TRUE;
+			}
+
+		}
+	}
+	return FALSE;
+}
+
 
 // Decode PGN 65305
 bool TwoCanAutoPilot::DecodeNAC3Status(const byte *payload, wxString *jsonResponse) {
@@ -370,9 +570,12 @@ bool TwoCanAutoPilot::DecodeNAC3Status(const byte *payload, wxString *jsonRespon
 	// 0x41 0x9f 0x00 0x02 0x10 0x00 0x00 0x00
 	// 0x41 0x9f 0x00 0x02 0x02 0x00 0x00 0x00
 	// 0x41 0x9F 0x64 0x02 0x10 0x00 0x00 0x00
+	// 0x41 0x9F 0xFF 0x02 0x10 0x00 0x00 0x00
+	// 0x41 0x9F 0xFF 0x02 0x02 0x00 0x00 0x00
 	//            |     |   |
 	//      0x64 = NAC3 | 0x10 = Engaged
 	//      0x00 = AC12 | 0x02 = Standby
+	//      0xFF = TP32 |
 	//               State
 	
 	// NAC 3 Autopilot Mode 
@@ -392,6 +595,12 @@ bool TwoCanAutoPilot::DecodeNAC3Status(const byte *payload, wxString *jsonRespon
 	// 0x41 0x9f 0x00 0x0a 0x16 0x01 0x00 0x00 - No Drift ??
 	// 0x41 0x9f 0x00 0x0a 0x0c 0x00 0x80 0x00 - No Drift ??
 	// Standby ??
+
+	// TP-32
+	// 0x41 0x9F 0xFF 0x02 0x10 0x00 0x00 0x00  Engaged
+	// 0x41 0x9F 0xFF 0x0A 0x0A 0x00 0x80 0x00  ?? Heading
+	// 0x41 0x9F 0xFF 0x0A 0x14 0x00 0x80 0x00  
+	// 0x41 0x9F 0xFF 0x1D 0x81 0x00 0x00 0x00
 
 
 	byte autopilotModel;
@@ -485,6 +694,8 @@ bool TwoCanAutoPilot::DecodeGarminAutopilot(const byte *payload, wxString *jsonR
 	return TRUE;
 }
 
+// These three are invoked upon reception of PGN 127245 (Rudder Angle), 127250 (Heading) & 130306 (Wind)
+// to generate JSON and send OCPN TWOCAN_AUTOPILOT_RESPONSE to update UI on TwoCan Autopilot plugin
 bool TwoCanAutoPilot::EncodeRudderAngle(const int rudderangle, wxString *jsonResponse) {
 	wxJSONValue root;
 	wxJSONWriter writer;
@@ -1046,7 +1257,6 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 						payload.push_back(0x9F);
 
 						// The network address of the autopilot controller
-						// BUG BUG Change for production
 						payload.push_back(autopilotControllerAddress);
 
 						payload.push_back(0xFF);

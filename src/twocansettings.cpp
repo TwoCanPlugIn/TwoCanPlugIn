@@ -164,7 +164,6 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
 	chkGateway->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
-	chkAutopilot->Enable(chkDeviceMode->IsChecked());
 	chkMedia->Enable(chkDeviceMode->IsChecked());
 	rdoBoxAutopilot->Enable(chkDeviceMode->IsChecked());
 	
@@ -182,6 +181,11 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 		chkMedia->SetValue(FALSE);
 		rdoBoxAutopilot->SetSelection(AUTOPILOT_MODEL::NONE);
 	}
+
+	// BUG BUG The following are yet to be implemented or tested
+	//rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::FURUNO)->Enable(false);
+	//rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::GARMIN)->Enable(false);
+	//rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::SIMRAD)->Enable(false);
 
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
@@ -213,6 +217,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	dataGridNetwork->SetMaxSize(wxSize(-1, 20 * dataGridNetwork->GetDefaultRowSize()));
 		
 	Fit();
+	Center();
 
 	// After we've fitted in everything adjust the dataGrid column widths
 	int colWidth = (int)((dataGridNetwork->GetSize().GetWidth() - dataGridNetwork->GetRowLabelSize() - wxSystemSettings::GetMetric(wxSYS_VSCROLL_X, NULL)) / 3);

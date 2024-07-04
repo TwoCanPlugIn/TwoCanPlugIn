@@ -129,7 +129,7 @@ if(NOT SKIP_VERSION_CONFIG)
         message(STATUS "${CMLOC}PLUGIN_EXTRA_FORMBUILDER_HEADERS: Found")
         configure_file(${PLUGIN_EXTRA_FORMBUILDER_HEADERS} ${BUILD_INCLUDE_PATH}/include/extra_formbuilder_headers.h)
     endif()
-    configure_file(cmake/in-files/version.h.in ${BUILD_INCLUDE_PATH}/include/version.h)
+    configure_file(cmake/in-files/version.h.in ${BUILD_INCLUDE_PATH}/include/twocanversion.h)
     configure_file(cmake/in-files/wxWTranslateCatalog.h.in ${BUILD_INCLUDE_PATH}/include/wxWTranslateCatalog.h)
     include_directories(${BUILD_INCLUDE_PATH}/include)
     if(MINGW)
@@ -179,7 +179,6 @@ else()
     endif(MINGW)
 endif()
 
-<<<<<<< HEAD
 message(STATUS "${CMLOC}ARCH: ${ARCH}")
 
 if("${PKG_BUILD_TARGET}" STREQUAL "")
@@ -276,16 +275,6 @@ message(STATUS "${CMLOC}PACKAGING_NAME_XML: ${PACKAGING_NAME_XML}")
 set(PKG_TARGET_FULL "${PKG_TARGET}${PKG_TARGET_GTK}${PKG_TARGET_WX_VER}${PKG_TARGET_ARCH}")
 message(STATUS "${CMLOC}PKG_TARGET_FULL: ${PKG_TARGET_FULL}")
 message(STATUS "${CMLOC}PKG_BUILD_TARGET: ${PKG_BUILD_TARGET}")
-=======
-set(PKG_BUILD_TARGET "${PKG_TARGET}")
-set(PKG_BUILD_GTK "${PKG_TARGET_GTK}")
-if(NOT "${PKG_TARGET_GTK}"  STREQUAL "")
-    set(PKG_TARGET_GTK "-${PKG_TARGET_GTK}")
-endif()
-set(PKG_TARGET_FULL "${PKG_TARGET}${PKG_TARGET_GTK}${PKG_TARGET_ARCH}")
-message(STATUS "${CMLOC}PKG_TARGET_FULL: ${PKG_TARGET}${PKG_TARGET_GTK}${PKG_TARGET_ARCH}")
-message(STATUS "${CMLOC}PKG_BUILD_TARGET: ${PKG_TARGET}")
->>>>>>> autopilot
 message(STATUS "${CMLOC}PKG_BUILD_GTK: ${PKG_TARGET_GTK}")
 message(STATUS "${CMLOC}*.in files generated in ${CMAKE_CURRENT_BINARY_DIR}")
 message(STATUS "${CMLOC}PACKAGING_NAME_XML: ${PACKAGING_NAME_XML}")
@@ -298,20 +287,10 @@ if(OCPN_FLATPAK_CONFIG)
     #set(SDK_VER $ENV{SDK_VER})
     #  Hack for temporary "beta" status of 20.08 runtime
     #  See new substitution variable in cmake/in-files/org.opencpn.OpenCPN.Plugin.yaml.in
-<<<<<<< HEAD
     message(STATUS "${CMLOC}FLATPAK_BRANCH: ${FLATPAK_BRANCH}")
     set(RUNTIME_VERSION ${FLATPAK_BRANCH})
 
     message(STATUS "${CMLOC}Checking OCPN_FLATPAK_CONFIG: ${OCPN_FLATPAK_CONFIG}, SDK_VER: ${SDK_VER}, WX_VER: ${WX_VER}")
-=======
-    if("${SDK_VER}"  STREQUAL "20.08")
-        set(RUNTIME_VERSION "beta")
-    else("${SDK_VER}"  STREQUAL "20.08")
-        set(RUNTIME_VERSION "stable")
-    endif("${SDK_VER}"  STREQUAL "20.08")
-
-    message(STATUS "${CMLOC}Checking OCPN_FLATPAK_CONFIG: ${OCPN_FLATPAK_CONFIG}, SDK_VER: ${SDK_VER}")
->>>>>>> autopilot
     configure_file(${PROJECT_SOURCE_DIR}/cmake/in-files/org.opencpn.OpenCPN.Plugin.yaml.in ${CMAKE_CURRENT_BINARY_DIR}/flatpak/org.opencpn.OpenCPN.Plugin.${PACKAGE}.yaml)
 
     message(STATUS "${CMLOC}Done OCPN_FLATPAK CONFIG")
@@ -367,18 +346,11 @@ if(MINGW)
 endif(MINGW)
 
 if(APPLE)
-<<<<<<< HEAD
     string(APPEND CMAKE_CXX_FLAGS " -Wall -Wno-unused -fexceptions -Wno-overloaded-virtual")
     string(APPEND CMAKE_CXX_FLAGS " -g -fno-strict-aliasing")
     string(APPEND CMAKE_CXX_FLAGS " -Wno-deprecated -Wno-deprecated-declarations -Wno-unknown-pragmas")
     string(APPEND CMAKE_CXX_FLAGS " -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_")
     string(APPEND CMAKE_CXX_FLAGS " -DAPPLE")
-=======
-    add_definitions("-Wall -Wno-unused -fexceptions -Wno-overloaded-virtual")
-    add_definitions(" -g -fno-strict-aliasing")
-    add_definitions(" -Wno-deprecated -Wno-deprecated-declarations -Wno-unknown-pragmas")
-    add_definitions(" -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_")
->>>>>>> autopilot
 endif(APPLE)
 
 # Add some definitions to satisfy MS

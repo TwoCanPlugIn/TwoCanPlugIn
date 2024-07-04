@@ -542,6 +542,9 @@ private:
 	// Decode Manufacturer Proprietary Fast Message - Navico NAC3 Autopilot
 	bool DecodePGN130850(const byte *payload, std::vector<wxString> *nmeaSentences);
 	
+	// Decode Manufacturer Proprietary Fast Message
+	bool DecodePGN130856(const byte* payload, std::vector<wxString>* nmeaSentences);
+
 	// Transmit an ISO Request
 	int SendISORequest(const byte destination, const unsigned int pgn);
 

@@ -49,7 +49,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	panelSettings->SetSizer( sizerPanelSettings );
 	panelSettings->Layout();
 	sizerPanelSettings->Fit( panelSettings );
-	notebookTabs->AddPage( panelSettings, wxT("Settings"), false );
+	notebookTabs->AddPage( panelSettings, wxT("Settings"), true );
 	panelNetwork = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* sizerPanelNetwork;
 	sizerPanelNetwork = new wxBoxSizer( wxVERTICAL );
@@ -192,7 +192,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	wxString rdoBoxAutopilotChoices[] = { wxT("None"), wxT("Garmin (Reactor)"), wxT("Raymarine (Evo)"), wxT("Simrad (AC-12)"), wxT("Navico (NAC-3)"), wxT("Furuno") };
 	int rdoBoxAutopilotNChoices = sizeof( rdoBoxAutopilotChoices ) / sizeof( wxString );
 	rdoBoxAutopilot = new wxRadioBox( panelAutopilot, wxID_ANY, wxT("Autopilot Model"), wxDefaultPosition, wxDefaultSize, rdoBoxAutopilotNChoices, rdoBoxAutopilotChoices, 1, wxRA_SPECIFY_COLS );
-	rdoBoxAutopilot->SetSelection( 4 );
+	rdoBoxAutopilot->SetSelection( 0 );
 	sizerAutopilot->Add( rdoBoxAutopilot, 0, wxALL, 5 );
 
 
@@ -267,7 +267,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	panelAbout->SetSizer( sizerAbout );
 	panelAbout->Layout();
 	sizerAbout->Fit( panelAbout );
-	notebookTabs->AddPage( panelAbout, wxT("About"), true );
+	notebookTabs->AddPage( panelAbout, wxT("About"), false );
 
 	sizerTabs->Add( notebookTabs, 1, wxEXPAND | wxALL, 5 );
 

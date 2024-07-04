@@ -81,6 +81,8 @@ typedef enum _AUTOPILOT_COMMAND {
 #define NAC3_DIRECTION_STBD 3
 #define NAC3_DIRECTION_UNUSED 255;
 
+
+
 // The TwoCan Autopilot
 class TwoCanAutoPilot {
 
@@ -99,30 +101,38 @@ public:
 	// that sends TWOCAN_AUTOPILOT_REQUEST messages
 	bool EncodeAutopilotCommand(wxString message_body, std::vector<CanMessage> *nmeaMessages);
 
-	// Raymarine Evolution Autopilot Heading
+	// Raymarine Evolution Autopilot Heading (PGN 65359 & 65360)
 	bool DecodeRaymarineAutopilotHeading(const int pgn, const byte *payload, wxString *jsonResponse);
 
-	// Raymarine Evolution Autopilot Wind
+	// Raymarine Evolution Autopilot Wind (PGN 65435)
 	bool DecodeRaymarineAutopilotWind(const int pgn, const byte *payload, wxString *jsonResponse);
 
-	// Raymarine Evolution Autopilot Mode
+	// Raymarine Evolution Autopilot Mode (PGN 65379)
 	bool DecodeRaymarineAutopilotMode(const byte *payload, wxString *jsonResponse);
 
-	// Raymarine Seatalk Datagrams
+    // Raymarine Alarms (PGN 65288)
+    bool DecodeRaymarineAutopilotAlarm(const byte* payload, wxString* jsonResponse);
+
+	// Raymarine Seatalk Datagrams (PGN 126720)
 	bool DecodeRaymarineSeatalk(const byte *payload, wxString *jsonResponse);
 
-	// Navico Autopilot Alarms ?? (NAC-3) PGN 130850 
-	bool DecodeNAC3Alarm(const byte *payload, wxString *jsonResponse);
+	// Navico Autopilot Alarm Message (NAC-3) PGN 130856
+	bool DecodeNAC3AlarmMessage(const byte *payload, wxString *jsonResponse);
 
 	// Navico Autopilot Mode and Status (NAC-3 and AC12) PGN 65305
 	bool DecodeNAC3Status(const byte *payload, wxString *jsonResponse);
 
-	// Simrad Autopilot Alarsms (AC12) PGN 65380
+    // Navico Autopilot Command (NAC-3 and AC12) PGN 130850/851
+    bool DecodeNAC3Command(const byte* payload, wxString* jsonResponse);
+
+	// Simrad Autopilot Alarm (AC12) PGN 65380
 	bool DecodeAC12Autopilot(const byte *payload, wxString *jsonResponse);
 
 	// Garmin Reactor
 	// BUG BUG To Do.
 	bool DecodeGarminAutopilot(const byte *payload, wxString *jsonResponse);
+
+    // BUG BUG Furuno To Do 
 
 	// Encode some of the values to be displayed on the Autopilot Plugin as JSON 
 	bool EncodeRudderAngle(const int rudderangle, wxString *jsonResponse);

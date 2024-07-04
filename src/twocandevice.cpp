@@ -256,7 +256,7 @@ int TwoCanDevice::Init(wxString driverPath) {
 		deviceMode = FALSE;
 		enableGateway = FALSE;
 		enableHeartbeat = FALSE;
-		autopilotModel === AUTOPILOT_MODEL::NONE;
+		autopilotModel = AUTOPILOT_MODEL::NONE;
 		enableMusic = FALSE;
 	}
 	else {
@@ -807,12 +807,13 @@ void TwoCanDevice::RaiseEvent(wxString sentence) {
 // 130822 - Manufacturer Proprietary
 // 130824 - Manufacturer Proprietary Fast Message (B&G Wind or Performance Data ??) 
 // 130850 - Manufacturer Proprietary Fast Message (Navico NAC3 Autopilot)
+// 130856 - Manufacturer Proprietary Fast Message (Navico NAC3 Autopilot Alarm Message)
 
 // Checks whether a frame is a single frame message or multiframe Fast Packet message
 bool TwoCanDevice::IsFastMessage(const CanHeader header) {
 	static const unsigned int nmeafastMessages[] = { 65240, 126208, 126464, 126996, 126998, 127233, 127237, 127489, 127496, 127506, 128275, 129029, 129038, \
 	129039, 129040, 129041, 129284, 129285, 129540, 129793, 129794, 129795, 129797, 129798, 129799, 129801, 129802, 129808, 129809, 129810, 130065, 130074, \
-	130323, 130577, 130820, 130822, 130824, 130850 };
+	130323, 130577, 130820, 130822, 130824, 130850, 130856};
 	for (size_t i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
 		if (nmeafastMessages[i] == header.pgn) {
 			return TRUE;
@@ -1666,11 +1667,15 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		break;
 
 	case 130850: // Manufacturer Proprietary Fast Frame - only interested for Navico NAC-3 Autopilot integration
-		if (autoPilotModel != AUTOPILOT_MODEL::NONE) {
+		if (autopilotModel != AUTOPILOT_MODEL::NONE) {
 			result = DecodePGN130850(payload, &nmeaSentences);
 		}
 		break;
-
+	case 130856: // Manufacturer Proprietary Fast Frame - only interested for Navico NAC-3 Autopilot integration
+		if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+			result = DecodePGN130856(payload, &nmeaSentences);
+		}
+		break;
 	default:
 		// BUG BUG Should we log an unsupported PGN error ??
 		// No NMEA 0183 sentences to pass onto OpenCPN
@@ -6251,7 +6256,7 @@ bool TwoCanDevice::DecodePGN130850(const byte *payload, std::vector<wxString> *n
 			{
 				if (autopilotModel != AUTOPILOT_MODEL::NONE) {
 					wxString jsonResponse;
-					if (twoCanAutopilot->DecodeNAC3Alarm(payload, &jsonResponse)) {
+					if (twoCanAutopilot->DecodeNAC3Command(payload, &jsonResponse)) {
 						if (jsonResponse.Length() > 0) {
 							SendPluginMessage(_T("TWOCAN_AUTOPILOT_RESPONSE"), jsonResponse);
 						}
@@ -6267,6 +6272,46 @@ bool TwoCanDevice::DecodePGN130850(const byte *payload, std::vector<wxString> *n
 	}
 }
 
+// Decode PGN 130856 Manufacturer Proprietary Message
+// At present return FALSE, because there are no NMEA 183 sentences to generate/send
+// Initially implemented to support TwoCanAutopilot control of Navic NAC3 Autopilots
+bool TwoCanDevice::DecodePGN130856(const byte* payload, std::vector<wxString>* nmeaSentences) {
+	if (payload != nullptr) {
+
+		unsigned int manufacturerId;
+		manufacturerId = payload[0] | ((payload[1] & 0x07) << 8);
+
+		byte industryCode;
+		industryCode = (payload[1] & 0xE0) >> 5;
+
+		switch (manufacturerId) {
+		case 229: // Garmin
+			break;
+		case 275: // Navico
+			break;
+		case  382: //B & G
+			break;
+		case 419: // Fusion
+			break;
+		case 1857: // Simrad
+		{
+			if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+				wxString jsonResponse;
+				if (twoCanAutopilot->DecodeNAC3AlarmMessage(payload, &jsonResponse)) {
+					if (jsonResponse.Length() > 0) {
+						SendPluginMessage(_T("TWOCAN_AUTOPILOT_RESPONSE"), jsonResponse);
+					}
+				}
+			}
+		}
+		break;
+		}
+		return FALSE;
+	}
+	else {
+		return FALSE;
+	}
+}
 
 // Send an ISO Request
 int TwoCanDevice::SendISORequest(const byte destination, const unsigned int pgn) {

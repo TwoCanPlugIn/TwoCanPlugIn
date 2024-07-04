@@ -49,7 +49,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	panelSettings->SetSizer( sizerPanelSettings );
 	panelSettings->Layout();
 	sizerPanelSettings->Fit( panelSettings );
-	notebookTabs->AddPage( panelSettings, wxT("Settings"), false );
+	notebookTabs->AddPage( panelSettings, wxT("Settings"), true );
 	panelNetwork = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* sizerPanelNetwork;
 	sizerPanelNetwork = new wxBoxSizer( wxVERTICAL );
@@ -132,6 +132,17 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 
 	sizerPanelDevice->Add( sizerDevice, 0, wxEXPAND, 5 );
 
+	wxStaticBoxSizer* sizerRawLogging;
+	sizerRawLogging = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("Raw Logging") ), wxHORIZONTAL );
+
+	wxArrayString cmbLoggingChoices;
+	cmbLogging = new wxChoice( sizerRawLogging->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, cmbLoggingChoices, 0 );
+	cmbLogging->SetSelection( 0 );
+	sizerRawLogging->Add( cmbLogging, 0, wxALL, 5 );
+
+
+	sizerPanelDevice->Add( sizerRawLogging, 0, wxEXPAND, 5 );
+
 	wxStaticBoxSizer* sizerDetails;
 	sizerDetails = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("NMEA 2000 Device Details") ), wxVERTICAL );
 
@@ -166,17 +177,6 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 
 	sizerPanelDevice->Add( sizerDetails, 0, wxEXPAND, 5 );
 
-	wxStaticBoxSizer* sizerRawLogging;
-	sizerRawLogging = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("Raw Logging") ), wxVERTICAL );
-
-	wxArrayString cmbLoggingChoices;
-	cmbLogging = new wxChoice( sizerRawLogging->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, cmbLoggingChoices, 0 );
-	cmbLogging->SetSelection( 0 );
-	sizerRawLogging->Add( cmbLogging, 0, wxALL, 5 );
-
-
-	sizerPanelDevice->Add( sizerRawLogging, 0, wxEXPAND, 5 );
-
 
 	panelDevice->SetSizer( sizerPanelDevice );
 	panelDevice->Layout();
@@ -186,56 +186,23 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	wxBoxSizer* sizerPanelAutopilot;
 	sizerPanelAutopilot = new wxBoxSizer( wxVERTICAL );
 
-	wxStaticBoxSizer* ssizerAutolpilotModel;
-	ssizerAutolpilotModel = new wxStaticBoxSizer( new wxStaticBox( panelAutopilot, wxID_ANY, wxT("Autopilot Integration") ), wxVERTICAL );
+	wxBoxSizer* sizerAutopilot;
+	sizerAutopilot = new wxBoxSizer( wxVERTICAL );
 
-	wxString rdoBoxAutopilotChoices[] = { wxT("None"), wxT("Garmin (Reactor)"), wxT("Raymarine (Evo)"), wxT("Simrad (AC12)"), wxT("Navico (NAC3)"), wxT("Furuno") };
+	wxString rdoBoxAutopilotChoices[] = { wxT("None"), wxT("Garmin (Reactor)"), wxT("Raymarine (Evo)"), wxT("Simrad (AC-12)"), wxT("Navico (NAC-3)"), wxT("Furuno") };
 	int rdoBoxAutopilotNChoices = sizeof( rdoBoxAutopilotChoices ) / sizeof( wxString );
-	rdoBoxAutopilot = new wxRadioBox( ssizerAutolpilotModel->GetStaticBox(), wxID_ANY, wxT("Autopilot Model"), wxDefaultPosition, wxDefaultSize, rdoBoxAutopilotNChoices, rdoBoxAutopilotChoices, 1, wxRA_SPECIFY_COLS );
+	rdoBoxAutopilot = new wxRadioBox( panelAutopilot, wxID_ANY, wxT("Autopilot Model"), wxDefaultPosition, wxDefaultSize, rdoBoxAutopilotNChoices, rdoBoxAutopilotChoices, 1, wxRA_SPECIFY_COLS );
 	rdoBoxAutopilot->SetSelection( 0 );
-	ssizerAutolpilotModel->Add( rdoBoxAutopilot, 0, wxALL, 5 );
+	sizerAutopilot->Add( rdoBoxAutopilot, 0, wxALL, 5 );
 
 
-	sizerPanelAutopilot->Add( ssizerAutolpilotModel, 0, wxEXPAND, 5 );
-
-	wxStaticBoxSizer* sizerRemoteDisplays;
-	sizerRemoteDisplays = new wxStaticBoxSizer( new wxStaticBox( panelAutopilot, wxID_ANY, wxT("RemoteDisplays") ), wxVERTICAL );
-
-	checkInstrument = new wxCheckBox( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxT("Change Remote Display Backlight and Colour"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerRemoteDisplays->Add( checkInstrument, 0, wxALL, 5 );
-
-	m_staticline1 = new wxStaticLine( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-	sizerRemoteDisplays->Add( m_staticline1, 0, wxEXPAND | wxALL, 5 );
-
-	chkGarminDisplay = new wxCheckBox( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxT("Garmin"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerRemoteDisplays->Add( chkGarminDisplay, 0, wxALL, 5 );
-
-	chkRaymarineDisplay = new wxCheckBox( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxT("Raymarine"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerRemoteDisplays->Add( chkRaymarineDisplay, 0, wxALL, 5 );
-
-	checkNavicoDisplay = new wxCheckBox( sizerRemoteDisplays->GetStaticBox(), wxID_ANY, wxT("Navico (Simrad, B&&G)"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerRemoteDisplays->Add( checkNavicoDisplay, 0, wxALL, 5 );
-
-
-	sizerPanelAutopilot->Add( sizerRemoteDisplays, 0, wxEXPAND, 5 );
-
-	wxStaticBoxSizer* sizerExport8;
-	sizerExport8 = new wxStaticBoxSizer( new wxStaticBox( panelAutopilot, wxID_ANY, wxT("Export Waypoints and Routes") ), wxHORIZONTAL );
-
-	btnExportWaypointd = new wxButton( sizerExport8->GetStaticBox(), wxID_ANY, wxT("Waypoints..."), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerExport8->Add( btnExportWaypointd, 0, wxALL, 5 );
-
-	btnExportRoutes = new wxButton( sizerExport8->GetStaticBox(), wxID_ANY, wxT("Routes..."), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerExport8->Add( btnExportRoutes, 0, wxALL, 5 );
-
-
-	sizerPanelAutopilot->Add( sizerExport8, 1, wxEXPAND, 5 );
+	sizerPanelAutopilot->Add( sizerAutopilot, 1, wxEXPAND, 5 );
 
 
 	panelAutopilot->SetSizer( sizerPanelAutopilot );
 	panelAutopilot->Layout();
 	sizerPanelAutopilot->Fit( panelAutopilot );
-	notebookTabs->AddPage( panelAutopilot, wxT("Autopilot"), true );
+	notebookTabs->AddPage( panelAutopilot, wxT("Autopilot"), false );
 	panelDebug = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* sizerPanelDebug;
 	sizerPanelDebug = new wxBoxSizer( wxVERTICAL );

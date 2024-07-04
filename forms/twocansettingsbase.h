@@ -26,7 +26,6 @@
 #include <wx/grid.h>
 #include <wx/checkbox.h>
 #include <wx/radiobox.h>
-#include <wx/statline.h>
 #include <wx/button.h>
 #include <wx/textctrl.h>
 #include <wx/statbmp.h>
@@ -56,6 +55,7 @@ class TwoCanSettingsBase : public wxDialog
 		wxCheckBox* chkGateway;
 		wxCheckBox* chkWaypoint;
 		wxCheckBox* chkMedia;
+		wxChoice* cmbLogging;
 		wxStaticText* labelNetworkAddress;
 		wxStaticText* labelUniqueId;
 		wxStaticText* labelManufacturer;
@@ -63,16 +63,8 @@ class TwoCanSettingsBase : public wxDialog
 		wxStaticText* labelSoftwareVersion;
 		wxStaticText* labelDevice;
 		wxStaticText* labelFunction;
-		wxChoice* cmbLogging;
 		wxPanel* panelAutopilot;
 		wxRadioBox* rdoBoxAutopilot;
-		wxCheckBox* checkInstrument;
-		wxStaticLine* m_staticline1;
-		wxCheckBox* chkGarminDisplay;
-		wxCheckBox* chkRaymarineDisplay;
-		wxCheckBox* checkNavicoDisplay;
-		wxButton* btnExportWaypointd;
-		wxButton* btnExportRoutes;
 		wxPanel* panelDebug;
 		wxStaticText* labelDebug;
 		wxButton* btnPause;
