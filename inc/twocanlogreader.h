@@ -30,7 +30,13 @@
 #define CONST_SIGNALK_REGEX "^[0-9]{13};A;[0-9]{4}-[0-9]{2}-[0-9]{2}[TZ][0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z,([0-9]),([0-9]{5,6}),([0-9]+),([0-9]+),([0-9]),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2})"
 #define CONST_RAYMARINE_REGEX "^Rx\\s[0-9]{8}\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\sFrom:[0-9A-Fa-f]{2}.*"
 
-enum LogFileFormat { Undefined, TwoCanRaw, CanDump, Kees, YachtDevices, Raymarine};
+typedef enum _LogFileFormat { 
+	UNDEFINED, 
+	TWOCAN, 
+	CANDUMP, 
+	KEES, 
+	YACHTDEVICES, 
+	RAYMARINE} LOG_FILE_FORMAT;
 
 // Implements the generic log file reader on Linux & Mac OSX devices
 class TwoCanLogReader : public TwoCanInterface {
@@ -49,13 +55,13 @@ public:
 	void Read();
 
 	// Detect which log file format is used
-	int TestFormat(std::string line);
-	// Parse each of the different log file formats
+	LOG_FILE_FORMAT TestFormat(std::string line);
+	// Parser for each of the different log file formats
 	void ParseTwoCan(std::string str);
 	void ParseCanDump(std::string str);
 	void ParseKees(std::string str);
 	void ParseYachtDevices(std::string str);
-	void ParseRaymarine((std::string str);
+	void ParseRaymarine(std::string str);
 	
 protected:
 	// TwoCan Interface overridden functions

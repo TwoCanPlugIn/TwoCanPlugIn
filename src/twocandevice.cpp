@@ -3624,8 +3624,6 @@ bool TwoCanDevice::DecodePGN129029(const byte *payload, std::vector<wxString> *n
 				fixType, numberOfSatellites, (double)hDOP * 0.01f, (double)altitude * 1e-6, \
 				(double)geoidalSeparation * 0.01f));
 
-			OutputDebugStringA(nmeaSentences->at(1).ToAscii().data());
-
 			// Construct a NMEA 183 RMC sentence
 			/*
 			if ((TwoCanUtils::IsDataValid(vesselCOG)) && (TwoCanUtils::IsDataValid(vesselSOG)) && (TwoCanUtils::IsDataValid(magneticVariation))) {

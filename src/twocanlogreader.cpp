@@ -178,32 +178,32 @@ void TwoCanLogReader::ParseRaymarine(std::string str) {
 	return;
 }
 
-int TwoCanLogReader::TestFormat(std::string line) {
+LOG_FILE_FORMAT TwoCanLogReader::TestFormat(std::string line) {
 	// BUG BUG Should check that the Regular Expression is valid
 	// eg. regularExpression.IsValid()
 	regularExpression.Compile(CONST_TWOCAN_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
 	if (regularExpression.Matches(line,wxRE_DEFAULT)) {
-		return TwoCanRaw;
+		return LOG_FILE_FORMAT::TWOCAN;
 	}
 	regularExpression.Compile(CONST_CANDUMP_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (regularExpression.Matches(line,wxRE_DEFAULT)) {
-		return CanDump;
+		return LOG_FILE_FORMAT::CANDUMP;
 	}
 	regularExpression.Compile(CONST_KEES_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (regularExpression.Matches(line,wxRE_DEFAULT))  {
-		return Kees;
+		return LOG_FILE_FORMAT::KEES;
 	}
 	regularExpression.Compile(CONST_SIGNALK_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (regularExpression.Matches(line, wxRE_DEFAULT)) {
-		return Kees;
+		return LOG_FILE_FORMAT::KEES;
 	}
 	regularExpression.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
 	if (regularExpression.Matches(line,wxRE_DEFAULT)) {
-		return YachtDevices;
+		return LOG_FILE_FORMAT::YACHTDEVICES;
 	}
 	regularExpression.Compile(CONST_RAYMARINE_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (regularExpression.Matches(line, wxRE_DEFAULT)) {
-		return Raymarine;
+		return LOG_FILE_FORMAT::RAYMARINE;
 	}
 
 	return Undefined;
@@ -217,22 +217,22 @@ void TwoCanLogReader::Read() {
 		if (!TestDestroy()) {
 		// process the line
 			switch(logFileFormat) {
-				case TwoCanRaw:
+				case LOG_FILE_FORMAT::TWOCAN:
 					ParseTwoCan(inputLine);
 					break;
-				case CanDump:
+				case LOG_FILE_FORMAT::CANDUMP:
 					ParseCanDump(inputLine);
 					break;
-				case Kees:
+				case LOG_FILE_FORMAT::KEES:
 					ParseKees(inputLine);
 					break;
-				case YachtDevices:
+				case LOG_FILE_FORMAT::YACHTDEVICES:
 					ParseYachtDevices(inputLine);
 					break;
-				case Raymarine:
+				case LOG_FILE_FORMAT::RAYMARINE:
 					ParseRaymarine(inputLine);
 					break;
-				case Undefined:
+				case LOG_FILE_FORMAT::UNDEFINED:
 					// should log invalid log file format message here.
 					break;
 			}
