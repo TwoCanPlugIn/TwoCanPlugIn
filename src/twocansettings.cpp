@@ -185,9 +185,9 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 
 	// BUG BUG The following are yet to be implemented or tested
 	// BUG BUG Should I add autopiots dynamically, rather than hardcoding in base class/wxFormBuilder
-	rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::FURUNO_NAVPILOT)->Enable(false);
-	rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::GARMIN_REACTOR)->Enable(false);
-	rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::SIMRAD_AC12)->Enable(false);
+	//rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::FURUNO_NAVPILOT)->Enable(false);
+	//rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::GARMIN_REACTOR)->Enable(false);
+	//rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::SIMRAD_AC12)->Enable(false);
 
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));

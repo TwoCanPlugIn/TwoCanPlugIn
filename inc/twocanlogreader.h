@@ -31,12 +31,12 @@
 #define CONST_RAYMARINE_REGEX "^Rx\\s[0-9]{8}\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\sFrom:[0-9A-Fa-f]{2}.*"
 
 typedef enum _LogFileFormat { 
-	UNDEFINED, 
-	TWOCAN, 
-	CANDUMP, 
-	KEES, 
-	YACHTDEVICES, 
-	RAYMARINE} LOG_FILE_FORMAT;
+	LOGFORMAT_UNDEFINED, 
+	LOGFORMAT_TWOCAN, 
+	LOGFORMAT_CANDUMP, 
+	LOGFORMAT_KEES, 
+	LOGFORMAT_YACHTDEVICES, 
+	LOGFORMAT_RAYMARINE} LOG_FILE_FORMAT;
 
 // Implements the generic log file reader on Linux & Mac OSX devices
 class TwoCanLogReader : public TwoCanInterface {
@@ -70,7 +70,7 @@ protected:
 
 private:
 	// Enum indicating whether the log format is twocan, canboatm candum, yachtdevices
-	int logFileFormat;
+	LOG_FILE_FORMAT logFileFormat;
 	// Full path of the log file, fileName appended to the user's documents directory
 	wxString logFileName;
 	// File stream used to read lines from the log file

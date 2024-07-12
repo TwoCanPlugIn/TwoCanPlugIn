@@ -60,7 +60,7 @@ int TwoCanLogReader::Open(const wxString& fileName) {
 	std::string line;
 	getline(logFileStream, line);
 	logFileFormat = TestFormat(line);
-	if (logFileFormat == Undefined) {
+	if (logFileFormat == LOG_FILE_FORMAT::LOGFORMAT_UNDEFINED) {
 		return SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DRIVER, TWOCAN_ERROR_INVALID_LOGFILE_FORMAT);
 	}
 	
@@ -183,30 +183,30 @@ LOG_FILE_FORMAT TwoCanLogReader::TestFormat(std::string line) {
 	// eg. regularExpression.IsValid()
 	regularExpression.Compile(CONST_TWOCAN_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
 	if (regularExpression.Matches(line,wxRE_DEFAULT)) {
-		return LOG_FILE_FORMAT::TWOCAN;
+		return LOG_FILE_FORMAT::LOGFORMAT_TWOCAN;
 	}
 	regularExpression.Compile(CONST_CANDUMP_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (regularExpression.Matches(line,wxRE_DEFAULT)) {
-		return LOG_FILE_FORMAT::CANDUMP;
+		return LOG_FILE_FORMAT::LOGFORMAT_CANDUMP;
 	}
 	regularExpression.Compile(CONST_KEES_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (regularExpression.Matches(line,wxRE_DEFAULT))  {
-		return LOG_FILE_FORMAT::KEES;
+		return LOG_FILE_FORMAT::LOGFORMAT_KEES;
 	}
 	regularExpression.Compile(CONST_SIGNALK_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (regularExpression.Matches(line, wxRE_DEFAULT)) {
-		return LOG_FILE_FORMAT::KEES;
+		return LOG_FILE_FORMAT::LOGFORMAT_KEES;
 	}
 	regularExpression.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
 	if (regularExpression.Matches(line,wxRE_DEFAULT)) {
-		return LOG_FILE_FORMAT::YACHTDEVICES;
+		return LOG_FILE_FORMAT::LOGFORMAT_YACHTDEVICES;
 	}
 	regularExpression.Compile(CONST_RAYMARINE_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (regularExpression.Matches(line, wxRE_DEFAULT)) {
-		return LOG_FILE_FORMAT::RAYMARINE;
+		return LOG_FILE_FORMAT::LOGFORMAT_RAYMARINE;
 	}
 
-	return Undefined;
+	return LOG_FILE_FORMAT::LOGFORMAT_UNDEFINED;
 }
 
 void TwoCanLogReader::Read() {
@@ -217,22 +217,22 @@ void TwoCanLogReader::Read() {
 		if (!TestDestroy()) {
 		// process the line
 			switch(logFileFormat) {
-				case LOG_FILE_FORMAT::TWOCAN:
+				case LOG_FILE_FORMAT::LOGFORMAT_TWOCAN:
 					ParseTwoCan(inputLine);
 					break;
-				case LOG_FILE_FORMAT::CANDUMP:
+				case LOG_FILE_FORMAT::LOGFORMAT_CANDUMP:
 					ParseCanDump(inputLine);
 					break;
-				case LOG_FILE_FORMAT::KEES:
+				case LOG_FILE_FORMAT::LOGFORMAT_KEES:
 					ParseKees(inputLine);
 					break;
-				case LOG_FILE_FORMAT::YACHTDEVICES:
+				case LOG_FILE_FORMAT::LOGFORMAT_YACHTDEVICES:
 					ParseYachtDevices(inputLine);
 					break;
-				case LOG_FILE_FORMAT::RAYMARINE:
+				case LOG_FILE_FORMAT::LOGFORMAT_RAYMARINE:
 					ParseRaymarine(inputLine);
 					break;
-				case LOG_FILE_FORMAT::UNDEFINED:
+				case LOG_FILE_FORMAT::LOGFORMAT_UNDEFINED:
 					// should log invalid log file format message here.
 					break;
 			}
