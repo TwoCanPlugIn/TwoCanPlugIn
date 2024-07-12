@@ -553,7 +553,7 @@ bool TwoCan::SaveConfiguration(void) {
 		configSettings->Write(_T("Gateway"), enableGateway);
 		configSettings->Write(_T("Waypoint"), enableWaypoint);
 		configSettings->Write(_T("Music"), enableMusic);
-		configSettings->Write(_T("Autopilotl"), (int)autopilotModel);
+		configSettings->Write(_T("Autopilot"), (int)autopilotModel);
 		return TRUE;
 	}
 	else {

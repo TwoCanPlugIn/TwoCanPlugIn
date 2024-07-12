@@ -3810,7 +3810,7 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
 		// 0 = Channel A Tx, 1 = Channel B Tx, 2 = Channel A Rx, 3 = Channel B Rx, 4 = ownship
-		if (transceiverInformation > 2) {
+		if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,0", aisChannel, AISEncodePayload(binaryData)));
 		} 
 		else {
@@ -3928,7 +3928,7 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
 		// 0 = Channel A Tx, 1 = Channel B Tx, 2 = Channel A Rx, 3 = Channel B Rx, 4 = ownship
 
-		if (transceiverInformation > 2) {
+		if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,0", aisChannel, AISEncodePayload(binaryData)));
 		}
 		else {
@@ -4068,7 +4068,7 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 
 		for (int i = 0; i < numberOfVDMMessages; i++) {
 			if (i == numberOfVDMMessages -1) { // This is the last message
-				if (transceiverInformation > 2) {
+				if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, encodedVDMMessage.size() - (i * 28))));
 				}
 				else {
@@ -4076,7 +4076,7 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 				}
 			}
 			else {
-				if (transceiverInformation > 2) {
+				if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28)));
 				}
 				else {
@@ -4241,7 +4241,7 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 
 		for (int i = 0; i < numberOfVDMMessages; i++) {
 			if (i == numberOfVDMMessages -1) { // This is the last message
-				if (transceiverInformation > 2) {
+				if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, encodedVDMMessage.size() - (i * 28))));
 				}
 				else {
@@ -4249,7 +4249,7 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 				}
 			}
 			else {
-				if (transceiverInformation > 2) {
+				if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28)));
 				}
 				else {
@@ -4865,7 +4865,7 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 		wxString encodedVDMMessage = AISEncodePayload(binaryData);
 		
 		// Send VDM message in two NMEA183 sentences
-		if (transceiverInformation > 2) {
+		if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,2,1,%d,%c,%s,0", AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(0,35).c_str()));
 			nmeaSentences->push_back(wxString::Format("!AIVDO,2,2,%d,%c,%s,2", AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(35,36).c_str()));
 		}
@@ -4981,7 +4981,7 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 149, 19, communicationState);
 		
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
-		if (transceiverInformation > 2) {
+		if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,0", aisChannel, AISEncodePayload(binaryData)));
 		}
 		else {
@@ -5138,7 +5138,7 @@ bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *n
 
 		for (int i = 0; i < numberOfVDMMessages; i++) {
 			if (i == numberOfVDMMessages -1) { // This is the last message
-				if (transceiverInformation > 2) {
+				if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,%d", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, encodedVDMMessage.size() - (i * 28)),fillBits));
 				}
 				else {
@@ -5146,7 +5146,7 @@ bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *n
 				}
 			}
 			else {
-				if (transceiverInformation > 2) {
+				if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28)));
 				}
 				else {
@@ -5238,7 +5238,7 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 		else {
 			for (int i = 0; i < numberOfVDMMessages; i++) {
 				if (i == numberOfVDMMessages - 1) { // Is this the last message, if so append number of fillbits as appropriate
-					if (transceiverInformation > 2) {
+					if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 						nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,%d", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28), fillBits));
 					}
 					else {
@@ -5246,7 +5246,7 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 					}
 				}
 				else {
-					if (transceiverInformation > 2) {
+					if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 						nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28)));
 					}
 					else {
@@ -5554,7 +5554,7 @@ bool TwoCanDevice::DecodePGN129809(const byte *payload, std::vector<wxString> *n
 		}
 		
 		// Send a single VDM sentence, note no sequential message Id		
-		if (transceiverInformation > 2) {		
+		if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {		
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,%d", aisChannel, AISEncodePayload(binaryData), fillBits));
 		}
 		else {
@@ -5645,7 +5645,7 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 166 ,2 , 0); //spare
 		
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
-		if (transceiverInformation > 2) {
+		if ((transceiverInformation == 2) || (transceiverInformation == 3) || (transceiverInformation == 4)) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,0", aisChannel, AISEncodePayload(binaryData)));
 		}
 		else {
@@ -6691,7 +6691,7 @@ int TwoCanDevice::FragmentFastMessage(CanHeader *header, unsigned int payloadLen
 // Called by the plugin for the gateway & autopilot functions.
 int TwoCanDevice::TransmitFrame(unsigned int id, byte *data) {
 	int returnCode;
-	const std::lock_guard<std::mutex> lock(writeMutex);
+	std::lock_guard<std::mutex> lock(writeMutex);
 
 #if defined (__WXMSW__)
 	if (writeFrame != NULL) {
