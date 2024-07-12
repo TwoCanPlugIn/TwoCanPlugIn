@@ -47,7 +47,10 @@
 // to mate with dashboard plugin. Prioritise GPS if multiple sources, Fix to PGN 129284 (distance)
 // 2.2 - 20/03/2023 - Fix PGN  127251 (ROT) - forgot to convert to minutes, 
 // Fix PGN 129038 (AIS Class A) - incorrect scale factor for ROT, Fix PGN 129810 (AIS Class B Static) - Append GPS Fixing Device
-// 2.3 - 30/06/2023 - Support OpenCPN 5.8.x (Breaking change as now dependent on wxWidgets 3.2.x)
+// 2.2.1 - 30/06/2023 - Support OpenCPN 5.8.x (Breaking change as now dependent on wxWidgets 3.2.x)
+// 2.2.2 - 07/07/2024 - Rationalize Autopilot. Fix PGN 127245 Rudder instance numbering.
+// 2.3 - 10/07/2024 - Fix transceiverInformation for AIS PGN's (re Garmin AIS 800 'bug')
+// 
 // Outstanding Features: 
 // 1. Rewrite/Port Adapter drivers to C++
 //
@@ -256,7 +259,7 @@ int TwoCanDevice::Init(wxString driverPath) {
 		deviceMode = FALSE;
 		enableGateway = FALSE;
 		enableHeartbeat = FALSE;
-		autopilotModel = AUTOPILOT_MODEL::NONE;
+		autopilotModel = AUTOPILOT_MODEL::AUTOPILOT_NONE;
 		enableMusic = FALSE;
 	}
 	else {
@@ -1128,211 +1131,239 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 	
 	switch (header.pgn) {
 
-		
+
 	case 59392: // ISO Ack
 		// No need for us to do anything as we don't send any requests (yet)!
 		// No NMEA 0183 sentences to pass onto OpenCPN
 		result = FALSE;
 		break;
-		
+
 	case 59904: // ISO Request
 		unsigned int requestedPGN;
-		
+
 		DecodePGN59904(payload, &requestedPGN);
 		// What has been requested from us ?
 		switch (requestedPGN) {
-		
-			case 60928: // Address Claim
-				// BUG BUG The bastards are using an address claim as a heartbeat !!
-				//wxLogMessage("TwoCan Device, ISO Request for Address Claim");
-				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
-					int returnCode;
-					returnCode = SendAddressClaim(networkAddress);
-					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage("TwoCan Device, Error Sending Address Claim: %d", returnCode);
-					}
-				}
-				break;
-		
-			case 126464: // Supported PGN
-				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
-					int returnCode;
-					returnCode = SendSupportedPGN();
-					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage("TwoCan Device, Error Sending Supported PGN: %d", returnCode);
-					}
-				}
-				break;
-		
-			case 126993: // Heartbeat
-				// BUG BUG I don't think sn ISO Request is allowed to request a heartbeat ??
-				break;
-		
-			case 126996: // Product Information 
-				wxLogMessage("TwoCan Device, ISO Request for Product Information");
-				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
-					int returnCode;
-					returnCode = SendProductInformation();
-					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage("TwoCan Device, Error Sending Product Information: %d", returnCode);
-					}
-				}
-				break;
-		
-			case 126998: // Configuration Information
-				wxLogMessage("TwoCan Device, ISO Request for Configuration Information");
-				if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
-					int returnCode;
-					returnCode = SendConfigurationInformation();
-					if (returnCode != TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage("TwoCan Device, Error Sending Configuration Information: %d", returnCode);
-					}
-				}
-				break;
-		
-			default:
-				// BUG BUG For other requested PG's send a NACK/Not supported
-				break;
-		}
-		// No NMEA 0183 sentences to pass onto OpenCPN
-		result = FALSE;
-		break;
-		
-	case 60928: // ISO Address Claim
-		DecodePGN60928(payload, &deviceInformation);
-		// if another device is not claiming our address, just log it
-		if (header.source != networkAddress) {
-			
-			// Add the source address so that we can  construct a "map" of the NMEA2000 network
-			deviceInformation.networkAddress = header.source;
-			
-			// BUG BUG Extraneous Noise Remove for production
-			
-#ifndef NDEBUG
 
-			wxLogMessage(_T("TwoCan Network, Address: %d"), deviceInformation.networkAddress);
-			wxLogMessage(_T("TwoCan Network, Manufacturer: %d"), deviceInformation.manufacturerId);
-			wxLogMessage(_T("TwoCan Network, Unique ID: %d"), deviceInformation.uniqueId);
-			wxLogMessage(_T("TwoCan Network, Class: %d"), deviceInformation.deviceClass);
-			wxLogMessage(_T("TwoCan Network, Function: %d"), deviceInformation.deviceFunction);
-			wxLogMessage(_T("TwoCan Network, Industry: %d"), deviceInformation.industryGroup);
-			
-#endif
-		
-			// Maintain the map of the NMEA 2000 network.
-			// either this is a newly discovered device, or it is resending its address claim
-			if ((networkMap[header.source].uniqueId == deviceInformation.uniqueId) || (networkMap[header.source].uniqueId == 0)) {
-				networkMap[header.source].manufacturerId = deviceInformation.manufacturerId;
-				networkMap[header.source].uniqueId = deviceInformation.uniqueId;
-				networkMap[header.source].timestamp = wxDateTime::Now();
-			}
-			else {
-				// or another device is claiming the address that an existing device had used, so clear out any product info entries
-				networkMap[header.source].manufacturerId = deviceInformation.manufacturerId;
-				networkMap[header.source].uniqueId = deviceInformation.uniqueId;
-				networkMap[header.source].timestamp = wxDateTime::Now();
-				networkMap[header.source].productInformation = {}; // I think this should initialize the product information struct;
-			}
-		}
-		else {
-			// Another device is claiming our address
-			// If our NAME is less than theirs, reclaim our current address 
-			if (deviceName < deviceInformation.deviceName) {
+		case 60928: // Address Claim
+			// BUG BUG The bastards are using an address claim as a heartbeat !!
+			//wxLogMessage("TwoCan Device, ISO Request for Address Claim");
+			if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
 				int returnCode;
 				returnCode = SendAddressClaim(networkAddress);
-				if (returnCode == TWOCAN_RESULT_SUCCESS) {
-					wxLogMessage(_T("TwoCan Device, Reclaimed network address: %d"), networkAddress);
-				}
-				else {
-					wxLogMessage("TwoCan Device, Error reclaiming network address %d: %d", networkAddress, returnCode);
+				if (returnCode != TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage("TwoCan Device, Error Sending Address Claim: %d", returnCode);
 				}
 			}
-			// Our uniqueId is larger so increment our network address and see if we can claim the new address
-			else if (deviceName > deviceInformation.deviceName) {
-				if (networkAddress + 1 <= CONST_MAX_DEVICES) {
-					networkAddress += 1;
+			break;
+
+		case 126464: // Supported PGN
+			if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
+				int returnCode;
+				returnCode = SendSupportedPGN();
+				if (returnCode != TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage("TwoCan Device, Error Sending Supported PGN: %d", returnCode);
+				}
+			}
+			break;
+
+		case 126993: // Heartbeat
+			// BUG BUG I don't think sn ISO Request is allowed to request a heartbeat ??
+			break;
+
+		case 126996: // Product Information 
+			wxLogMessage("TwoCan Device, ISO Request for Product Information");
+			if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
+				int returnCode;
+				returnCode = SendProductInformation();
+				if (returnCode != TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage("TwoCan Device, Error Sending Product Information: %d", returnCode);
+				}
+			}
+			break;
+
+		case 126998: // Configuration Information
+			wxLogMessage("TwoCan Device, ISO Request for Configuration Information");
+			if ((header.destination == networkAddress) || (header.destination == CONST_GLOBAL_ADDRESS)) {
+				int returnCode;
+				returnCode = SendConfigurationInformation();
+				if (returnCode != TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage("TwoCan Device, Error Sending Configuration Information: %d", returnCode);
+				}
+			}
+			break;
+
+		default:
+			// BUG BUG For other requested PG's send a NACK/Not supported
+			break;
+		}
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
+		break;
+
+	case 60928: // ISO Address Claim
+		if (DecodePGN60928(payload, &deviceInformation)) {
+			// if another device is not claiming our address, just log it
+			if (header.source != networkAddress) {
+
+				// Add the source address so that we can  construct a "map" of the NMEA2000 network
+				deviceInformation.networkAddress = header.source;
+
+				// BUG BUG Extraneous Noise Remove for production
+
+#ifndef NDEBUG
+
+				wxLogMessage(_T("TwoCan Network, Address: %d"), deviceInformation.networkAddress);
+				wxLogMessage(_T("TwoCan Network, Manufacturer: %d"), deviceInformation.manufacturerId);
+				wxLogMessage(_T("TwoCan Network, Unique ID: %d"), deviceInformation.uniqueId);
+				wxLogMessage(_T("TwoCan Network, Class: %d"), deviceInformation.deviceClass);
+				wxLogMessage(_T("TwoCan Network, Function: %d"), deviceInformation.deviceFunction);
+				wxLogMessage(_T("TwoCan Network, Industry: %d"), deviceInformation.industryGroup);
+
+#endif
+
+				// Maintain the map of the NMEA 2000 network.
+				// either this is a newly discovered device, or it is resending its address claim
+				if ((networkMap[header.source].uniqueId == deviceInformation.uniqueId) || (networkMap[header.source].uniqueId == 0)) {
+					networkMap[header.source].manufacturerId = deviceInformation.manufacturerId;
+					networkMap[header.source].uniqueId = deviceInformation.uniqueId;
+					networkMap[header.source].timestamp = wxDateTime::Now();
+				}
+				else {
+					// or another device is claiming the address that an existing device had used, so clear out any product info entries
+					networkMap[header.source].manufacturerId = deviceInformation.manufacturerId;
+					networkMap[header.source].uniqueId = deviceInformation.uniqueId;
+					networkMap[header.source].timestamp = wxDateTime::Now();
+					networkMap[header.source].productInformation = {}; // I think this should initialize the product information struct;
+				}
+			}
+			else {
+				// Another device is claiming our address
+				// If our NAME is less than theirs, reclaim our current address 
+				if (deviceName < deviceInformation.deviceName) {
 					int returnCode;
 					returnCode = SendAddressClaim(networkAddress);
 					if (returnCode == TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage(_T("TwoCan Device, Claimed new network address: %d"), networkAddress);
+						wxLogMessage(_T("TwoCan Device, Reclaimed network address: %d"), networkAddress);
 					}
 					else {
-						wxLogMessage("TwoCan Device, Error claiming new network address %d: %d", networkAddress, returnCode);
+						wxLogMessage("TwoCan Device, Error reclaiming network address %d: %d", networkAddress, returnCode);
+					}
+				}
+				// Our uniqueId is larger so increment our network address and see if we can claim the new address
+				else if (deviceName > deviceInformation.deviceName) {
+					if (networkAddress + 1 <= CONST_MAX_DEVICES) {
+						networkAddress += 1;
+						int returnCode;
+						returnCode = SendAddressClaim(networkAddress);
+						if (returnCode == TWOCAN_RESULT_SUCCESS) {
+							wxLogMessage(_T("TwoCan Device, Claimed new network address: %d"), networkAddress);
+						}
+						else {
+							wxLogMessage("TwoCan Device, Error claiming new network address %d: %d", networkAddress, returnCode);
+						}
+					}
+					else {
+						// BUG BUG More than 253 devices on the network, we send an unable to claim address frame (source address = 254)
+						// Chuckles to self. What a nice DOS attack vector! Kick everyone else off the network!
+						// I guess NMEA never thought anyone would hack a boat! What were they (not) thinking!
+						wxLogError(_T("TwoCan Device, Unable to claim address, more than %d devices"), CONST_MAX_DEVICES);
+						networkAddress = 0;
+						int returnCode;
+						returnCode = SendAddressClaim(CONST_NULL_ADDRESS);
+						if (returnCode == TWOCAN_RESULT_SUCCESS) {
+							wxLogMessage(_T("TwoCan Device, Claimed NULL network address: %d"), networkAddress);
+						}
+						else {
+							wxLogMessage("TwoCan Device, Error claiming NULL network address %d: %d", networkAddress, returnCode);
+						}
+					}
+				}
+			}
+		}
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
+		break;
+
+	case 65240: // ISO Commanded address
+		// A device is commanding another device to use a specific address
+		if (DecodePGN65240(payload, &deviceInformation)) {
+			// If we are being commanded to use a specific address
+			// BUG BUG Not sure if an ISO Commanded Address frame is broadcast or if header.destination == networkAddress
+			if (deviceInformation.uniqueId == uniqueId) {
+				if (deviceInformation.networkAddress < CONST_MAX_DEVICES) {
+					// Update our network address to the commanded address and send an address claim
+					networkAddress = deviceInformation.networkAddress;
+					int returnCode;
+					returnCode = SendAddressClaim(networkAddress);
+					if (returnCode == TWOCAN_RESULT_SUCCESS) {
+						wxLogMessage(_T("TwoCan Device, Claimed commanded network address: %d"), networkAddress);
+					}
+					else {
+						wxLogMessage(_T("TwoCan Device, Error claiming commanded network address %d: %d"), networkAddress, returnCode);
 					}
 				}
 				else {
-					// BUG BUG More than 253 devices on the network, we send an unable to claim address frame (source address = 254)
-					// Chuckles to self. What a nice DOS attack vector! Kick everyone else off the network!
-					// I guess NMEA never thought anyone would hack a boat! What were they (not) thinking!
-					wxLogError(_T("TwoCan Device, Unable to claim address, more than %d devices"), CONST_MAX_DEVICES);
-					networkAddress = 0;
-					int returnCode;
-					returnCode = SendAddressClaim(CONST_NULL_ADDRESS);
-					if (returnCode == TWOCAN_RESULT_SUCCESS) {
-						wxLogMessage(_T("TwoCan Device, Claimed NULL network address: %d"), networkAddress);
-					}
-					else {
-						wxLogMessage("TwoCan Device, Error claiming NULL network address %d: %d", networkAddress, returnCode);
-					}
+					wxLogMessage(_T("TwoCan Device, Error, commanded to use invalid address %d by %d"), deviceInformation.networkAddress, header.source);
 				}
 			}
 		}
 		// No NMEA 0183 sentences to pass onto OpenCPN
 		result = FALSE;
 		break;
-		
-	case 65240: // ISO Commanded address
-		// A device is commanding another device to use a specific address
-		DecodePGN65240(payload, &deviceInformation);
-		// If we are being commanded to use a specific address
-		// BUG BUG Not sure if an ISO Commanded Address frame is broadcast or if header.destination == networkAddress
-		if (deviceInformation.uniqueId == uniqueId) {
-			if (deviceInformation.networkAddress < CONST_MAX_DEVICES) {
-			// Update our network address to the commanded address and send an address claim
-			networkAddress = deviceInformation.networkAddress;
-			int returnCode;
-			returnCode = SendAddressClaim(networkAddress);
-			if (returnCode == TWOCAN_RESULT_SUCCESS) {
-				wxLogMessage(_T("TwoCan Device, Claimed commanded network address: %d"), networkAddress);
-			}
-			else {
-				wxLogMessage(_T("TwoCan Device, Error claiming commanded network address %d: %d"), networkAddress, returnCode);
-			}
-		}
-		else {
-				wxLogMessage(_T("TwoCan Device, Error, commanded to use invalid address %d by %d"), deviceInformation.networkAddress, header.source);
-			}
-		}
+
+	case 65305: // Manufacturer Proprietary, Navico Autopilot Status
+		result = DecodePGN65305(payload);
 		// No NMEA 0183 sentences to pass onto OpenCPN
 		result = FALSE;
 		break;
 
-	case 65305:
-		result = DecodePGN65305(payload);
+	case 65309: // Manufacturer Proprietary, Navico WS320 Wireless Wind Sensor, Battery Status
+		result = DecodePGN65309(payload);
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 
-	case 65345: // Manufacturer Proprietary
+	case 65312: // Manufacturer Proprietary, Navico WS320 Wireless Wind Sensor, Signal Status
+		result = DecodePGN65312(payload);
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
+		break;
+
+	case 65345: // Manufacturer Proprietary, Seatalk Autopilot Wind
 		result = DecodePGN65345(payload);
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 
-	case 65359: // Manufacturer Proprietary
+	case 65359: // Manufacturer Proprietary, Seatalk Autopilot Heading
 		result = DecodePGN65359(payload);
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 
-	case 65360: // Manufacturer Proprietary
+	case 65360: // Manufacturer Proprietary, Seatalk Autopilot Locked Heading
 		result = DecodePGN65360(payload);
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 
-	case 65379: // Manufacturer Proprietary
+	case 65379: // Manufacturer Proprietary, Seatalk Autopilot Mode
 		result = DecodePGN65379(payload);
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 
-	case 65380: // Manufacturer Proprietary
+	case 65380: // Manufacturer Proprietary, Simrad AC-12 Autopilot
 		result = DecodePGN65380(payload);
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 
 	case 126208: // NMEA Group Function 
 		result = DecodePGN126208(header.destination, payload);
+		// No NMEA 0183 sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 		
 	case 126992: // System Time
@@ -1342,41 +1373,38 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		break;
 		
 	case 126993: // Heartbeat
-		DecodePGN126993(header.source, payload);
-		// Update the matching entry in the network map
-		// BUG BUG what happens if we are yet to have populated this entry with the device details ?? Probably nothing...
-		networkMap[header.source].timestamp = wxDateTime::Now();
+		result = DecodePGN126993(header.source, payload);
+		// No NMEA 0183 sentences to pass onto OpenCPN
 		result = FALSE;
 		break;
 		
 	case 126996: // Product Information
-		DecodePGN126996(payload, &productInformation);
+		if (DecodePGN126996(payload, &productInformation)) {
 		
-		// BUG BUG Extraneous Noise
+			// BUG BUG Extraneous Noise
 		
 #ifndef NDEBUG
-		wxLogMessage(_T("TwoCan Node, Network Address %d"), header.source);
-		wxLogMessage(_T("TwoCan Node, DB Ver: %d"), productInformation.dataBaseVersion);
-		wxLogMessage(_T("TwoCan Node, Product Code: %d"), productInformation.productCode);
-		wxLogMessage(_T("TwoCan Node, Cert Level: %d"), productInformation.certificationLevel);
-		wxLogMessage(_T("TwoCan Node, Load Level: %d"), productInformation.loadEquivalency);
-		wxLogMessage(_T("TwoCan Node, Model ID: %s"), productInformation.modelId);
-		wxLogMessage(_T("TwoCan Node, Model Version: %s"), productInformation.modelVersion);
-		wxLogMessage(_T("TwoCan Node, Software Version: %s"), productInformation.softwareVersion);
-		wxLogMessage(_T("TwoCan Node, Serial Number: %s"), productInformation.serialNumber);
+			wxLogMessage(_T("TwoCan Node, Network Address %d"), header.source);
+			wxLogMessage(_T("TwoCan Node, DB Ver: %d"), productInformation.dataBaseVersion);
+			wxLogMessage(_T("TwoCan Node, Product Code: %d"), productInformation.productCode);
+			wxLogMessage(_T("TwoCan Node, Cert Level: %d"), productInformation.certificationLevel);
+			wxLogMessage(_T("TwoCan Node, Load Level: %d"), productInformation.loadEquivalency);
+			wxLogMessage(_T("TwoCan Node, Model ID: %s"), productInformation.modelId);
+			wxLogMessage(_T("TwoCan Node, Model Version: %s"), productInformation.modelVersion);
+			wxLogMessage(_T("TwoCan Node, Software Version: %s"), productInformation.softwareVersion);
+			wxLogMessage(_T("TwoCan Node, Serial Number: %s"), productInformation.serialNumber);
 #endif
-		
-		// Maintain the map of the NMEA 2000 network.
-		networkMap[header.source].productInformation = productInformation;
-		networkMap[header.source].timestamp = wxDateTime::Now();
-
-		// No NMEA 0183 sentences to pass onto OpenCPN
+			// Update the map of the NMEA 2000 network.
+			networkMap[header.source].productInformation = productInformation;
+			networkMap[header.source].timestamp = wxDateTime::Now();
+		}
+		// No NMEA sentences to pass onto OpenCPN
 		result = FALSE;
 		break;
 
 	case 126998: // NMEA Configuration Information
 		result = DecodePGN126998(payload);
-		// No messages to pass onto OpenCPN
+		// No NMEA sentences to pass onto OpenCPN
 		result = FALSE;
 		break;
 
@@ -1660,21 +1688,33 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 		}
 		break;
 
-	case 130820: // Manufacturer Proprietary Fast Frame - only interested for Fusion Media Player integration
+	case 130820: // Manufacturer Proprietary Fast Frame, Fusion Media Player integration
 		if (enableMusic) {
 			result = DecodePGN130820(payload, &nmeaSentences);
 		}
+		// No NMEA sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 
-	case 130850: // Manufacturer Proprietary Fast Frame - only interested for Navico NAC-3 Autopilot integration
-		if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+	case 130850: // Manufacturer Proprietary Fast Frame , Simnet Event Command (Navico Autopilots)
+		if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 			result = DecodePGN130850(payload, &nmeaSentences);
 		}
+		// No NMEA sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
-	case 130856: // Manufacturer Proprietary Fast Frame - only interested for Navico NAC-3 Autopilot integration
-		if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+
+	case 130851: // Manufacturer Proprietary Fast Frame, Simnet Event Reply (Navico Autopilots)
+		// No need to decode or respond to these, No NMEA sentences to pass onto OpenCPN
+		result = FALSE;
+		break;
+
+	case 130856: // Manufacturer Proprietary Fast Frame, Simnet Alarm (Navico Autopilots)
+		if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 			result = DecodePGN130856(payload, &nmeaSentences);
 		}
+		// No NMEA sentences to pass onto OpenCPN
+		result = FALSE;
 		break;
 	default:
 		// BUG BUG Should we log an unsupported PGN error ??
@@ -1691,7 +1731,7 @@ void TwoCanDevice::ParseMessage(const CanHeader header, const byte *payload) {
 }
 
 // Decode PGN 59904 ISO Request
-int TwoCanDevice::DecodePGN59904(const byte *payload, unsigned int *requestedPGN) {
+bool TwoCanDevice::DecodePGN59904(const byte *payload, unsigned int *requestedPGN) {
 	if (payload != NULL) {
 		*requestedPGN = payload[0] | (payload[1] << 8) | (payload[2] << 16);
 		return TRUE;
@@ -1702,7 +1742,7 @@ int TwoCanDevice::DecodePGN59904(const byte *payload, unsigned int *requestedPGN
 }
 
 // Decode PGN 60928 ISO Address Claim
-int TwoCanDevice::DecodePGN60928(const byte *payload, DeviceInformation *deviceInformation) {
+bool TwoCanDevice::DecodePGN60928(const byte *payload, DeviceInformation *deviceInformation) {
 	if ((payload != NULL) && (deviceInformation != NULL)) {
 		
 		// Unique Identity Number 21 bits
@@ -1746,23 +1786,14 @@ int TwoCanDevice::DecodePGN60928(const byte *payload, DeviceInformation *deviceI
 }
 
 // Decode PGN 65240 ISO Commanded Address
-int TwoCanDevice::DecodePGN65240(const byte *payload, DeviceInformation *deviceInformation) {
+bool TwoCanDevice::DecodePGN65240(const byte *payload, DeviceInformation *deviceInformation) {
 	if ((payload != NULL) && (deviceInformation != NULL)) {
-		byte *tmpBuf;
-		unsigned int tmp;
-
-		// Similar to PGN 60928 - ISO Address Claim, but with a network address field appended
-
-		tmpBuf = (byte *)malloc(4 * sizeof(byte));
-		memcpy(tmpBuf, payload, 4);
-		TwoCanUtils::ConvertByteArrayToInteger(tmpBuf, &tmp);
-		free(tmpBuf);
 
 		// Unique Identity Number 21 bits
-		deviceInformation->uniqueId = tmp & 0x1FFFFF;
-		
+		deviceInformation->uniqueId = (payload[0] | (payload[1] << 8) | (payload[2] << 16) | (payload[3] << 24)) & 0x1FFFFF;
+
 		// Manufacturer Code 11 bits
-		deviceInformation->manufacturerId = (tmp & 0xFFE00000) >> 21;
+		deviceInformation->manufacturerId = ((payload[0] | (payload[1] << 8) | (payload[2] << 16) | (payload[3] << 24)) & 0xFFE00000) >> 21;
 
 		// Not really fussed about these
 		// ISO ECU Instance 3 bits()
@@ -1799,7 +1830,6 @@ int TwoCanDevice::DecodePGN65240(const byte *payload, DeviceInformation *deviceI
 }
 
 // Decode PGN 65280 Manufacturer Proprietary
-// BUG BUG ToDo
 bool TwoCanDevice::DecodePGN65280(const byte *payload) {
 	if (payload != nullptr) {
 
@@ -1810,19 +1840,22 @@ bool TwoCanDevice::DecodePGN65280(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 1851: // Raymarine
+		case MANUFACTURER_CODE::RAYMARINE:
 				break;
-			case 1855: // Furuno
+			case MANUFACTURER_CODE::FURUNO:
 				break;
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case 382: // B&G
+			case MANUFACTURER_CODE::BANDG:
 				break;
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
+				break;
+			default:
+				// Should log a message for an unsupported PGN/Manufacturer
 				break;
 		}
 
@@ -1844,17 +1877,16 @@ bool TwoCanDevice::DecodePGN65305(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case  382: //B & G
+			case MANUFACTURER_CODE::BANDG:
 				break;
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				break;
-			case 1857: //Simrad
-			{
-				if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+			case MANUFACTURER_CODE::SIMRAD: { 
+				if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 					wxString jsonResponse;
 					if (twoCanAutopilot->DecodeNAC3Status(payload, &jsonResponse)) {
 						if (jsonResponse.Length() > 0) {
@@ -1864,13 +1896,13 @@ bool TwoCanDevice::DecodePGN65305(const byte *payload) {
 				}
 			}
 				break;
+			default:
+				// Should log a message for an unsupported PGN/Manufacturer
+				break;
 		}
-		
-		return FALSE; // Nothing to return
 	}
-	else {
-		return FALSE;
-	}
+	// Nothing to return
+	return FALSE;
 }
 
 // Decode PGN 65309 Manufacturer Proprietary
@@ -1885,13 +1917,13 @@ bool TwoCanDevice::DecodePGN65309(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 1851: // Raymarine
+			case MANUFACTURER_CODE::RAYMARINE:
 				break;
-			case 1855: // Furuno
+			case MANUFACTURER_CODE::FURUNO:
 				break;
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
 			case 382: { // B&G WS320 Battery Status
 				byte status = payload[2];
@@ -1902,17 +1934,16 @@ bool TwoCanDevice::DecodePGN65309(const byte *payload) {
 				// BUG BUG Do something
 				break;
 			}
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				  break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
+				break;
+			default:
+				// Should log a message for an unsupported PGN/Manufacturer
 				break;
 		}
-		
-		return FALSE;  // Nothing to return
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // Decode PGN 65312 Manufacturer Proprietary
@@ -1927,31 +1958,31 @@ bool TwoCanDevice::DecodePGN65312(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 1851: // Raymarine
+			case MANUFACTURER_CODE::RAYMARINE:
 				break;
-			case 1855: // Furuno
+			case MANUFACTURER_CODE::FURUNO:
 				break;
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case 382: { // B&G WS320 Wireless Signal Strenghth
+			case MANUFACTURER_CODE::BANDG: {
 				byte status = payload[2];
 				byte wireless = payload[3];
 				int reservedA = payload[4] | (payload[5] << 8) | (payload[6] << 16) | (payload[7] << 24);
 				// BUG BUG Do Something
 				break;
 			}
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
+				break;
+			default:
+				// Should log a message for an unsupported PGN/Manufacturer
 				break;
 		}
-		return FALSE;  // Nothing to return
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // Decode PGN 65345 Manufacturer Proprietary Single Frame Message
@@ -1966,8 +1997,8 @@ bool TwoCanDevice::DecodePGN65345(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 1851: { // Raymarine
-				if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+			case MANUFACTURER_CODE::RAYMARINE: {
+				if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 					wxString jsonResponse;
 					if (twoCanAutopilot->DecodeRaymarineAutopilotWind(65345, payload, &jsonResponse)) {
 						if (jsonResponse.Length() > 0) {
@@ -1977,24 +2008,24 @@ bool TwoCanDevice::DecodePGN65345(const byte *payload) {
 				}
 				break;
 			}
-			case 1855: // Furuno
+			case MANUFACTURER_CODE::FURUNO:
 				break;
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case  382: //B & G
+			case MANUFACTURER_CODE::BANDG:
 				break;
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
+				break;
+			default:
+				// Should log a message for an unsupported PGN/Manufacturer
 				break;
 		}
-		return FALSE;  // Nothing to return
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
 
 
@@ -2010,8 +2041,8 @@ bool TwoCanDevice::DecodePGN65359(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 1851: { // Raymarine
-				if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+			case MANUFACTURER_CODE::RAYMARINE: { 
+				if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 					wxString jsonResponse;
 					if (twoCanAutopilot->DecodeRaymarineAutopilotHeading(65359, payload, &jsonResponse)) {
 						if (jsonResponse.Length() > 0) {
@@ -2021,27 +2052,25 @@ bool TwoCanDevice::DecodePGN65359(const byte *payload) {
 				}
 				break;
 			}
-			case 1855: // Furuno
+			case MANUFACTURER_CODE::FURUNO:
 				break;
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
 			case 382: //B & G
 				break;
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
+				break;
+			default:
+				// Should log a message for an unsupported PGN/Manufacturer
 				break;
 		}
-		return FALSE;  // Nothing to return
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
-
-
 
 // Decode PGN 65360 Manufacturer Proprietary Single Frame Message
 // Seatalk Autopilot Locked Heading
@@ -2055,8 +2084,8 @@ bool TwoCanDevice::DecodePGN65360(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 1851: { // Raymarine
-				if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+			case MANUFACTURER_CODE::RAYMARINE: {
+				if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 					wxString jsonResponse;
 					if (twoCanAutopilot->DecodeRaymarineAutopilotHeading(65360, payload, &jsonResponse)) {
 						if (jsonResponse.Length() > 0) {
@@ -2066,24 +2095,21 @@ bool TwoCanDevice::DecodePGN65360(const byte *payload) {
 				}
 				break;
 			}
-			case 1855: // Furuno
+			case MANUFACTURER_CODE::FURUNO:
 				break;
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case  382: //B & G
+			case MANUFACTURER_CODE::BANDG:
 				break;
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
 				break;
 		}
-		return FALSE;  // Nothing to return
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // Decode PGN 65379 Manufacturer Proprietary Single Frame Message
@@ -2098,8 +2124,8 @@ bool TwoCanDevice::DecodePGN65379(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 1851: { // Raymarine
-				if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+		case MANUFACTURER_CODE::RAYMARINE: {
+				if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 					wxString jsonResponse;
 					if (twoCanAutopilot->DecodeRaymarineAutopilotMode(payload, &jsonResponse)) {
 						if (jsonResponse.Length() > 0) {
@@ -2109,24 +2135,24 @@ bool TwoCanDevice::DecodePGN65379(const byte *payload) {
 				}
 				break;
 			}
-			case 1855: // Furuno
+			case MANUFACTURER_CODE::FURUNO:
 				break;
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case  382: //B & G
+			case MANUFACTURER_CODE::BANDG:
 				break;
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
+				break;
+			default:
+				// Should log a message for an unsupported PGN/Manufacturer
 				break;
 		}
-		return FALSE;  // Nothing to return
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // Decode PGN 65380 Manufacturer Proprietary Single Frame Message
@@ -2141,44 +2167,44 @@ bool TwoCanDevice::DecodePGN65380(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-		case 1851: // Raymarine
-			break;
-		case 1855: // Furuno
-			break;
-		case 229: // Garmin
-			break;
-		case 275: // Navico
-			break;
-		case  382: //B & G
-			break;
-		case 419: // Fusion
-			break;
-		case 1857: {// Simrad
-			if (autopilotModel != AUTOPILOT_MODEL::NONE) {
-				wxString jsonResponse;
-				if (twoCanAutopilot->DecodeAC12Autopilot(payload, &jsonResponse)) {
-					if (jsonResponse.Length() > 0) {
-						SendPluginMessage(_T("TWOCAN_AUTOPILOT_RESPONSE"), jsonResponse);
+			case MANUFACTURER_CODE::RAYMARINE:
+				break;
+			case MANUFACTURER_CODE::FURUNO:
+				break;
+			case MANUFACTURER_CODE::GARMIN:
+				break;
+			case MANUFACTURER_CODE::NAVICO:
+				break;
+			case MANUFACTURER_CODE::BANDG:
+				break;
+			case MANUFACTURER_CODE::FUSION:
+				break;
+			case MANUFACTURER_CODE::SIMRAD: {
+				if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
+					wxString jsonResponse;
+					if (twoCanAutopilot->DecodeAC12Autopilot(payload, &jsonResponse)) {
+						if (jsonResponse.Length() > 0) {
+							SendPluginMessage(_T("TWOCAN_AUTOPILOT_RESPONSE"), jsonResponse);
+						}
 					}
 				}
+				break;
+			default:
+				// Should log a message for an unsupported PGN/Manufacturer
+				break;
 			}
-			break;
-		}
 		} // end switch
-		return FALSE;  // Nothing to return
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
 
-// BUG BUG Not fully implemented, just a toy.
+// BUG BUG Not implemented.
 // Decode PGN 126208 NMEA Group Function Command
-bool TwoCanDevice::DecodePGN126208(const int destination, const byte *payload) {
+bool TwoCanDevice::DecodePGN126208(const int destination, const byte* payload) {
 	if (payload != nullptr) {
 		// We're only interested in commands sent to us
-		// We can return PGN 126996 Product Information and PGN 126998 Configuration Information details
-		// Requests & Reads. We do not wupport Commands or Writes
+		// We should return PGN 126996 Product Information and PGN 126998 Configuration Information details
+		// Requests & Reads. We do not support Commands or Writes
 		if (destination == networkAddress) {
 
 			byte functionCode;
@@ -2226,7 +2252,6 @@ bool TwoCanDevice::DecodePGN126208(const int destination, const byte *payload) {
 		}
 
 	}
-
 	return FALSE;
 }
 
@@ -2242,8 +2267,8 @@ bool TwoCanDevice::DecodePGN126720(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5; //Should match 4 - Marine
 
 		switch (manufacturerId) {
-			case 1851: { // Raymarine
-				if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+			case MANUFACTURER_CODE::RAYMARINE: {
+				if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 					wxString jsonResponse;
 					// Raymarine encodes seatalk datagrams inside PGN 126720. Perhaps this is what the Seatalk <-> SeatalkNG gateway does ?
 					if (twoCanAutopilot->DecodeRaymarineSeatalk(payload, &jsonResponse)) {
@@ -2254,26 +2279,26 @@ bool TwoCanDevice::DecodePGN126720(const byte *payload) {
 				}
 				break;
 			}
-			case 1855: // Furuno
+			case MANUFACTURER_CODE::FURUNO:
 				break;
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case 382: // B&G
+			case MANUFACTURER_CODE::BANDG:
 				break;
 			case 419: 
 				// Fusion - Note Fusion uses PGN 126720 to transmit commands from the remote control to the media player.
 				// We don't decode them, as we generate them in twocanmedia.cpp to control a media player		
 				break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
+				break;
+			default:
+				// Should log a message for an unsupported PGN/Manufacturer
 				break;
 		}
-		return FALSE;  // Nothing to return
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // Decode PGN 126992 NMEA System Time
@@ -2349,7 +2374,6 @@ bool TwoCanDevice::DecodePGN126993(const int source, const byte *payload) {
 #ifndef NDEBUG
 		wxLogMessage(wxString::Format("TwoCan Heartbeat, Source: %d, Time: %d, Count: %d, CAN 1: %d, CAN 2: %d", source, timeOffset, counter, class1CanState, class2CanState));
 #endif
-		
 		return TRUE;
 	}
 	else {
@@ -2358,7 +2382,7 @@ bool TwoCanDevice::DecodePGN126993(const int source, const byte *payload) {
 }
 
 // Decode PGN 126996 NMEA Product Information
-int TwoCanDevice::DecodePGN126996(const byte *payload, ProductInformation *productInformation) {
+bool TwoCanDevice::DecodePGN126996(const byte *payload, ProductInformation *productInformation) {
 	if ((payload != NULL) && (productInformation != NULL)) {
 
 		// Should divide by 100 to get the correct displayable version
@@ -2411,7 +2435,7 @@ int TwoCanDevice::DecodePGN126996(const byte *payload, ProductInformation *produ
 }
 
 // Decode PGN 126998 NMEA Configuration Information
-int TwoCanDevice::DecodePGN126998(const byte *payload) {
+bool TwoCanDevice::DecodePGN126998(const byte *payload) {
 	if (payload != NULL) {
 		unsigned int index = 0;
 
@@ -2453,6 +2477,7 @@ int TwoCanDevice::DecodePGN126998(const byte *payload) {
 		wxLogMessage("Installation Information 2: %s\n", installationInformation2.data());
 		wxLogMessage("Installation Information 3: %s\n", installationInformation3.data());
 		
+		// Allows the Media plugin to display the name of the media device
 		if (enableMusic == TRUE) {
 			if ((installationInformation3.CmpNoCase("FUSION Entertainment") == 0)  && 
 				(installationInformation1.CmpNoCase("info 1") == 0)) {
@@ -2465,7 +2490,6 @@ int TwoCanDevice::DecodePGN126998(const byte *payload) {
 				SendPluginMessage(_T("TWOCAN_MEDIA_RESPONSE"), jsonResponse);
 			}
 		}
-
 	}
 	return FALSE;
 }
@@ -2700,9 +2724,9 @@ bool TwoCanDevice::DecodePGN127245(const byte *payload, std::vector<wxString> *n
 
 		if (TwoCanUtils::IsDataValid(position)) {
 			// Main (or Starboard Rudder
-			if (instance == 0) { 
+			if ((instance == 0) || (instance == UCHAR_MAX)) { 
 
-				if ((autopilotModel != AUTOPILOT_MODEL::NONE) && (twoCanAutopilot != nullptr)) {
+				if ((autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) && (twoCanAutopilot != nullptr)) {
 					wxString jsonResponse;
 					twoCanAutopilot->EncodeRudderAngle(RADIANS_TO_DEGREES((float)position / 10000), &jsonResponse);
 					SendPluginMessage("TWOCAN_AUTOPILOT_RESPONSE", jsonResponse);
@@ -3787,8 +3811,8 @@ bool TwoCanDevice::DecodePGN129038(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 149, 19, communicationState);
 
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
-		
-		if (transceiverInformation & 0x04) {
+		// 0 = Channel A Tx, 1 = Channel B Tx, 2 = Channel A Rx, 3 = Channel B Rx, 4 = ownship
+		if (transceiverInformation > 2) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,0", aisChannel, AISEncodePayload(binaryData)));
 		} 
 		else {
@@ -3904,8 +3928,9 @@ bool TwoCanDevice::DecodePGN129039(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 149, 19, communicationState);
 		
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
-		
-		if (transceiverInformation & 0x04) {
+		// 0 = Channel A Tx, 1 = Channel B Tx, 2 = Channel A Rx, 3 = Channel B Rx, 4 = ownship
+
+		if (transceiverInformation > 2) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,0", aisChannel, AISEncodePayload(binaryData)));
 		}
 		else {
@@ -4045,7 +4070,7 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 
 		for (int i = 0; i < numberOfVDMMessages; i++) {
 			if (i == numberOfVDMMessages -1) { // This is the last message
-				if (transceiverInformation & 0x04) {
+				if (transceiverInformation > 2) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, encodedVDMMessage.size() - (i * 28))));
 				}
 				else {
@@ -4053,7 +4078,7 @@ bool TwoCanDevice::DecodePGN129040(const byte *payload, std::vector<wxString> *n
 				}
 			}
 			else {
-				if (transceiverInformation & 0x04) {
+				if (transceiverInformation > 2) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28)));
 				}
 				else {
@@ -4205,7 +4230,7 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 		}
 		
 		wxString encodedVDMMessage = AISEncodePayload(binaryData);
-		if (transceiverInformation & 0x04) {
+		if (transceiverInformation > 2 ) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,,%c,%s,%d", 1, 1, aisChannel, encodedVDMMessage, fillBits));
 		}
 		else {
@@ -4218,7 +4243,7 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 
 		for (int i = 0; i < numberOfVDMMessages; i++) {
 			if (i == numberOfVDMMessages -1) { // This is the last message
-				if (transceiverInformation & 0x04) {
+				if (transceiverInformation > 2) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, encodedVDMMessage.size() - (i * 28))));
 				}
 				else {
@@ -4226,7 +4251,7 @@ bool TwoCanDevice::DecodePGN129041(const byte *payload, std::vector<wxString> *n
 				}
 			}
 			else {
-				if (transceiverInformation & 0x04) {
+				if (transceiverInformation > 2) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28)));
 				}
 				else {
@@ -4722,7 +4747,7 @@ bool TwoCanDevice::DecodePGN129793(const byte * payload, std::vector<wxString> *
 		
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
 		
-		if (transceiverInformation & 0x04) {
+		if (transceiverInformation  > 2) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,0", aisChannel, AISEncodePayload(binaryData)));
 		}
 		else {
@@ -4842,7 +4867,7 @@ bool TwoCanDevice::DecodePGN129794(const byte *payload, std::vector<wxString> *n
 		wxString encodedVDMMessage = AISEncodePayload(binaryData);
 		
 		// Send VDM message in two NMEA183 sentences
-		if (transceiverInformation & 0x04) {
+		if (transceiverInformation > 2) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,2,1,%d,%c,%s,0", AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(0,35).c_str()));
 			nmeaSentences->push_back(wxString::Format("!AIVDO,2,2,%d,%c,%s,2", AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(35,36).c_str()));
 		}
@@ -4958,7 +4983,7 @@ bool TwoCanDevice::DecodePGN129798(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 149, 19, communicationState);
 		
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
-		if (transceiverInformation & 0x04) {
+		if (transceiverInformation > 2) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,0", aisChannel, AISEncodePayload(binaryData)));
 		}
 		else {
@@ -5115,7 +5140,7 @@ bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *n
 
 		for (int i = 0; i < numberOfVDMMessages; i++) {
 			if (i == numberOfVDMMessages -1) { // This is the last message
-				if (transceiverInformation & 0x04) {
+				if (transceiverInformation > 2) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,%d", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, encodedVDMMessage.size() - (i * 28)),fillBits));
 				}
 				else {
@@ -5123,7 +5148,7 @@ bool TwoCanDevice::DecodePGN129801(const byte *payload, std::vector<wxString> *n
 				}
 			}
 			else {
-				if (transceiverInformation & 0x04) {
+				if (transceiverInformation > 2) {
 					nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28)));
 				}
 				else {
@@ -5215,7 +5240,7 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 		else {
 			for (int i = 0; i < numberOfVDMMessages; i++) {
 				if (i == numberOfVDMMessages - 1) { // Is this the last message, if so append number of fillbits as appropriate
-					if (transceiverInformation & 0x04) {
+					if (transceiverInformation > 2) {
 						nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,%d", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28), fillBits));
 					}
 					else {
@@ -5223,7 +5248,7 @@ bool TwoCanDevice::DecodePGN129802(const byte *payload, std::vector<wxString> *n
 					}
 				}
 				else {
-					if (transceiverInformation & 0x04) {
+					if (transceiverInformation > 2) {
 						nmeaSentences->push_back(wxString::Format("!AIVDO,%d,%d,%d,%c,%s,0", numberOfVDMMessages, i, AISsequentialMessageId, aisChannel, encodedVDMMessage.Mid(i * 28, 28)));
 					}
 					else {
@@ -5531,7 +5556,7 @@ bool TwoCanDevice::DecodePGN129809(const byte *payload, std::vector<wxString> *n
 		}
 		
 		// Send a single VDM sentence, note no sequential message Id		
-		if (transceiverInformation & 0x04) {		
+		if (transceiverInformation > 2) {		
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,%d", aisChannel, AISEncodePayload(binaryData), fillBits));
 		}
 		else {
@@ -5622,7 +5647,7 @@ bool TwoCanDevice::DecodePGN129810(const byte *payload, std::vector<wxString> *n
 		AISInsertInteger(binaryData, 166 ,2 , 0); //spare
 		
 		// Send a single VDM sentence, note no fillbits nor a sequential message Id
-		if (transceiverInformation & 0x04) {
+		if (transceiverInformation > 2) {
 			nmeaSentences->push_back(wxString::Format("!AIVDO,1,1,,%c,%s,0", aisChannel, AISEncodePayload(binaryData)));
 		}
 		else {
@@ -5798,7 +5823,7 @@ bool TwoCanDevice::DecodePGN130306(const byte *payload, std::vector<wxString> *n
 		if (TwoCanUtils::IsDataValid(windSpeed)) {
 			if (TwoCanUtils::IsDataValid(windAngle)) {
 
-				if ((autopilotModel != AUTOPILOT_MODEL::NONE) && (twoCanAutopilot != nullptr)) {
+				if ((autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) && (twoCanAutopilot != nullptr)) {
 					wxString jsonResponse;
 					twoCanAutopilot->EncodeWindAngle(RADIANS_TO_DEGREES((float)windAngle / 10000), &jsonResponse);
 					SendPluginMessage("TWOCAN_AUTOPILOT_RESPONSE", jsonResponse);
@@ -6148,14 +6173,14 @@ bool TwoCanDevice::DecodePGN130820(const byte *payload, std::vector<wxString> *n
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case  382: //B & G
+			case MANUFACTURER_CODE::BANDG:
 				break;
-			case 419: {// Fusion
-				if (enableMusic) {
+			case MANUFACTURER_CODE::FUSION: {
+					if (enableMusic) {
 						wxString jsonResponse;
 						if (twoCanMedia->DecodeMediaResponse(payload, &jsonResponse)) {
 							if (jsonResponse.Length() > 0) {
@@ -6165,7 +6190,7 @@ bool TwoCanDevice::DecodePGN130820(const byte *payload, std::vector<wxString> *n
 					}
 				}
 				break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
 				break;
 		}
 	}
@@ -6182,15 +6207,15 @@ bool TwoCanDevice::DecodePGN130822(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-		case 229: // Garmin
+		case MANUFACTURER_CODE::GARMIN:
 			break;
-		case 275: // Navico
+		case MANUFACTURER_CODE::NAVICO:
 			break;
-		case  382: //B & G
+		case MANUFACTURER_CODE::BANDG:
 			break;
-		case 419: // Fusion
+		case MANUFACTURER_CODE::FUSION:
 			break;
-		case 1857: // Simrad
+		case MANUFACTURER_CODE::SIMRAD:
 			break;
 		}
 		return FALSE;
@@ -6213,15 +6238,15 @@ bool TwoCanDevice::DecodePGN130824(const byte *payload) {
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case  382: //B & G
+			case MANUFACTURER_CODE::BANDG:
 				break;
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
 				break;
 		}
 		return FALSE;
@@ -6244,17 +6269,17 @@ bool TwoCanDevice::DecodePGN130850(const byte *payload, std::vector<wxString> *n
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-			case 229: // Garmin
+			case MANUFACTURER_CODE::GARMIN:
 				break;
-			case 275: // Navico
+			case MANUFACTURER_CODE::NAVICO:
 				break;
-			case  382: //B & G
+			case MANUFACTURER_CODE::BANDG:
 				break;
-			case 419: // Fusion
+			case MANUFACTURER_CODE::FUSION:
 				 break;
-			case 1857: // Simrad
+			case MANUFACTURER_CODE::SIMRAD:
 			{
-				if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+				if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 					wxString jsonResponse;
 					if (twoCanAutopilot->DecodeNAC3Command(payload, &jsonResponse)) {
 						if (jsonResponse.Length() > 0) {
@@ -6265,16 +6290,13 @@ bool TwoCanDevice::DecodePGN130850(const byte *payload, std::vector<wxString> *n
 			}
 				break;
 		}
-		return FALSE;
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // Decode PGN 130856 Manufacturer Proprietary Message
 // At present return FALSE, because there are no NMEA 183 sentences to generate/send
-// Initially implemented to support TwoCanAutopilot control of Navic NAC3 Autopilots
+// Initially implemented to support TwoCanAutopilot control of Navic NAC-3 Autopilots
 bool TwoCanDevice::DecodePGN130856(const byte* payload, std::vector<wxString>* nmeaSentences) {
 	if (payload != nullptr) {
 
@@ -6285,17 +6307,17 @@ bool TwoCanDevice::DecodePGN130856(const byte* payload, std::vector<wxString>* n
 		industryCode = (payload[1] & 0xE0) >> 5;
 
 		switch (manufacturerId) {
-		case 229: // Garmin
+		case MANUFACTURER_CODE::GARMIN:
 			break;
-		case 275: // Navico
+		case MANUFACTURER_CODE::NAVICO:
 			break;
-		case  382: //B & G
+		case MANUFACTURER_CODE::BANDG:
 			break;
-		case 419: // Fusion
+		case MANUFACTURER_CODE::FUSION:
 			break;
-		case 1857: // Simrad
+		case MANUFACTURER_CODE::SIMRAD:
 		{
-			if (autopilotModel != AUTOPILOT_MODEL::NONE) {
+			if (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) {
 				wxString jsonResponse;
 				if (twoCanAutopilot->DecodeNAC3AlarmMessage(payload, &jsonResponse)) {
 					if (jsonResponse.Length() > 0) {
@@ -6306,11 +6328,8 @@ bool TwoCanDevice::DecodePGN130856(const byte* payload, std::vector<wxString>* n
 		}
 		break;
 		}
-		return FALSE;
 	}
-	else {
-		return FALSE;
-	}
+	return FALSE;
 }
 
 // Send an ISO Request

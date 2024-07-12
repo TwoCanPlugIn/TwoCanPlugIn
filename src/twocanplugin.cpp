@@ -31,6 +31,9 @@
 // 2.0 - 04/07/2021 Bi-Directional Gateway, Kvaser support on Mac OSX, Fast Message Assembly & SID generation fix, PCAP log file support 
 // 2.1 - 20/05/2022 Minor fix to GGA/DBT in Gateway, DSC & MOB Sentences, Waypoint creation, epoch time fixes (time_t)0
 // wxWidgets 3.15 support for MacOSX, Fusion Media control, OCPN Messaging for NMEA 2000 Transmit, Extend PGN 130312 for Engine Exhaust
+// 2.2.1 - 30/06/2023 - Support OpenCPN 5.8.x (Breaking change as now dependent on wxWidgets 3.2.x)
+// 
+
 // Outstanding Features: 
 // 1. Localization ??
 //
@@ -400,7 +403,7 @@ void TwoCan::SetPluginMessage(wxString& message_id, wxString& message_body) {
 
 	// Handle TwoCan Autopilot Plugin dialog commands
 	else if (message_id == _T("TWOCAN_AUTOPILOT_REQUEST")) {
-		if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::NONE) && (twoCanDevice != nullptr) && (twoCanAutopilot != nullptr)) {
+		if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE) && (twoCanDevice != nullptr) && (twoCanAutopilot != nullptr)) {
 			std::vector<CanMessage> messages;
 			unsigned int id;
 			int returnCode;
@@ -515,7 +518,7 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("Gateway"), &enableGateway, FALSE);
 		configSettings->Read(_T("Waypoint"), &enableWaypoint, FALSE);
 		configSettings->Read(_T("Music"), &enableMusic, FALSE);
-		autopilotModel = static_cast<AUTOPILOT_MODEL>(configSettings->ReadLong(_T("Autopilot"), AUTOPILOT_MODEL::NONE));
+		autopilotModel = static_cast<AUTOPILOT_MODEL>(configSettings->ReadLong(_T("Autopilot"), AUTOPILOT_MODEL::AUTOPILOT_NONE));
 		// Not ready to implement. Maybe never....
 		//configSettings->Read(_T("SignalK"), &enableSignalK, FALSE);
 		return TRUE;
@@ -531,7 +534,7 @@ bool TwoCan::LoadConfiguration(void) {
 		enableWaypoint = FALSE;
 		enableMusic = FALSE;
 		enableSignalK = FALSE;
-		autopilotModel = AUTOPILOT_MODEL::NONE;
+		autopilotModel = AUTOPILOT_MODEL::AUTOPILOT_NONE;
 		// BUG BUG Automagically find an installed adapter
 		canAdapter = _T("None");
 		return TRUE;
@@ -594,7 +597,7 @@ void TwoCan::StopDevice(void) {
 				}
 
 				// If the autopilot interface is enabled, cleanup
-				if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::NONE)) {
+				if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE)) {
 					if (twoCanAutopilot != nullptr) {
 						delete twoCanAutopilot;
 						twoCanAutopilot = nullptr;
@@ -633,7 +636,7 @@ void TwoCan::StartDevice(void) {
 			}
 
 			// Autopilot Integration
-			if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::NONE)) {
+			if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::AUTOPILOT_NONE)) {
 				twoCanAutopilot = new TwoCanAutoPilot(autopilotModel);
 				wxLogMessage(_T("TwoCan Plugin, Created TwoCan Autopilot interface"));
 			}

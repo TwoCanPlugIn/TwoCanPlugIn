@@ -25,12 +25,11 @@
 // Date: 30/06/2022
 // Version History: 
 // 1.0 Initial Release of Autopilot Control.
+// 2.2.2 07/07/2024 - Cleanup Autopilot Code, Support Raymarine Evolution autopilots
 
 #include "twocanautopilot.h"
 
-
-// An ordered list of Raymarine Error Messages
-// Used by PGN 65288
+// List of Raymarine Error Messages, used by PGN 65288
 std::vector<std::string> RaymarineAlarmMessages = {
 			"No Alarm",
 			"Shallow Depth",
@@ -139,10 +138,13 @@ std::vector<std::string> RaymarineAlarmMessages = {
 			"AIS Connection Lost",
 			"No Fix" };
 
+
 // TwoCan Autopilot
 TwoCanAutoPilot::TwoCanAutoPilot(AUTOPILOT_MODEL model) {
-	//BUG BUG Not sure why I am passing the autopilot model.
-	// BUG BUG Need to persist and/or detect
+	// BUG BUG Not sure why I am passing the autopilot model.
+	
+	// BUG BUG Do I need to persist and/or detect
+	// BUG BUG Remove for production
 	autopilotControllerAddress = 3;
 }
 
@@ -152,6 +154,9 @@ TwoCanAutoPilot::~TwoCanAutoPilot(void) {
 // Some models of autopilots require the autopilot network address to be included
 // in the data. Obtain the network address by iterating through the network map.
 // The list of product numbers however needs to be updated.
+// Another way would be to use the device & function class values from PGN 60928 (Address Claim)
+// Generally the Autopilot has Device Class 40, Function Class 140
+
 bool TwoCanAutoPilot::FindAutopilot(void) {
 	bool result = false;
 	autopilotControllerAddress = 254; // In valid Address
@@ -207,12 +212,12 @@ bool TwoCanAutoPilot::DecodeRaymarineAutopilotHeading(const int pgn, const byte 
 
 	// BUG BUG Do I need to worry if it is a heading or locked heading ??
 	if (pgn == 65359) {
-		root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE;
+		root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE_EVOLUTION;
 		root["autopilot"]["heading"]["trueheading"] = RADIANS_TO_DEGREES((float)headingTrue / 10000);
 		root["autopilot"]["heading"]["heading"] = RADIANS_TO_DEGREES((float)headingMagnetic / 10000);
 	}
 	if (pgn == 65360) {
-		root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE;
+		root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE_EVOLUTION;
 		root["autopilot"]["targetheading"]["trueheading"] = RADIANS_TO_DEGREES((float)headingTrue / 10000);
 		root["autopilot"]["targetheading"]["heading"] = RADIANS_TO_DEGREES((float)headingMagnetic / 10000);
 	}
@@ -240,7 +245,7 @@ bool TwoCanAutoPilot::DecodeRaymarineAutopilotWind(const int pgn, const byte *pa
 	short windAngle;
 	windAngle = payload[2] | (payload[3] << 8);
 
-	root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE;
+	root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE_EVOLUTION;
 	root["autopilot"]["windangle"] = RADIANS_TO_DEGREES(windAngle * 1e-4);
 
 	if (root.Size() > 0) {
@@ -290,7 +295,7 @@ bool TwoCanAutoPilot::DecodeRaymarineAutopilotMode(const byte *payload, wxString
 		break;
 	}
 
-	root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE;
+	root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE_EVOLUTION;
 	root["autopilot"]["mode"] = mode;
 
 	if (root.Size() > 0) {
@@ -316,35 +321,32 @@ bool TwoCanAutoPilot::DecodeRaymarineAutopilotAlarm(const byte* payload, wxStrin
 	byte industryGroup;
 	industryGroup = (payload[1] & 0xE0) >> 5;
 
-	if (manufacturerId == 1851) {// Raymarine
+	byte sid;
+	sid = payload[2];
 
-		byte sid;
-		sid = payload[2];
+	byte alarmStatus;
+	alarmStatus = payload[3];
 
-		byte alarmStatus;
-		alarmStatus = payload[3];
+	byte alarmCode;
+	alarmCode = payload[4];
 
-		byte alarmCode;
-		alarmCode = payload[4];
+	byte alarmGroup;
+	alarmGroup = payload[5];
 
-		byte alarmGroup;
-		alarmGroup = payload[5];
+	unsigned short alarmPriority;
+	alarmPriority = payload[6] | (payload[7] << 8);
 
-		unsigned short alarmPriority;
-		alarmPriority = payload[6] | (payload[7] << 8);
+	//  Instrument = 0, Autopilot = 1, Radar = 2, Chart Plotter = 3, AIS = 4
+	if (alarmGroup == 1) {
+		root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE_EVOLUTION;
+		root["autopilot"]["alarm"] = RaymarineAlarmMessages.at(alarmCode);
 
-
-		//  Instrument = 0, Autopilot = 1, Radar = 2, Chart Plotter = 3, AIS = 4
-		if (alarmGroup == 1) {
-			root["autopilot"]["model"] = AUTOPILOT_MODEL::RAYMARINE;
-			root["autopilot"]["alarm"] = RaymarineAlarmMessages.at(alarmCode);
-
-			if (root.Size() > 0) {
-				writer.Write(root, *jsonResponse);
-				return TRUE;
-			}
+		if (root.Size() > 0) {
+			writer.Write(root, *jsonResponse);
+			return TRUE;
 		}
 	}
+	
 	return FALSE;
 }
 
@@ -421,6 +423,7 @@ bool TwoCanAutoPilot::DecodeRaymarineSeatalk(const byte *payload, wxString *json
 
 }
 
+// BUG BUG To Do
 // Simrad AC12
 // PGN 65380
 bool TwoCanAutoPilot::DecodeAC12Autopilot(const byte *payload, wxString *jsonResponse) {
@@ -429,42 +432,123 @@ bool TwoCanAutoPilot::DecodeAC12Autopilot(const byte *payload, wxString *jsonRes
 }
 
 
-// Simrad A/P Commands
+// Simrad Event Command 
+// Usually sent from MFD to control the Autopilot, 
+// however alarm codes are also sent from the Autopilot using this PGN
 // PGN 130850
 bool TwoCanAutoPilot::DecodeNAC3Command(const byte *payload, wxString *jsonResponse) {
 	wxJSONValue root;
 	wxJSONWriter writer;
-	int mode;
 
-	// Source 3: 41 9F FF FF 01 FF 3A 00 10 00 03 00 FF
-	// Source 3: 41 9F FF FF 01 FF 39 00 10 00 03 00 FF
-	
 	unsigned int manufacturerId;
 	manufacturerId = payload[0] | ((payload[1] & 0x07) << 8);
 
 	byte industryCode;
 	industryCode = (payload[1] & 0xE0) >> 5;
 
-	byte statusCommand;
-	statusCommand = payload[4];
+	byte autopilotControllerAddress;
+	autopilotControllerAddress = payload[2];
 
-	byte status;
-	status = payload[6]; // 39 = OK ?? // 3A = Rudder Limit Exceeded
+	byte autopilotModel;
+	autopilotModel = payload[4];
 
-	byte AutopilotControllerAddress;
-	autopilotControllerAddress = payload[10];
+	byte request;
+	request = payload[5];
+
+	switch (request) {
+
+		case 0x0A: {
+			unsigned short autoPilotCommand;
+			autoPilotCommand = payload[6] | (payload[7] << 8);
+
+			byte direction;
+			direction = payload[8];
+
+			short angle;
+			angle = payload[9] | (payload[10] << 8);
+
+			byte reservedB;
+			reservedB = payload[11];
+
+			switch (autoPilotCommand) {
+				case 0x06:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::STANDBY;
+					break;
+				case 0x09:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::COMPASS;
+					break;
+				case 0x0F:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::WIND;
+					break;
+				case 0x0A:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::NAV;
+					break;
+				case 0x0C:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::NODRIFT;
+					break;
+				case 0x1A:
+					// BUG BUG Really don't need to parse this, not relevant to UI
+					if (TwoCanUtils::IsDataValid(angle)) {
+						root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+						root["autopilot"]["rudderAngle"] = RADIANS_TO_DEGREES((float)angle * 1e-4);
+					}
+					break;
+				default:
+					// Could log a message but without knowing what exactly sent this...
+					break;
+			} // end switch autopilot command
+		} // end case 0x00
+			break;
+		case 0xFF:
+			root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+			root["autopilot"]["alarm"] = wxEmptyString; // This PGN only provides an alarm code
+			break;
+		default:
+			break;
+	} // end switch request
+
+	// Leave the status processing to PGN 65305
+	//if (root.Size() > 0) {
+	//	writer.Write(root, *jsonResponse);
+	//	return TRUE;
+	//}
+
+
+	return FALSE;
+}
+
+// Sent by Simrad Autopilot in response to receiving a command from a MFD
+// Simply echoes what was sent in PGN 130850
+// PGN 130851 Simrad Event Reply
+bool DecodeNAC3Reply(const byte* payload, wxString* jsonResponse) {
+	wxJSONValue root;
+	wxJSONWriter writer;
+
+	unsigned short manufacturerId;
+	manufacturerId = payload[0] | ((payload[1] & 0x07) << 8);
+
+	byte reserved;
+	reserved = (payload[1] & 0x18) >> 3;
+
+	byte industryGroup;
+	industryGroup = (payload[1] & 0xE0) >> 5;
+
+	byte controllerAddress;
+	controllerAddress = payload[2];
 
 	unsigned short reservedA;
 	reservedA = payload[3] | (payload[4] << 8);
 
-	byte command;
-	command = payload[5];
+	byte reply;
+	reply = payload[5];
 
-	byte subCommand;
-	subCommand = payload[6];
-
-	byte reservedB;
-	reservedB = payload[7];
+	unsigned short autoPilotCommand;
+	autoPilotCommand = payload[6] | (payload[7] << 8);
 
 	byte direction;
 	direction = payload[8];
@@ -472,42 +556,60 @@ bool TwoCanAutoPilot::DecodeNAC3Command(const byte *payload, wxString *jsonRespo
 	short angle;
 	angle = payload[9] | (payload[10] << 8);
 
-	byte reservedC;
-	reservedC = payload[11];
+	byte reservedB;
+	reservedB = payload[11];
 
+	switch (reply) {
 
-	std::printf("A/P Address %d \n", autopilotControllerAddress);
-	std::printf("A %d\n", reservedA);
-	std::printf("Command %d \n", command);
-	std::printf("Sub Command: %d \n", subCommand);
-	std::printf("B %d\n", reservedB);
-	std::printf("Direction: %d \n", direction);
-	std::printf("Angle: %f \n", RADIANS_TO_DEGREES((float)angle / 10000));
-	std::printf("C %d\n", reservedC);
+		case 0x0A:
 
-	switch (command) {
-		case 0x100:
-			mode = AUTOPILOT_MODE::WIND;
+			switch (autoPilotCommand) {
+				case 0x06:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::STANDBY;
+					break;
+				case 0x09:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::COMPASS;
+					break;
+				case 0x0F:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::WIND;
+					break;
+				case 0x0A:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::NAV;
+					break;
+				case 0x0C:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					root["autopilot"]["mode"] = AUTOPILOT_MODE::NODRIFT;
+					break;
+				case 0x1A:
+					root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+					if (TwoCanUtils::IsDataValid(angle)) {
+						root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+						root["autopilot"]["mode"] = RADIANS_TO_DEGREES((float)angle * 1e-4);
+					}
+					break;
+				default:
+					break;
+			} // end case autopilot command
 			break;
-		case 0x40:
-			mode = AUTOPILOT_MODE::COMPASS;
-			break;
-		case 0x181:
-			mode = AUTOPILOT_MODE::NODRIFT; // Not implemented in UI
-			break;
-		case 0x180:
-			mode = AUTOPILOT_MODE::NAV;
-			break;
-		case 0x0:
 		default:
-			mode = AUTOPILOT_MODE::STANDBY;
 			break;
-	}
+	}// end switch reply
 
+	// Leave the status processing to PGN 65305
+	//if (root.Size() > 0) {
+	//	writer.Write(root, *jsonResponse);
+	//	return TRUE;
+	//}
+	
 	return FALSE;
 }
 
-// Simrad Alarm Message
+
+// Simrad Alarm Message, sent by Autopilot. The alarm code is also sent in PGN 130850
 // PGN 130856
 bool TwoCanAutoPilot::DecodeNAC3AlarmMessage(const byte* payload, wxString* jsonResponse) {
 	wxJSONValue root;
@@ -522,41 +624,40 @@ bool TwoCanAutoPilot::DecodeNAC3AlarmMessage(const byte* payload, wxString* json
 	byte industryGroup;
 	industryGroup = (payload[1] & 0xE0) >> 5;
 
-	if (manufacturerId == 351) { // B&G
+	byte alarmCode;
+	alarmCode = payload[2];
 
-		byte command;
-		command = payload[2];
+	byte alarmState;
+	alarmState = payload[3];
 
-		byte subCommand;
-		subCommand = payload[3];
-
-		std::string message;
-		unsigned int messageLength = payload[4];
-		if (payload[5] == 1) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
-			for (size_t i = 0; i < messageLength - 2; i++) {
-				message.append(1, payload[6 + i]);
-			}
-
-			root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO;
-			root["autopilot"]["alarm"] = message;
-
-			if (root.Size() > 0) {
-				writer.Write(root, *jsonResponse);
-				return TRUE;
-			}
-
+	std::string message;
+	unsigned int messageLength = payload[4];
+	if (payload[5] == 1) { // First byte indicates encoding, 0 for Unicode, 1 for ASCII
+		for (size_t i = 0; i < messageLength - 2; i++) {
+			message.append(1, payload[6 + i]);
 		}
+
+		root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+		root["autopilot"]["alarm"] = message;
+
 	}
+
+	if(root.Size() > 0) {
+		writer.Write(root, *jsonResponse);
+		return TRUE;
+	}
+
 	return FALSE;
 }
 
 
-// Decode PGN 65305
+// Sent by Simrad Autopilot to advertise its status and mode
+// Also sent by MFD's as a Keep Alive
+// PGN 65305
 bool TwoCanAutoPilot::DecodeNAC3Status(const byte *payload, wxString *jsonResponse) {
 	wxJSONValue root;
 	wxJSONWriter writer;
-	int mode;
-
+	
 	unsigned short manufacturerId;
 	manufacturerId = payload[0] | ((payload[1] & 0x07) << 8);
 
@@ -566,27 +667,36 @@ bool TwoCanAutoPilot::DecodeNAC3Status(const byte *payload, wxString *jsonRespon
 	byte industryGroup;
 	industryGroup = (payload[1] & 0xE0) >> 5;
 
-	// Autopilot State, Engaged or Standby
-	// 0x41 0x9f 0x00 0x02 0x10 0x00 0x00 0x00
-	// 0x41 0x9f 0x00 0x02 0x02 0x00 0x00 0x00
-	// 0x41 0x9F 0x64 0x02 0x10 0x00 0x00 0x00
-	// 0x41 0x9F 0xFF 0x02 0x10 0x00 0x00 0x00
-	// 0x41 0x9F 0xFF 0x02 0x02 0x00 0x00 0x00
-	//            |     |   |
-	//      0x64 = NAC3 | 0x10 = Engaged
-	//      0x00 = AC12 | 0x02 = Standby
-	//      0xFF = TP32 |
-	//               State
+	// Heartbeats sent from the MFD
+	// 0x41 0x9F 0x01 0x0B 0x00 0x00 0x00 0x00 
+	// 0x41 0x9F 0x01 0x03 0x00 0x00 0x00 0x00
+
+	// Autopilot Model
+	// Byte 2 (0x64) indicates NAC3
+	// Byte 2 (0x00) indicates AC12
+	// Byte 2 (0xFF) Indicates TP32
+
+	// Byte 3 (0x02) is a Status report (Engaged or Standby)
+	// Byte 3 (0x0A) is a Mode report
+
 	
-	// NAC 3 Autopilot Mode 
+	// NAC 3 - Mode reports
 	// 0x41 0x9F 0x64 0x0A 0x40 0x00 0x00 0x40 - NAV 
 	// 0x41 0x9F 0x64 0x0A 0x00 0x04 0x00 0x04 - Wind
 	// 0x41 0x9F 0x64 0x0A 0x10 0x00 0x00 0x00 - Heading
 	// 0x41 0x9F 0x64 0x0A 0x00 0x01 0x00 0x00 - No Drift
 	// 0x41 0x9F 0x64 0x0A 0x08 0x00 0x00 0x00 - Standby
 
-	// AC12 Autopilot Mode
-	// BUG BUG Needs confirmation
+	// NAC 3 Status reports
+	// Byte 4 (0x10) = Engaged
+	// Byte 4 (0x02) = Standby
+	// Byte 4 0x04 =  NFU (what is 0x06?)
+	// 0x41 0x9f 0x64 0x02 0x10 0x00 0x00 0x00 - Engaged
+	// 0x41 0x9f 0x64 0x02 0x02 0x00 0x00 0x00 - Standby
+	// 0x41 0x9F 0x64 0x02 0x04 0x00 0x00 0x00 - NFU
+	// 0x41 0x9F 0x64 0x02 00x6 0x00 0x00 0x00 - Also NFU ?? Puzzling
+
+	// AC-12 - Mode report BUG BUG Confirm
 	// 0x41 0x9f 0x00 0x0a 0x06 0x04 0x00 0x00 - Wind
 	// 0x41 0x9f 0x00 0x0a 0x1e 0x00 0x00 0x00 - Wind ??
 	// 0x41 0x9f 0x00 0x0a 0x0a 0x00 0x00 0x00 - Heading
@@ -594,92 +704,182 @@ bool TwoCanAutoPilot::DecodeNAC3Status(const byte *payload, wxString *jsonRespon
 	// 0x41 0x9f 0x00 0x0a 0xf0 0x00 0x80 0x00 - Nav
 	// 0x41 0x9f 0x00 0x0a 0x16 0x01 0x00 0x00 - No Drift ??
 	// 0x41 0x9f 0x00 0x0a 0x0c 0x00 0x80 0x00 - No Drift ??
-	// Standby ??
+
 
 	// TP-32
-	// 0x41 0x9F 0xFF 0x02 0x10 0x00 0x00 0x00  Engaged
-	// 0x41 0x9F 0xFF 0x0A 0x0A 0x00 0x80 0x00  ?? Heading
-	// 0x41 0x9F 0xFF 0x0A 0x14 0x00 0x80 0x00  
-	// 0x41 0x9F 0xFF 0x1D 0x81 0x00 0x00 0x00
+	// Byte 3 (0x0A) - Mode report
+	// 0x41 0x9F 0xFF 0x0A 0x14 0x04 0x80 0x05 - 'U-Turn or Wind (last 2 digits wind angle??)
 
+	// Byte 3 (0x02) - Status report
+	// 0x41 0x9F 0xFF 0x02 0x10 0x00 0x00 0x00
+
+
+	// Byte 3 (0x1D) - Unknown
+	// 0x41 0x9F 0xFF 0x1D 0x81 0x00 0x00 0x00
 
 	byte autopilotModel;
 	autopilotModel = payload[2];
 
-	//wxLogMessage(_T("TwoCan Autopilot, Detected Navico Autopilot %s"), autopilotModel == 00 ? "AC-12" : 
-	//	autopilotModel == 0x64 ? "NAC-3" : std::to_string(autopilotModel));
+	switch (autopilotModel) {
+		case 0x00:
+			root["autopilot"]["model"] = AUTOPILOT_MODEL::SIMRAD_AC12;
+			break;
+		case 0x64:
+			root["autopilot"]["model"] = AUTOPILOT_MODEL::NAVICO_NAC3;
+			break;
+		case 0xFF:
+			// BUG BUG Need an enum for TP32
+			root["autopilot"]["model"] = AUTOPILOT_MODEL::SIMRAD_AC12;
+			break;
+		case 0x01:
+			// Autopilot Heartbeat
+			break;
+		default:
+			// Autopilot Unknown
+			break;
+	}
 
-	byte operation;
-	operation = payload[3];
+	byte command;
+	command = payload[3];
 
-	switch (operation) {
+	switch (command) {
 
-	case 0x02:
-		if (payload[4] == 0x10) {
-			//std::printf("Autopilot Engaged\n");
-		}
-		else if (payload[4] == 0x02) {
-			//std::printf("Autopilot in standby\n");
-		}
-		break; // end case operation 0x02;
+		case 0x02: // Status
+			if (payload[4] == 0x10) {
+				// Engaged
+			}
+			else if (payload[4] == 0x02) {
+				root["autopilot"]["mode"] = AUTOPILOT_MODE::STANDBY;
+			}
+			else if (payload[4] == 0x04) {
+				root["autopilot"]["mode"] = AUTOPILOT_MODE::NFU;
+			}
+			break; // break 02
 
-	case 0x0A:
-		if (autopilotModel == 0x64) {
-			// NAC 3
-			unsigned short command;
-			command = payload[4] | (payload[5] << 8);
+		case 0x0A: // Mode
+			if (autopilotModel == 0x64) { // Navico NAC-3
 
-			switch (command) {
-				case 0x40:
-					mode = AUTOPILOT_MODE::NAV;
-					break;
-				case 0x0400:
-					mode = AUTOPILOT_MODE::WIND;
-					break;
-				case 0x10:
-					mode = AUTOPILOT_MODE::COMPASS;
-					break;
-				case 0x100:
-					mode = AUTOPILOT_MODE::NODRIFT;
-					break;
-				case 0x08:
-					mode = AUTOPILOT_MODE::STANDBY;
-					break;
-			} // end switch command
+				unsigned short mode;
+				mode = payload[4] | (payload[5] << 8);
 
-		} // end if autopilot model NAC-3
+				switch (mode) {
+					case 0x40:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::NAV;
+						break;
+					case 0x0400:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::WIND;
+						break;
+					case 0x10:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::COMPASS;
+						break;
+					case 0x100:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::NODRIFT;
+						break;
+					case 0x08:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::STANDBY;
+						break;
 
-		if (autopilotModel == 0x00) {
-			// AC12
-			unsigned short command;
-			command = payload[4] | (payload[5] << 8);
+					default:
+						// Unrecognized mode
+						break;
 
-			switch (command) {
-				case 0xf0:
-					mode = AUTOPILOT_MODE::NAV;
-					break;
-				case 0x1e:
-					mode = AUTOPILOT_MODE::WIND;
-					break;
-				case 0x0a:
-					mode = AUTOPILOT_MODE::COMPASS;
-					break;
-				case 0x0c:
-					mode = AUTOPILOT_MODE::NODRIFT;
-					break;
-				case 0x00:
-					mode = AUTOPILOT_MODE::STANDBY;
-					break;
-			} // end switch command
+				} // end switch mode
 
-		} // end if autopilot model AC 12
+			} // end if autopilot model NAC-3
+
+			else if (autopilotModel == 0x00) { // AC12
+
+				unsigned short mode;
+				mode = payload[4] | (payload[5] << 8);
+
+				switch (mode) {
+					case 0xF0:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::NAV;
+						break;
+					case 0x1E:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::WIND;
+						break;
+					case 0x0A:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::COMPASS;
+						break;
+					case 0x0C:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::NODRIFT;
+						break;
+					case 0x14:
+						// BUG BUG ToDO U-Turn
+						break;
+					case 0x00:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::STANDBY;
+						break;
+					default:
+						// "Unrecognized mode
+						break;
+
+				} // end switch mode
+
+			} // end if autopilot model AC 12
+
+			else if (autopilotModel == 0xFF) {	// TP-32
+				// To verify
+				// Standby = 0x00 0x0A
+				unsigned short mode;
+				mode = payload[4] | (payload[5] << 8);
+
+				switch (mode) {
+					case 0x40:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::NAV;
+						break;
+					case 0x0400:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::WIND;
+						break;
+					case 0x10:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::COMPASS;
+						break;
+					case 0x100:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::NODRIFT;
+						break;
+					case 0x08:
+						root["autopilot"]["mode"] = AUTOPILOT_MODE::STANDBY;
+						break;
+					default:
+						// Unrecognized mode
+						break;
+
+				} // end switch mode
+
+
+			} // end if autopilot model TP-32
+
+			else {
+				// Unrecognized Autopilot Model
+			}
+
+			// BUG BUG Confirm for all autopilot models
+			short angle;
+			angle = payload[6] | (payload[7] << 8);
+			if (TwoCanUtils::IsDataValid(angle)) {
+				if (root["autopilot"]["mode"].AsInt() == AUTOPILOT_MODE::WIND) {
+					root["autopilot"]["windangle"] = RADIANS_TO_DEGREES((float)angle * 1e-4);
+				}
+				else if ((root["autopilot"]["mode"].AsInt() == AUTOPILOT_MODE::NAV) || 
+					(root["autopilot"]["mode"].AsInt() == AUTOPILOT_MODE::COMPASS)) {
+					root["autopilot"]["angle"] = RADIANS_TO_DEGREES((float)angle * 1e-4);
+				}
+
+			}
 		
-		root["autopilot"]["mode"] = mode;
+			break; // end switch 0A
 
-		break; // end case operation 0x0A
+		// Heartbeat
+		case 0x03: 
+		case 0x0B:
+			break;
 
-	} // end switch operation
+		// Unkown command
+		default:
+			break;
 
+	} // end switch command
 	
 	if (root.Size() > 0) {
 		writer.Write(root, *jsonResponse);
@@ -691,6 +891,11 @@ bool TwoCanAutoPilot::DecodeNAC3Status(const byte *payload, wxString *jsonRespon
 
 // Garmin Reactor
 bool TwoCanAutoPilot::DecodeGarminAutopilot(const byte *payload, wxString *jsonResponse) {
+	return TRUE;
+}
+
+// Furuno Navpilot
+bool TwoCanAutoPilot::DecodeFurunoAutopilot(const byte* payload, wxString* jsonResponse) {
 	return TRUE;
 }
 
@@ -764,101 +969,36 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 				commandValue = root["autopilot"]["mode"].AsInt();
 		}
 
-		if (root["autopilot"].HasMember("heading")) {
+		else if (root["autopilot"].HasMember("heading")) {
 				commandId = AUTOPILOT_COMMAND::CHANGE_HEADING;
 				commandValue = root["autopilot"]["heading"].AsInt();
 
 		}
 
-		if (root["autopilot"].HasMember("windangle")) {
+		else if (root["autopilot"].HasMember("windangle")) {
 				commandId = AUTOPILOT_COMMAND::CHANGE_WIND;
 				commandValue = root["autopilot"]["windangle"].AsInt();
 		}
 
-		if (root["autopilot"].HasMember("keepalive")) {
+		else if (root["autopilot"].HasMember("keepalive")) {
 				commandId = AUTOPILOT_COMMAND::KEEP_ALIVE;
 		}
 
-		//// The following are generated when we are in GPS Mode following a route and navigating to a waypoint
-		//// Generate PGN 129283
-		//// BUG BUG 129284 Navigation , should come from ????
-		//if (root["autopilot"].HasMember("xte")) {
-		//	// BUG BUG Do we need to check the units ??
-		//	// BUG BUG Enforce the units from the autopilot plugin !!
-		//	// Convert xte from NM into SI  units
-		//	double rawCrossTrackError = root["autopilot"]["xte"].AsDouble();
-		//	int crossTrackError = (int)(100 * rawCrossTrackError / CONVERT_METRES_NAUTICAL_MILES);
-
-		//	// BUG BUG Refactor TwoCanEncoder ??
-		//	header.pgn = 129283;
-		//	header.destination = CONST_GLOBAL_ADDRESS;
-		//	header.source = networkAddress;
-		//	header.priority = CONST_PRIORITY_HIGH;
-
-		//	payload.clear();
-
-		//	// Sequence Identifier
-		//	payload.push_back(0xA0);
-
-		//	byte xteMode = 0;
-		//	byte navigationTerminated = 0; //0 = No
-
-		//	payload.push_back((xteMode & 0x0F) |  0x30 | ((navigationTerminated << 6) & 0xC0));
-
-		//	payload.push_back(crossTrackError & 0xFF);
-		//	payload.push_back((crossTrackError >> 8) & 0xFF);
-		//	payload.push_back((crossTrackError >> 16) & 0xFF);
-		//	payload.push_back((crossTrackError >> 24) & 0xFF);
-
-		//	goto exit;
-		//	
-		//}
-
-		//// Generate PGN 129284
-		//if (root["autopilot"].HasMember("bearing")) {
-
-		//	goto exit;
-		//}
-
+		else {
+			// For some reason an invalid command or value
+			return FALSE;
+		}
 		
 		// Now parse the commands and generate the approprite PGN's
 		switch (autopilotModel) {
-		case AUTOPILOT_MODEL::GARMIN:
-				switch (commandId) {
-				case AUTOPILOT_COMMAND::KEEP_ALIVE:
-
-						break;
-				case AUTOPILOT_COMMAND::CHANGE_MODE:
-						if (commandValue == AUTOPILOT_MODE::STANDBY) {
-						// Standby
-						}
-						else if (commandValue == AUTOPILOT_MODE::COMPASS) {
-						// Heading Mode 
-						}
-						else if (commandValue == AUTOPILOT_MODE::WIND) {
-						// Wind mode
-						}
-						else if (commandValue == AUTOPILOT_MODE::NAV) {
-						// GPS mode
-						}
-						break;
-				case AUTOPILOT_COMMAND::CHANGE_HEADING:
-						// Adjust Heading
-						break;
-				case AUTOPILOT_COMMAND::CHANGE_WIND:
-						// Adjust Wind Angle
-						break;
-				} 
-
-				break; // end garmin
 		
-		case AUTOPILOT_MODEL::RAYMARINE:
+			case AUTOPILOT_MODEL::RAYMARINE_EVOLUTION:
 
 				// Changes are performed via PGN 126208 Group Function to write the 
 				// specific fields of proprietary PGN's
 
 				switch (commandId) {
-				case AUTOPILOT_COMMAND::KEEP_ALIVE:
+					case AUTOPILOT_COMMAND::KEEP_ALIVE:
 						// PGN 65384
 						payload.clear();
 						header.pgn = 65384;
@@ -877,7 +1017,7 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 
 						break;
 
-				case AUTOPILOT_COMMAND::CHANGE_MODE:
+					case AUTOPILOT_COMMAND::CHANGE_MODE:
 						header.pgn = 126208;
 						header.destination = CONST_GLOBAL_ADDRESS;
 						header.source = networkAddress;
@@ -940,7 +1080,7 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 
 						break;
 
-				case AUTOPILOT_COMMAND::CHANGE_HEADING: {
+					case AUTOPILOT_COMMAND::CHANGE_HEADING: {
 						header.pgn = 126208;
 						header.destination = CONST_GLOBAL_ADDRESS;
 						header.source = networkAddress;
@@ -982,7 +1122,7 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 						break;
 					}
 
-				case AUTOPILOT_COMMAND::CHANGE_WIND: {
+					case AUTOPILOT_COMMAND::CHANGE_WIND: {
 						header.pgn = 126208;
 						header.destination = CONST_GLOBAL_ADDRESS;
 						header.source = networkAddress;
@@ -1024,14 +1164,14 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 
 						break;
 					}
-				} 
+				} // end switch command id
 
 				break; // end raymarine
 
-			case AUTOPILOT_MODEL::SIMRAD: // AC12
+			case AUTOPILOT_MODEL::SIMRAD_AC12:
 
 				switch (commandId) {
-				case AUTOPILOT_COMMAND::KEEP_ALIVE:
+					case AUTOPILOT_COMMAND::KEEP_ALIVE:
 						header.pgn = 65341;
 						header.destination = CONST_GLOBAL_ADDRESS;
 						header.source = networkAddress;
@@ -1048,7 +1188,7 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 						payload.push_back(0x7F);
 						
 						break;
-				case AUTOPILOT_COMMAND::CHANGE_MODE:
+					case AUTOPILOT_COMMAND::CHANGE_MODE:
 						header.pgn = 65341;
 						header.destination = CONST_GLOBAL_ADDRESS;
 						header.source = networkAddress;
@@ -1101,7 +1241,7 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 
 						break;
 
-				case AUTOPILOT_COMMAND::CHANGE_HEADING: {
+					case AUTOPILOT_COMMAND::CHANGE_HEADING: {
 						header.pgn = 65431;
 						header.destination = CONST_GLOBAL_ADDRESS;
 						header.source = networkAddress;
@@ -1109,7 +1249,7 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 						// This is the usual manufacturer code/industry code
 						payload.push_back(0x41);
 						payload.push_back(0x9F);
-
+						
 						payload.push_back(0xFF);
 						payload.push_back(0xFF);
 						payload.push_back(0x03); // command to change heading
@@ -1121,7 +1261,7 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 						break;
 					}
 
-				case AUTOPILOT_COMMAND::CHANGE_WIND: {
+					case AUTOPILOT_COMMAND::CHANGE_WIND: {
 						header.pgn = 65431;
 						header.destination = CONST_GLOBAL_ADDRESS;
 						header.source = networkAddress;
@@ -1140,195 +1280,231 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 
 						break;
 					}
-				} 
+
+				} // end switch command id
 
 				break; // end AC-12
 
-				case AUTOPILOT_MODEL::NAVICO:
-				switch (commandId) {
-				case AUTOPILOT_COMMAND::KEEP_ALIVE:
+				case AUTOPILOT_MODEL::NAVICO_NAC3:
+					switch (commandId) {
+						case AUTOPILOT_COMMAND::KEEP_ALIVE:
 					
-					header.destination = CONST_GLOBAL_ADDRESS;
-					header.source = networkAddress;
-					header.priority = 3;
-					header.pgn = 65305;
+							header.destination = CONST_GLOBAL_ADDRESS;
+							header.source = networkAddress;
+							header.priority = 3;
+							header.pgn = 65305;
 					
-					payload.push_back(0x41);
-					payload.push_back(0x9F);
-					payload.push_back(0x01);
-					payload.push_back(navicoKeepAliveToggle ? 0x03 : 0x0B); //This toggles between 3 & B. Is 3 the A/P address ??
-					payload.push_back(0x00);
-					payload.push_back(0x00);
-					payload.push_back(0x00);
-					payload.push_back(0x00);
+							payload.push_back(0x41);
+							payload.push_back(0x9F);
+							payload.push_back(0x01);
+							payload.push_back(navicoKeepAliveToggle ? 0x03 : 0x0B); //This toggles between 3 & B. Is 3 the A/P address ??
+							payload.push_back(0x00);
+							payload.push_back(0x00);
+							payload.push_back(0x00);
+							payload.push_back(0x00);
 
-					navicoKeepAliveToggle = !navicoKeepAliveToggle;
+							navicoKeepAliveToggle = !navicoKeepAliveToggle;
 
-					break;
-				case AUTOPILOT_COMMAND::CHANGE_MODE:
-					if (commandValue == AUTOPILOT_MODE::STANDBY) {
+							break;
+						case AUTOPILOT_COMMAND::CHANGE_MODE:
+							if (commandValue == AUTOPILOT_MODE::STANDBY) {
 
-						header.destination = CONST_GLOBAL_ADDRESS;
-						header.source = networkAddress;
-						header.priority = 3;
-						header.pgn = 130850;
+								header.destination = CONST_GLOBAL_ADDRESS;
+								header.source = networkAddress;
+								header.priority = 3;
+								header.pgn = 130850;
 
-						// Manufacturer Code & Industry Code palaver
-						payload.push_back(0x41);
-						payload.push_back(0x9F);
+								// Manufacturer Code & Industry Code palaver
+								payload.push_back(0x41);
+								payload.push_back(0x9F);
 
-						// The network address of the autopilot controller
-						payload.push_back(autopilotControllerAddress);
+								// The network address of the autopilot controller
+								payload.push_back(autopilotControllerAddress);
 
-						payload.push_back(0xFF);
-						payload.push_back(0xFF);
-						payload.push_back(0x0A); // NAC-3 Command
-						payload.push_back(0x06); // Standby command
-						payload.push_back(0x00); // Reserved
-						payload.push_back(0xFF); // Direction
-						payload.push_back(0xFF); // Angle
-						payload.push_back(0xFF);
-						payload.push_back(0xFF); // Unused
-						payload.push_back(0xFF);
-					}
-					else if (commandValue == AUTOPILOT_MODE::COMPASS) {
+								payload.push_back(0xFF);
+								payload.push_back(0xFF);
+								payload.push_back(0x0A); // NAC-3 Command
+								payload.push_back(0x06); // Standby command
+								payload.push_back(0x00); // Reserved
+								payload.push_back(0xFF); // Direction
+								payload.push_back(0xFF); // Angle
+								payload.push_back(0xFF);
+								payload.push_back(0xFF); // Unused
+								payload.push_back(0xFF);
+							}
+							else if (commandValue == AUTOPILOT_MODE::COMPASS) {
 
-						header.destination = CONST_GLOBAL_ADDRESS;
-						header.source = networkAddress;
-						header.priority = 3;
-						header.pgn = 130850;
-
-
-						// Manufacturer Code & Industry Code palaver
-						payload.push_back(0x41);
-						payload.push_back(0x9F);
-
-						// The network address of the autopilot controller
-						// BUG BUG Change for production
-						payload.push_back(autopilotControllerAddress);
-
-						payload.push_back(0xFF);
-						payload.push_back(0xFF);
-						payload.push_back(0x0A); // NAC-3 Command
-						payload.push_back(0x09); // Heading Hold
-						payload.push_back(0x00); // Reserved
-						payload.push_back(0xFF); // Direction
-						payload.push_back(0xFF); // Angle
-						payload.push_back(0xFF);
-						payload.push_back(0xFF); // Unused
-						payload.push_back(0xFF);
-					}
-					else if (commandValue == AUTOPILOT_MODE::WIND) {
-
-						header.destination = CONST_GLOBAL_ADDRESS;
-						header.source = networkAddress;
-						header.priority = 3;
-						header.pgn = 130850;
+								header.destination = CONST_GLOBAL_ADDRESS;
+								header.source = networkAddress;
+								header.priority = 3;
+								header.pgn = 130850;
 
 
-						// Manufacturer Code & Industry Code palaver
-						payload.push_back(0x41);
-						payload.push_back(0x9F);
+								// Manufacturer Code & Industry Code palaver
+								payload.push_back(0x41);
+								payload.push_back(0x9F);
 
-						// The network address of the autopilot controller
-						// BUG BUG Change for production
-						payload.push_back(autopilotControllerAddress);
+								// The network address of the autopilot controller
+								// BUG BUG Change for production
+								payload.push_back(autopilotControllerAddress);
 
-						payload.push_back(0xFF);
-						payload.push_back(0xFF);
-						payload.push_back(0x0A); // NAC-3 Command
-						payload.push_back(0x0F); // Wind Mode
-						payload.push_back(0x00); // Reserved
-						payload.push_back(0xFF); // Direction
-						payload.push_back(0xFF); // Angle
-						payload.push_back(0xFF);
-						payload.push_back(0xFF); // Unused
-						payload.push_back(0xFF);
-					}
-					else if (commandValue == AUTOPILOT_MODE::NAV) {
-						header.destination = CONST_GLOBAL_ADDRESS;
-						header.source = networkAddress;
-						header.priority = 3;
-						header.pgn = 130850;
+								payload.push_back(0xFF);
+								payload.push_back(0xFF);
+								payload.push_back(0x0A); // NAC-3 Command
+								payload.push_back(0x09); // Heading Hold
+								payload.push_back(0x00); // Reserved
+								payload.push_back(0xFF); // Direction
+								payload.push_back(0xFF); // Angle
+								payload.push_back(0xFF);
+								payload.push_back(0xFF); // Unused
+								payload.push_back(0xFF);
+							}
+							else if (commandValue == AUTOPILOT_MODE::WIND) {
+
+								header.destination = CONST_GLOBAL_ADDRESS;
+								header.source = networkAddress;
+								header.priority = 3;
+								header.pgn = 130850;
 
 
-						// Manufacturer Code & Industry Code palaver
-						payload.push_back(0x41);
-						payload.push_back(0x9F);
+								// Manufacturer Code & Industry Code palaver
+								payload.push_back(0x41);
+								payload.push_back(0x9F);
 
-						// The network address of the autopilot controller
-						payload.push_back(autopilotControllerAddress);
+								// The network address of the autopilot controller
+								// BUG BUG Change for production
+								payload.push_back(autopilotControllerAddress);
 
-						payload.push_back(0xFF);
-						payload.push_back(0xFF);
-						payload.push_back(0x0A); // NAC-3 Command
-						payload.push_back(0x0A); // Navigation Mode
-						payload.push_back(0x00); // Reserved
-						payload.push_back(0xFF); // Direction
-						payload.push_back(0xFF); // Angle
-						payload.push_back(0xFF);
-						payload.push_back(0xFF); // Unused
-						payload.push_back(0xFF);
- 					}
-					break;
-				case AUTOPILOT_COMMAND::CHANGE_HEADING:
-				case AUTOPILOT_COMMAND::CHANGE_WIND:
-					header.destination = CONST_GLOBAL_ADDRESS;
-					header.source = networkAddress;
-					header.priority = 3;
-					header.pgn = 130850;
+								payload.push_back(0xFF);
+								payload.push_back(0xFF);
+								payload.push_back(0x0A); // NAC-3 Command
+								payload.push_back(0x0F); // Wind Mode
+								payload.push_back(0x00); // Reserved
+								payload.push_back(0xFF); // Direction
+								payload.push_back(0xFF); // Angle
+								payload.push_back(0xFF);
+								payload.push_back(0xFF); // Unused
+								payload.push_back(0xFF);
+							}
+							else if (commandValue == AUTOPILOT_MODE::NAV) {
+								header.destination = CONST_GLOBAL_ADDRESS;
+								header.source = networkAddress;
+								header.priority = 3;
+								header.pgn = 130850;
 
-					// Manufacturer Code & Industry Code palaver
-					payload.push_back(0x41);
-					payload.push_back(0x9F);
 
-					// The network address of the autopilot controller
-					// BUG BUG Change for prodction
-					payload.push_back(autopilotControllerAddress);
+								// Manufacturer Code & Industry Code palaver
+								payload.push_back(0x41);
+								payload.push_back(0x9F);
 
-					payload.push_back(0xFF);
-					payload.push_back(0xFF);
-					payload.push_back(0x0A); // NAC3 Command
-					payload.push_back(0x1A); // Alter Heading
-					payload.push_back(0x00); // Reserved
+								// The network address of the autopilot controller
+								payload.push_back(autopilotControllerAddress);
 
-					byte direction = commandValue < 0 ? NAC3_DIRECTION_PORT : NAC3_DIRECTION_STBD;
-					unsigned short heading = DEGREES_TO_RADIANS(abs(commandValue)) * 10000;
+								payload.push_back(0xFF);
+								payload.push_back(0xFF);
+								payload.push_back(0x0A); // NAC-3 Command
+								payload.push_back(0x0A); // Navigation Mode
+								payload.push_back(0x00); // Reserved
+								payload.push_back(0xFF); // Direction
+								payload.push_back(0xFF); // Angle
+								payload.push_back(0xFF);
+								payload.push_back(0xFF); // Unused
+								payload.push_back(0xFF);
+ 							}
 
-					payload.push_back(direction);
-					payload.push_back(heading & 0xFF);
-					payload.push_back((heading >> 8) & 0xFF);
+							break;
 
-					payload.push_back(0xFF);
-					payload.push_back(0xFF);
+						case AUTOPILOT_COMMAND::CHANGE_HEADING:
+						case AUTOPILOT_COMMAND::CHANGE_WIND:
+							header.destination = CONST_GLOBAL_ADDRESS;
+							header.source = networkAddress;
+							header.priority = 3;
+							header.pgn = 130850;
 
-					break;
-				} // end switch command
+							// Manufacturer Code & Industry Code palaver
+							payload.push_back(0x41);
+							payload.push_back(0x9F);
+
+							// The network address of the autopilot controller
+							// BUG BUG Change for prodction
+							payload.push_back(autopilotControllerAddress);
+
+							payload.push_back(0xFF);
+							payload.push_back(0xFF);
+							payload.push_back(0x0A); // NAC3 Command
+							payload.push_back(0x1A); // Alter Heading
+							payload.push_back(0x00); // Reserved
+
+							byte direction = commandValue < 0 ? NAC3_DIRECTION_PORT : NAC3_DIRECTION_STBD;
+							unsigned short heading = DEGREES_TO_RADIANS(abs(commandValue)) * 10000;
+
+							payload.push_back(direction);
+							payload.push_back(heading & 0xFF);
+							payload.push_back((heading >> 8) & 0xFF);
+
+							payload.push_back(0xFF);
+							payload.push_back(0xFF);
+
+							break;
+						} // end switch command
 				break; // end NAC3
 
-			case AUTOPILOT_MODEL::FURUNO:
+			case AUTOPILOT_MODEL::GARMIN_REACTOR:
+				switch (commandId) {
+					case AUTOPILOT_COMMAND::KEEP_ALIVE:
+
+						break;
+					case AUTOPILOT_COMMAND::CHANGE_MODE:
+						if (commandValue == AUTOPILOT_MODE::STANDBY) {
+							// Standby
+						}
+						else if (commandValue == AUTOPILOT_MODE::COMPASS) {
+							// Heading Mode 
+						}
+						else if (commandValue == AUTOPILOT_MODE::WIND) {
+							// Wind mode
+						}
+						else if (commandValue == AUTOPILOT_MODE::NAV) {
+							// GPS mode
+						}
+						break;
+					case AUTOPILOT_COMMAND::CHANGE_HEADING:
+						// Adjust Heading
+						break;
+					case AUTOPILOT_COMMAND::CHANGE_WIND:
+						// Adjust Wind Angle
+						break;
+				} // end swicth command id
+
+				break; // end garmin
+
+
+			case AUTOPILOT_MODEL::FURUNO_NAVPILOT:
 
 				switch (commandId) {
-				case AUTOPILOT_COMMAND::CHANGE_MODE:
-					if (commandValue == AUTOPILOT_MODE::STANDBY) {
-						// set to Standby
-					}
-					else if (commandValue == AUTOPILOT_MODE::COMPASS) {
-						// Heading Mode 
-					}
-					else if (commandValue == AUTOPILOT_MODE::WIND) {
-						// Wind mode
-					}
-					else if (commandValue == AUTOPILOT_MODE::NAV) {
-						// GPS mode
-					}
-					break;
-				case AUTOPILOT_COMMAND::CHANGE_HEADING:
-					// Adjust Heading
-					break;
-				case AUTOPILOT_COMMAND::CHANGE_WIND:
-					break;
-				} // end switch command
+					case AUTOPILOT_COMMAND::CHANGE_MODE:
+						if (commandValue == AUTOPILOT_MODE::STANDBY) {
+							// set to Standby
+						}
+						else if (commandValue == AUTOPILOT_MODE::COMPASS) {
+							// Heading Mode 
+						}
+						else if (commandValue == AUTOPILOT_MODE::WIND) {
+							// Wind mode
+						}
+						else if (commandValue == AUTOPILOT_MODE::NAV) {
+							// GPS mode
+						}	
+						break;
+					case AUTOPILOT_COMMAND::CHANGE_HEADING:
+						// Adjust Heading
+						break;
+					case AUTOPILOT_COMMAND::CHANGE_WIND:
+						// Adjust Wind Angle
+						break;
+
+				} // end switch command if
+
 				break; // end furuno
 
 			default:
@@ -1347,39 +1523,55 @@ bool TwoCanAutoPilot::EncodeAutopilotCommand(wxString message_body, std::vector<
 
 // BUG BUG To refactor
 // Simnet Autopilot Command
-void EncodePGN130850(int command) {
+bool TwoCanAutoPilot::EncodePGN130850(int command) {
 	std::vector<byte>payload;
-	int controllingDevice; // Is this the network address of the controlling device
-	int eventId;
 
 	//,41,9f,%s,ff,ff,%s,00,00,00,ff
 	payload.push_back(0x41); // This is the usual manufacturer code/industry code
 	payload.push_back(0x9F);
 	payload.push_back(command);
 	payload.push_back(0xFF); //unknown
-	payload.push_back(controllingDevice);
-	payload.push_back(eventId);
+	payload.push_back(autopilotControllerAddress);
+	payload.push_back(command);
 	payload.push_back(0xFF); // Mode
 	payload.push_back(0xFF); // Mode
 	payload.push_back(0xFF); // direction
 	payload.push_back(0xFF); // angle
 	payload.push_back(0xFF); // angle
 	payload.push_back(0xFF); // unknown
+
+	return FALSE;
 }
 
-// Simnet Autopilot Mode
-void EncodePGN65341(void) {
+// The nav PGNS's, 129283 (XTE) and 129284 (Navigation) are encoded as JSON
+// in the Autopilot Plugin
+
+/*
+
+void EncodePGN129283(void) {
+	std::vector<byte> payload;
+
+	byte sid = 0x0A;
+	payload.push_back(sid);
+
+	byte xteMode = 0;
+	byte navigationTerminated = 0; 0 = No
+
+	payload.push_back((xteMode & 0x0F) |  0x30 | ((navigationTerminated << 6) & 0xC0));
+
+	payload.push_back(crossTrackError & 0xFF);
+	payload.push_back((crossTrackError >> 8) & 0xFF);
+	payload.push_back((crossTrackError >> 16) & 0xFF);
+	payload.push_back((crossTrackError >> 24) & 0xFF);
 
 }
 
-// PGN 129284
+
 void EncodePGN129284(void) {
 std::vector<byte> payload;
 	
 	byte sequenceId = 0xA0;
 	payload.push_back(sequenceId);
-
-	/*
 
 	unsigned short distance = 100 * parser->Rmb.RangeToDestinationNauticalMiles / CONVERT_METRES_NAUTICAL_MILES;
 	payload.push_back(distance & 0xFF);
@@ -1455,10 +1647,9 @@ std::vector<byte> payload;
 	payload.push_back(waypointClosingVelocity & 0xFF);
 	payload.push_back((waypointClosingVelocity >> 8) & 0xFF);
 
-	*/
 }
 
-
+// No idea why I have heading and track control here
 // PGN 127237
 void EncodePGN127237(void) {
 
@@ -1540,81 +1731,5 @@ void EncodePGN127237(void) {
 	payload.push_back(vesselHeading & 0xFF);
 	payload.push_back((vesselHeading >> 8) & 0xFF);
 
-}
-
-// Simnet Wind Angle
-void EncodePGN65431(int windAngle) {
-	std::vector<byte>payload;
-
-	payload.push_back(0x41); // This is the usual manufacturer code/industry code
-	payload.push_back(0x9F);
-	payload.push_back(0xFF);
-	payload.push_back(0xFF);
-	payload.push_back(0x03); // command
-	payload.push_back(0xFF);
-	payload.push_back(windAngle & 0xFF); // wind angle to be expressed in tenths of radians
-	payload.push_back((windAngle >> 8) & 0xFF);
-
-
-	//0x41 0x9F 0xFF 0xFF 0x03 0xFF 0x18 0x95
-	//	17:39 : 25 : 858  PGN : 65341, Source : 3, Destination : 255
-
-	//	Manufacturer Code : 1857
-	//	Manufacturer : Simrad
-
-	//	Industry Group : 4
-	//	Reserved : 3
-	//	Command : 3 (0x03)  Seems to be 2 in Standby
-	//	Wind Angle - 156.807087
-
-}
-	
-/* PGN 127237 is Heading/Track Control
-function AC12_PGN127237 () {
-  const heading_track_pgn = {
-	  "navigation" : "%s,2,127237,%s,%s,15,ff,3f,ff,ff,7f,%s,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s", - course to steer, heading
-	  "headinghold": "%s,2,127237,%s,%s,15,ff,7f,ff,ff,7f,%s,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s", locked heading/heading
-	  "wind":        "%s,2,127237,%s,%s,15,ff,7f,ff,ff,7f,ff,ff,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s", locked heading, heading
-	  "standby":     "%s,2,127237,%s,%s,15,ff,7f,ff,ff,7f,ff,ff,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s" // Magnetic
-	  "standby":  "%s,2,127237,%s,%s,15,ff,3f,ff,ff,7f,ff,ff,00,00,ff,ff,ff,ff,ff,7f,ff,ff,ff,ff,%s" // True
-  }
-
-  // These are possibly heartbeats
-
-  const pgn65340 = {
-	  "standby":     "%s,3,65340,%s,255,8,41,9f,00,00,fe,f8,00,80",
-	  "headinghold": "%s,3,65340,%s,255,8,41,9f,10,01,fe,fa,00,80", // Heading Hold
-	  "followup":    "%s,3,65340,%s,255,8,41,9f,10,03,fe,fa,00,80", // Follow up
-	  "wind":        "%s,3,65340,%s,255,8,41,9f,10,03,fe,fa,00,80",
-	  "navigation":  "%s,3,65340,%s,255,8,41,9f,10,06,fe,f8,00,80"
-  }
-  const pgn65302 = {
-	  "standby":    "%s,7,65302,%s,255,8,41,9f,0a,6b,00,00,00,ff",
-	  "headinghold":"%s,7,65302,%s,255,8,41,9f,0a,69,00,00,28,ff", // Heading Hold
-	  "followup":   "%s,7,65302,%s,255,8,41,9f,0a,69,00,00,30,ff", // Follow up
-	  "wind":       "%s,7,65302,%s,255,8,41,9f,0a,69,00,00,30,ff",
-	  "navigation": "%s,7,65302,%s,255,8,41,9f,0a,6b,00,00,28,ff"  // guessing
-  }
-
+}	
 */
-
-
-
-//const key_command = "%s,7,126720,%s,%s,22,3b,9f,f0,81,86,21,%s,ff,ff,ff,ff,ff,c1,c2,cd,66,80,d3,42,b1,c8"
-//const heading_command = "%s,3,126208,%s,%s,14,01,50,ff,00,f8,03,01,3b,07,03,04,06,%s,%s"
-//const wind_direction_command = "%s,3,126208,%s,%s,14,01,41,ff,00,f8,03,01,3b,07,03,04,04,%s,%s"
-//const raymarine_ttw_Mode = "%s,3,126208,%s,%s,17,01,63,ff,00,f8,04,01,3b,07,03,04,04,81,01,05,ff,ff"
-//const raymarine_ttw = "%s,3,126208,%s,%s,21,00,00,ef,01,ff,ff,ff,ff,ff,ff,04,01,3b,07,03,04,04,6c,05,1a,50"
-//const confirm_tack = "%s,2,126720,%s,%s,7,3b,9f,f0,81,90,00,03"
-
-//const keep_alive = "%s,7,65384,%s,255,8,3b,9f,00,00,00,00,00,00"
-
-//const keep_alive2 = "%s,7,126720,%s,255,7,3b,9f,f0,81,90,00,03"
-
-
-//const std::vector<byte> raymarineStandby = {0x17, 0x01, 0x63, 0xff, 0x00, 0xf8, 0x04, 0x01, 0x3b, 0x07, 0x03, 0x04, 0x04, 0x00, 0x00, 0x05, 0xff, 0xff};
-//const std::vector<byte> raymarineAuto = {0x17, 0x01, 0x63, 0xff, 0x00, 0xf8, 0x04, 0x01, 0x3b, 0x07, 0x03, 0x04, 0x04, 0x40, 0x00, 0x05, 0xff, 0xff};
-//const std::vector<byte> raymarineTrack = {0x0d, 0x3b, 0x9f, 0xf0, 0x81, 0x84, 0x46, 0x27, 0x9d, 0x4a, 0x00, 0x00, 0x02, 0x08, 0x4e};
-
-// Note last two bytes represent heading as radians * 0.0001
-//const std::vector<byte>raymarineHeading = {0x14, 0x01, 0x50, 0xff, 0x00, 0xf8, 0x03, 0x01, 0x3b, 0x07, 0x03, 0x04, 0x06, 0x00, 0x00};

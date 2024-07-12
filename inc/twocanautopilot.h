@@ -55,7 +55,8 @@ typedef enum _AUTOPILOT_MODE {
 	COMPASS,
 	NAV,
 	WIND,
-	NODRIFT
+	NODRIFT,
+	NFU
 } AUTOPILOT_MODE;
 
 // Autopilot commands 
@@ -66,22 +67,11 @@ typedef enum _AUTOPILOT_COMMAND {
 	KEEP_ALIVE
 } AUTOPILOT_COMMAND;
 
-// These are also defined in twocansettings as a hashmap
-// BUG BUG Not sure why they are here, do I actually use them ??
-#define RAYMARINE_MANUFACTURER_CODE 1851
-#define SIMRAD_MANUFACTURER_CODE 1857
-#define GARMIN_MANUFACTURER_CODE 229
-#define NAVICO_MANUFACTURER_CODE 275
-#define BANDG_MANUFACTURER_CODE 381
-#define FURUNO_MANUFACTURER_CODE 1855
-
 #define MARINE_INDUSTRY_CODE 4;
 
 #define NAC3_DIRECTION_PORT 2
 #define NAC3_DIRECTION_STBD 3
 #define NAC3_DIRECTION_UNUSED 255;
-
-
 
 // The TwoCan Autopilot
 class TwoCanAutoPilot {
@@ -93,7 +83,7 @@ public:
 	// and destructor
 	~TwoCanAutoPilot(void);
 
-	// Iterate the network Map to find the autopilots network address
+	// Iterate the network Map to find the autopilot's network address
 	bool FindAutopilot(void);
 
 	// Generates NMEA 2000 autopilot messages depending on the manufacturer
@@ -128,13 +118,20 @@ public:
 	// Simrad Autopilot Alarm (AC12) PGN 65380
 	bool DecodeAC12Autopilot(const byte *payload, wxString *jsonResponse);
 
+	// BUG BUG Need to refactor code. Refactor EncodeAutopilotCommand into functions
+	// for each manufacturer
+	bool EncodePGN130850(int command);
+
 	// Garmin Reactor
-	// BUG BUG To Do.
+	// BUG BUG Implementation required.
 	bool DecodeGarminAutopilot(const byte *payload, wxString *jsonResponse);
 
-    // BUG BUG Furuno To Do 
+	// Furuno Navpilot
+	// BUG BUG Implementation required.
+	bool DecodeFurunoAutopilot(const byte* payload, wxString* jsonResponse);
 
-	// Encode some of the values to be displayed on the Autopilot Plugin as JSON 
+	// Encode some of the values to be displayed on the Autopilot Plugin 
+	// into JSON to be sent via OCPN messaging
 	bool EncodeRudderAngle(const int rudderangle, wxString *jsonResponse);
 	bool EncodeHeading(const unsigned int heading, wxString *jsonResponse);
 	bool EncodeWindAngle(const int windangle, wxString *jsonResponse);

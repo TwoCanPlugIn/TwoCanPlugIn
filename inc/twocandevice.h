@@ -330,16 +330,16 @@ private:
 	void ParseMessage(const CanHeader header, const byte *payload);
 	
 	// Decode PGN59392 ISO Acknowledgement
-	int DecodePGN59392(const byte *payload);
+	bool DecodePGN59392(const byte *payload);
 	
 	// Decode PGN 59904 ISO Request
-	int DecodePGN59904(const byte *payload, unsigned int *requestedPGN);
+	bool DecodePGN59904(const byte *payload, unsigned int *requestedPGN);
 
 	// Decode PGN 60928 ISO Address Claim
-	int DecodePGN60928(const byte *payload, DeviceInformation *device_Information);
+	bool DecodePGN60928(const byte *payload, DeviceInformation *device_Information);
 	
 	// Decode PGN 65240 ISO Commanded Address
-	int DecodePGN65240(const byte *payload, DeviceInformation *device_Information);
+	bool DecodePGN65240(const byte *payload, DeviceInformation *device_Information);
 
 	// Decode PGN 65280 Manufacturer Proprietary Message
 	bool DecodePGN65280(const byte *payload);
@@ -381,10 +381,10 @@ private:
 	bool DecodePGN126993(const int source, const byte *payload);
 
 	// Decode PGN 126996 NMEA Product Information
-	int DecodePGN126996(const byte *payload, ProductInformation *product_Information);
+	bool DecodePGN126996(const byte *payload, ProductInformation *product_Information);
 
 	// Decode PGN 126998 NMEA Configuration Information
-	int DecodePGN126998(const byte *payload);
+	bool DecodePGN126998(const byte *payload);
 
 	// Decode PGN 127233 NMEA Man Overboard 
 	bool DecodePGN127233(const byte *payload, std::vector<wxString> *nmeaSentences);

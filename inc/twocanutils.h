@@ -257,20 +257,34 @@
 
 // Autpilot Models
 typedef enum _AUTOPILOT_MODEL {
-	NONE = 0,
-	GARMIN = 1,
-	RAYMARINE = 2,
-	SIMRAD = 3,
-	NAVICO = 4,
-	FURUNO = 5
+	AUTOPILOT_NONE = 0,
+	GARMIN_REACTOR = 1,
+	RAYMARINE_EVOLUTION = 2,
+	SIMRAD_AC12 = 3,
+	NAVICO_NAC3 = 4,
+	FURUNO_NAVPILOT = 5
 } AUTOPILOT_MODEL;
+
+typedef enum _MANUFACTURER_CODE {
+	AIRMAR = 135,
+	ACTISENSE = 273,
+	ICOM = 315,
+	GARMIN = 229,
+	NAVICO = 275,
+	BANDG = 381,
+	FUSION = 419,
+	TWOCAN = 1770,
+	RAYMARINE = 1851,
+	SIMRAD = 1857,
+	FURUNO = 1855
+} MANUFACTURER_CODE;
+
 
 // Bit values to match 2000 Active Mode features and the options checklistbox control
 #define FLAGS_MODE_HEARTBEAT 0
 #define FLAGS_MODE_GATEWAY 1
 #define FLAGS_MODE_WAYPOINT 2
 #define FLAGS_MODE_MUSIC 3
-#define FLAGS_MODE_AUTOPILOT 4
 
 // Event Id's
 const int SENTENCE_RECEIVED_EVENT = wxID_HIGHEST + 1;

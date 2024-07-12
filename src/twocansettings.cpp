@@ -33,6 +33,7 @@
 // 1.9 - 20/08/2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // 2.0 - 04/07/2021 Bi-directional gateway, PCAP log files
 // 2.1 - 20/05/2022 Add configuration items for Media Player, Waypoint Creation and Autopilot (not yet implemented)
+// 2.3 - 10/07/2024 Cleanup Autopilot settings
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -179,13 +180,14 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 		chkGateway->SetValue(FALSE);
 		chkWaypoint->SetValue(FALSE);
 		chkMedia->SetValue(FALSE);
-		rdoBoxAutopilot->SetSelection(AUTOPILOT_MODEL::NONE);
+		rdoBoxAutopilot->SetSelection(AUTOPILOT_MODEL::AUTOPILOT_NONE);
 	}
 
 	// BUG BUG The following are yet to be implemented or tested
-	//rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::FURUNO)->Enable(false);
-	//rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::GARMIN)->Enable(false);
-	//rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::SIMRAD)->Enable(false);
+	// BUG BUG Should I add autopiots dynamically, rather than hardcoding in base class/wxFormBuilder
+	rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::FURUNO_NAVPILOT)->Enable(false);
+	rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::GARMIN_REACTOR)->Enable(false);
+	rdoBoxAutopilot->FindItem(AUTOPILOT_MODEL::SIMRAD_AC12)->Enable(false);
 
 	labelNetworkAddress->SetLabel(wxString::Format("Network Address: %u", networkAddress));
 	labelUniqueId->SetLabel(wxString::Format("Unique ID: %lu", uniqueId));
@@ -270,6 +272,7 @@ void TwoCanSettings::OnCopy(wxCommandEvent &event) {
 	}
 }
 
+// Not used/implemented
 void TwoCanSettings::OnExportWaypoint(wxCommandEvent &event) {
 	wxMessageBox("Export Waypoint Settings Dialog");
 }
