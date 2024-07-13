@@ -809,12 +809,14 @@ void TwoCanDevice::RaiseEvent(wxString sentence) {
 // 130856 - Manufacturer Proprietary (Simrad Alarm)
 // Checks whether a frame is a single frame message or multiframe Fast Packet message
 bool TwoCanDevice::IsFastMessage(const CanHeader header) {
-	static const unsigned int nmeafastMessages[] = { 65240, 126208, 126464, 126996, 126998, 
+	static const unsigned int nmeafastMessages[] = { 
+		65240, 126208, 126464, 126720, 126996, 126998, 
 		127233, 127237, 127489, 127496, 127506, 128275, 129029, 129038,
 		129039, 129040, 129041, 129284, 129285, 129540, 129793, 129794,
 		129795, 129797, 129798, 129799, 129801, 129802, 129808, 129809, 
 		129810, 130065, 130074, 130323,	130577, 130820, 130822, 130824,
 		130850, 130851, 130856};
+
 	for (size_t i = 0; i < sizeof(nmeafastMessages)/sizeof(unsigned int); i++) {
 		if (nmeafastMessages[i] == header.pgn) {
 			return TRUE;
@@ -5876,9 +5878,9 @@ int TwoCanDevice::SendConfigurationInformation() {
 		
 	std::string message;
 	
-	message = "TwoCan Plugin 2.0";
+	message = "TwoCan Plugin 2.21";
 	
-	payload.push_back(message.length());
+	payload.push_back(message.length() + 2);
 	payload.push_back(0x01);
 	for (auto it : message) {
 		payload.push_back(it);
@@ -5886,7 +5888,7 @@ int TwoCanDevice::SendConfigurationInformation() {
 	
 	message = "OpenCPN";
 
-	payload.push_back(message.length());
+	payload.push_back(message.length() + 2);
 	payload.push_back(0x01);
 	for (auto it : message) {
 		payload.push_back(it);
@@ -5894,7 +5896,7 @@ int TwoCanDevice::SendConfigurationInformation() {
 	
 	message = "twocanplugin@hotmail.com";
 	
-	payload.push_back(message.length());
+	payload.push_back(message.length() + 2);
 	payload.push_back(0x01);
 	for (auto it : message) {
 		payload.push_back(it);
