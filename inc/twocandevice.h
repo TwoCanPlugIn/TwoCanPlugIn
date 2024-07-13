@@ -291,7 +291,7 @@ private:
 	bool IsMultiEngineVessel;
 
 	// Protect simultaneous write operations 
-	std::mutex writeMutex;
+	mutable std::mutex writeMutex;
 
 	// All the NMEA 2000 goodness
 
