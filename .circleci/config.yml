@@ -6,6 +6,13 @@ parameters:
         type: boolean
         default: true
 
+## Start of build control of O58 and O562 pluginsrun_workflow_deploy
+## run_workflow_deploy_O58
+##    type: boolean
+##    default: true
+## run_workflow_deploy_O562
+##    type: boolean
+##    default: false
 
 std-filters: &std-filters
     filters:
@@ -19,7 +26,13 @@ std-filters: &std-filters
 workflows:
     build_all:
         jobs:
-
+## --------------------
+## OpenCPN 5.8 Plugins
+## ----------------------
+#        - build-android-arm64:
+#             <<: *std-filters
+#        - build-android-armhf:
+#             <<: *std-filters
         - build-flatpak-arm64-2208:
             <<: *std-filters
         - build-flatpak-x86-2208:
@@ -42,6 +55,22 @@ workflows:
             <<: *std-filters
         - build-macos-universal:
               <<: *std-filters
+
+## -------------------------------------------
+## OpenCPN 5.6.2 Plugins  Frozen - 28/05/2023
+## ------------------------------------------
+## Circleci will not build for macos 11 so removed - 18/10/2023
+##        - build-macos:
+##             <<: *std-filters
+##        - build-msvc-2022:
+##            <<: *std-filters
+
+## -------------------------------------
+## UBUNTU OS  Frozen - 28/05/2023  DROP
+## -------------------------------------
+## KEEP needed for Raspbian OpenCPN v5.6
+##        - build-ubuntu-armhf-1804-buster:
+##            <<: *std-filters
 
 orbs:
     cloudsmith: cloudsmith/cloudsmith@1.0.4
@@ -72,6 +101,58 @@ commands:
                     - cloudsmith/install-cli
                 - run: bash ci/cloudsmith-upload.sh
 
+# if you want to use a local proxy add Acquire::http::Proxy \"http://192.168.1.1:3142\"; to a file called circleci-cache/apt-proxy. This will require
+#    --volume {your local directory}/circleci-cache:/home/circleci/circleci-cache
+# on the circleci local command line so that the docker image script can have access to the directory
+# if you are on a slow or data limited internet link you can put a copy of master.zip here, or allow one to be downloaded by the script, as it is used by the android builds to
+# provide the wxWidgets QT information.
+
+jobs:
+## ---------------------
+## OpenCPN 5.8 Plugins
+## ---------------------
+    build-android-arm64:
+        docker:
+        - image: cimg/android:2023.12-ndk
+        resource_class: large
+        environment:
+        - OCPN_TARGET:  android-arm64
+        - DEPLOY_USE_ORB: true
+        - INSTALL_PYTHON: true
+        steps:
+        - checkout
+        - run: chmod a+x ci/*.sh
+        - run: bash ci/circleci-build-android-arm64.sh
+        - deploy-code:
+            install_python: true
+    build-android-armhf:
+        docker:
+        - image: cimg/android:2023.12-ndk
+        resource_class: large
+        environment:
+        - OCPN_TARGET:  android-armhf
+        - DEPLOY_USE_ORB: true
+        - INSTALL_PYTHON: true
+        steps:
+        - checkout
+        - run: chmod a+x ci/*.sh
+        - run: bash ci/circleci-build-android-armhf.sh
+        - deploy-code:
+            install_python: true
+    build-macos-wx32:
+        macos:
+            xcode: "13.4"
+        environment:
+        - OCPN_TARGET:  macos
+        - CLOUDSMITH_PKG_EXT: pkg
+        - WX_VER: "32"
+        - DEPLOY_USE_ORB: false
+        steps:
+        - checkout
+        - run: chmod a+x ci/*.sh
+        - run: bash ci/circleci-build-macos.sh
+        - deploy-code:
+            deploy_use_orb: false
     build-macos-universal:
         macos:
             xcode: "13.4"
@@ -261,6 +342,7 @@ commands:
         - run: chmod a+x ci/*.sh
         - run: ci/circleci-build-debian.sh
         - deploy-code
+## KEEP needed for OpenCPN v5.8 Jammy wx32 build
     build-ubuntu-x86_64-2204-jammy:
         docker:
         - image: cimg/base:edge-22.04
@@ -282,4 +364,61 @@ commands:
         - run: chmod a+x ci/*.sh
         - run: ci/circleci-build-debian.sh
         - deploy-code
+## ---------------------
+## OpenCPN 5.6.2 Plugins
+## ---------------------
+    build-macos:
+        macos:
+            xcode: "13.4"
+        environment:
+        - OCPN_TARGET:  macos
+        - CLOUDSMITH_PKG_EXT: pkg
+        - WX_VER: 315
+        - DEPLOY_USE_ORB: false
+        steps:
+        - checkout
+        - run: chmod a+x ci/*.sh
+        - run: bash ci/circleci-build-macos.sh
+        - deploy-code:
+            deploy_use_orb: false
 
+## Appveyor doesn't build for Windows now.
+## If below is used, WinXT will not work.
+    build-msvc-2022:
+        executor:
+            name: win/server-2022
+            shell: cmd.exe
+        environment:
+        - OCPN_TARGET: MSVC
+        - MSVC_VERSION: 2022
+        - WX_VER: 31
+        - DEPLOY_USE_ORB: false
+        steps:
+        - checkout
+        - run:
+            privileged: False
+            shell: cmd.exe
+            command: ci\circleci-build-msvc.bat
+        - deploy-code:
+            deploy_use_orb: false
+
+## -------------------------------------------
+## Ubuntu OS - Generally deprecated and not used.
+## -------------------------------------------
+## KEEP needed for Raspbian OpenCPN v5.6
+    build-ubuntu-armhf-1804-buster:
+        machine:
+            image: ubuntu-2004:202104-01
+        environment:
+        - OCPN_TARGET=buster-armhf
+        - DOCKER_IMAGE=jongough/ubuntu-armhf:18.04
+        - BUILD_FLAGS=-j3
+        - BUILD_ENV=ubuntu
+        - DEPLOY_USE_ORB: true
+        steps:
+        - checkout
+        - run: chmod a+x ./ci/*.sh
+        - run:
+            command: ci/circleci-build-ubuntu-docker.sh
+            no_output_timeout: 30m
+        - deploy-code
