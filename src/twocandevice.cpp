@@ -6256,7 +6256,7 @@ bool TwoCanDevice::DecodePGN130824(const byte *payload) {
 
 // Decode PGN 130850 Manufacturer Proprietary Message
 // At present return FALSE, because there are no NMEA 183 sentences to generate/send
-// Initially implemented to support TwoCanAutopilot control of Navic NAC3 Autopilots
+// Initially implemented to support TwoCanAutopilot control of Navico NAC3 Autopilots
 bool TwoCanDevice::DecodePGN130850(const byte *payload, std::vector<wxString> *nmeaSentences) {
 	if (payload != nullptr) {
 
@@ -6294,7 +6294,7 @@ bool TwoCanDevice::DecodePGN130850(const byte *payload, std::vector<wxString> *n
 
 // Decode PGN 130856 Manufacturer Proprietary Message
 // At present return FALSE, because there are no NMEA 183 sentences to generate/send
-// Initially implemented to support TwoCanAutopilot control of Navic NAC-3 Autopilots
+// Initially implemented to support TwoCanAutopilot control of Navico NAC-3 Autopilots
 bool TwoCanDevice::DecodePGN130856(const byte* payload, std::vector<wxString>* nmeaSentences) {
 	if (payload != nullptr) {
 
@@ -6451,6 +6451,8 @@ int TwoCanDevice::SendProductInformation() {
 	std::string tmpStr = std::to_string(PLUGIN_VERSION_MAJOR);
 	tmpStr += ".";
 	tmpStr += std::to_string(PLUGIN_VERSION_MINOR);
+	tmpStr += ".";
+	tmpStr += std::to_string(PLUGIN_VERSION_PATCH);
 	memcpy(&payload[36], tmpStr.c_str(), tmpStr.length());
 	
 	// Model Version Bytes [68] - [99]
@@ -6479,7 +6481,6 @@ int TwoCanDevice::SendProductInformation() {
 
 }
 
-// BUG BUG REMOVE
 // Transmit NMEA 2000 Configuration Information
 int TwoCanDevice::SendConfigurationInformation() {
 	CanHeader header;
@@ -6495,7 +6496,7 @@ int TwoCanDevice::SendConfigurationInformation() {
 		
 	std::string message;
 	
-	message = "TwoCan Plugin 2.0";
+	message = PLUGIN_COMMON_NAME + ' ' + PLUGIN_VERSION_MAJOR + '.' + PLUGIN_VERSION_MINOR + '.' + PLUGIN_VERSION_PATCH;
 	
 	payload.push_back(message.length());
 	payload.push_back(0x01);

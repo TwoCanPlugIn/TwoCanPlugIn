@@ -63,6 +63,7 @@
 #include <algorithm>
 #include <bitset>
 #include <iostream>
+// Protect access to write functions
 #include <mutex>
 
 // wxWidgets
@@ -291,7 +292,7 @@ private:
 	bool IsMultiEngineVessel;
 
 	// Protect simultaneous write operations 
-	mutable std::mutex writeMutex;
+	std::mutex writeMutex;
 
 	// All the NMEA 2000 goodness
 
@@ -542,7 +543,7 @@ private:
 	// Decode Manufacturer Proprietary Fast Message - Navico NAC3 Autopilot
 	bool DecodePGN130850(const byte *payload, std::vector<wxString> *nmeaSentences);
 	
-	// Decode Manufacturer Proprietary Fast Message
+	// Decode Manufacturer Proprietary Fast Message - Navic NAC-3 Alarm Messages
 	bool DecodePGN130856(const byte* payload, std::vector<wxString>* nmeaSentences);
 
 	// Transmit an ISO Request
@@ -559,11 +560,6 @@ private:
 
 	// Transmit NMEA 2000 Supported Parameter Groups
 	int SendSupportedPGN(void);
-
-	// Emulate AP44 Pilot Controller
-	int SendAP44Heartbeat(void);
-	int SendAP44Command(int keycode);
-
 
 	// Respond to ISO Rqsts
 	int SendISOResponse(unsigned int sender, unsigned int pgn);
