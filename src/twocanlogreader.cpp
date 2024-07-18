@@ -198,7 +198,7 @@ int TwoCanLogReader::TestFormat(std::string line) {
 	}
 	regularExpression.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
-		return LOG_FILE_FORMAT::LOGFORMAT_YACHTDEVICES
+		return LOG_FILE_FORMAT::LOGFORMAT_YACHTDEVICES;
 	}
 
 	regularExpression.Compile(CONST_RAYMARINE_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
