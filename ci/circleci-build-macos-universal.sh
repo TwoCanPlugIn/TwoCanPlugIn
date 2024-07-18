@@ -48,6 +48,12 @@ done
 # Build the Kvaser and Rusoku Libraries
 # Note to self, we use my fork of the libraries as the makefile has been changed with the
 # addition of the cflag -mmacosx-deployment_target=10.9
+# No idea why I've had to add this
+sudo mkdir /usr/local/include
+sudo mkdir /usr/local/lib
+# debugging shit
+echo 'debugging shit'
+ls /Users/distiller/project
 # Build the Rusoku Toucan Library
 git clone https://github.com/twocanplugin/rusokucan
 cd rusokucan
@@ -58,9 +64,7 @@ make all
 # perhaps unnecessary
 sudo make install
 # copy include files 
-#sudo cp Includes/*.h /usr/local/include
-# Something changed with circleci
-sudo cp Includes/*.h /Users/distiller/project/inc/
+sudo cp Includes/*.h /usr/local/include
 # back to the project build directory
 cd ..
 # copy the resulting Toucan library to the plugin data/drivers directory
@@ -77,6 +81,11 @@ do
   break
 done
 
+# more debugging shit
+echo 'Directories'
+pwd
+ls data/drivers
+
 # Build the Kvaser Library
 git clone https://github.com/twocanplugin/kvasercan-library
 cd kvasercan-library
@@ -87,9 +96,7 @@ make all
 # perhaps unnecessary
 sudo make install
 # copy include files - Note was cp -n Includes/*.h /usr/local/include 2>/dev/null || : to prevent over writing
-# sudo cp Includes/*.h /usr/local/include
-# Something changed with circleci
-sudo cp Includes/*.h /Users/distiller/project/inc/
+sudo cp Includes/*.h /usr/local/include
 # back to the project build directory
 cd ..
 # copy the resulting Kvaser library to the plugin data/drivers directory
