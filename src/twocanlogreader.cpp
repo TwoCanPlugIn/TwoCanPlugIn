@@ -58,7 +58,7 @@ int TwoCanLogReader::Open(const wxString& fileName) {
 	std::string line;
 	getline(logFileStream, line);
 	logFileFormat = TestFormat(line);
-	if (logFileFormat == Undefined) {
+	if (logFileFormat == LOG_FILE_FORMAT::UNDEFINED) {
 		return SET_ERROR(TWOCAN_RESULT_ERROR, TWOCAN_SOURCE_DRIVER, TWOCAN_ERROR_INVALID_LOGFILE_FORMAT);
 	}
 	
@@ -79,7 +79,7 @@ int TwoCanLogReader::Close(void) {
 }
 
 void TwoCanLogReader::ParseTwoCan(std::string str) {
-	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
+	if (regularExpression.Matches(str,wxRE_DEFAULT)) {
 	// BUG BUG I'm sure strtok is more efficient !!
 		canFrame[0] = std::strtoul(twoCanRegEx.GetMatch(str,1), NULL, 16);
 		canFrame[1] = std::strtoul(twoCanRegEx.GetMatch(str,2), NULL, 16);
@@ -99,7 +99,7 @@ void TwoCanLogReader::ParseTwoCan(std::string str) {
 
 // Fix included for V2.0 supports matching of slcan, vcan or can
 void TwoCanLogReader::ParseCanDump(std::string str) {
-	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
+	if (regularExpression.Matches(str,wxRE_DEFAULT)) {
 		unsigned long temp = std::strtoul(twoCanRegEx.GetMatch(str,2), NULL, 16);
 		memcpy(&canFrame[0],&temp, 4);
 		wxString tmpString = twoCanRegEx.GetMatch(str,3).c_str();
@@ -113,7 +113,7 @@ void TwoCanLogReader::ParseCanDump(std::string str) {
 // Parses both Kees format from Canboat and Raw format from SignalK Server
 // Only difference is the header/date time fields, the remaining fields are the same
 void TwoCanLogReader::ParseKees(std::string str) {
-	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
+	if (regularExpression.Matches(str,wxRE_DEFAULT)) {
 		CanHeader header;
 		
 		header.source = atoi(twoCanRegEx.GetMatch(str,3));
@@ -141,7 +141,7 @@ void TwoCanLogReader::ParseKees(std::string str) {
 }
 
 void TwoCanLogReader::ParseYachtDevices(std::string str) {
-	if (twoCanRegEx.Matches(str,wxRE_DEFAULT)) {
+	if (regularExpression.Matches(str,wxRE_DEFAULT)) {
 		unsigned long temp = std::strtoul(twoCanRegEx.GetMatch(str,1), NULL, 16);
 		memcpy(&canFrame[0], &temp, 4);
 		canFrame[4] = std::strtoul(twoCanRegEx.GetMatch(str,2), NULL, 16);
@@ -180,23 +180,23 @@ void TwoCanLogReader::ParseRaymarine(std::string str) {
 int TwoCanLogReader::TestFormat(std::string line) {
 	// BUG BUG Should check that the Regular Expression is valid
 	// eg. twoCanRegEx.IsValid()
-	twoCanRegEx.Compile(CONST_TWOCAN_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
+	regularExpression.Compile(CONST_TWOCAN_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
 		return LOG_FILE_FORMAT::LOGFORMAT_TWOCAN;
 	}
-	twoCanRegEx.Compile(CONST_CANDUMP_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	regularExpression.Compile(CONST_CANDUMP_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
 		return LOG_FILE_FORMAT::LOGFORMAT_CANDUMP;
 	}
-	twoCanRegEx.Compile(CONST_KEES_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	regularExpression.Compile(CONST_KEES_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT))  {
 		return LOG_FILE_FORMAT::LOGFORMAT_KEES;
 	}
-	twoCanRegEx.Compile(CONST_SIGNALK_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	regularExpression.Compile(CONST_SIGNALK_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line, wxRE_DEFAULT)) {
 		return LOG_FILE_FORMAT::LOGFORMAT_KEES;
 	}
-	twoCanRegEx.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
+	regularExpression.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
 		return LOG_FILE_FORMAT::LOGFORMAT_YACHTDEVICES
 	}

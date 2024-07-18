@@ -79,7 +79,7 @@ private:
 	// File stream used to read lines from the log file
 	std::ifstream logFileStream;
 	// Regular expression to parse the log file format
-	wxRegEx twoCanRegEx;
+	wxRegEx regularExpression;
 };
 
 #endif
