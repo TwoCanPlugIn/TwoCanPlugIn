@@ -217,22 +217,22 @@ void TwoCanLogReader::Read() {
 		if (!TestDestroy()) {
 		// process the line
 			switch(logFileFormat) {
-				case LOG_FILE_FORMAT::TWOCAN:
+				case LOG_FILE_FORMAT::LOGFORMAT_TWOCAN:
 					ParseTwoCan(inputLine);
 					break;
-				case LOG_FILE_FORMAT::CANDUMP:
+				case LOG_FILE_FORMAT::LOGFORMAT_CANDUMP:
 					ParseCanDump(inputLine);
 					break;
-				case LOG_FILE_FORMAT::KEES:
+				case LOG_FILE_FORMAT::LOGFORMAT_KEES:
 					ParseKees(inputLine);
 					break;
-				case LOG_FILE_FORMAT::YACHTDEVICES:
+				case LOG_FILE_FORMAT::LOGFORMAT_YACHTDEVICES:
 					ParseYachtDevices(inputLine);
 					break;
 				case LOG_FILE_FORMAT::LOGFORMAT_RAYMARINE:
 					ParseRaymarine(inputLine);
 					break;
-				case LOG_FILE_FORMAT::UNDEFINED:
+				case LOG_FILE_FORMAT::LOGFORMAT_UNDEFINED:
 					// should log invalid log file format message here.
 					break;
 			}
