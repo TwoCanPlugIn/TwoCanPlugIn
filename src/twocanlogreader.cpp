@@ -27,7 +27,7 @@
 // 1.8 - 10/05/2020 Derived from abstract class, support for Mac OSX
 // 2.0 - 04-07-2921 Support slcan, vcan and can socketCAN interfaces in log file
 // 2.1 - 20-12-2021 Support SignalK Server Raw Log Files
-
+// 2.2 - 10-07-2024 Support Raymarine Axiom Log Files
 #include <twocanlogreader.h>
 
 TwoCanLogReader::TwoCanLogReader(wxMessageQueue<std::vector<byte>> *messageQueue) : TwoCanInterface(messageQueue) {
@@ -156,30 +156,57 @@ void TwoCanLogReader::ParseYachtDevices(std::string str) {
 	return;
 }
 
+void TwoCanLogReader::ParseRaymarine(std::string str) {
+	if (regularExpression.Matches(str, wxRE_DEFAULT)) {
+		// Copy the 4 byte header
+		canFrame[3] = std::strtoul(regularExpression.GetMatch(str, 2), NULL, 16);
+		canFrame[2] = std::strtoul(regularExpression.GetMatch(str, 3), NULL, 16);
+		canFrame[1] = std::strtoul(regularExpression.GetMatch(str, 4), NULL, 16);
+		canFrame[0] = std::strtoul(regularExpression.GetMatch(str, 5), NULL, 16);
+		// Copy the 8 byte payload
+		canFrame[4] = std::strtoul(regularExpression.GetMatch(str, 6), NULL, 16);
+		canFrame[5] = std::strtoul(regularExpression.GetMatch(str, 7), NULL, 16);
+		canFrame[6] = std::strtoul(regularExpression.GetMatch(str, 8), NULL, 16);
+		canFrame[7] = std::strtoul(regularExpression.GetMatch(str, 9), NULL, 16);
+		canFrame[8] = std::strtoul(regularExpression.GetMatch(str, 10), NULL, 16);
+		canFrame[9] = std::strtoul(regularExpression.GetMatch(str, 11), NULL, 16);
+		canFrame[10] = std::strtoul(regularExpression.GetMatch(str, 12), NULL, 16);
+		canFrame[11] = std::strtoul(regularExpression.GetMatch(str, 13), NULL, 16);
+	}
+	return;
+}
+
+
 int TwoCanLogReader::TestFormat(std::string line) {
 	// BUG BUG Should check that the Regular Expression is valid
 	// eg. twoCanRegEx.IsValid()
 	twoCanRegEx.Compile(CONST_TWOCAN_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
-		return TwoCanRaw;
+		return LOG_FILE_FORMAT::LOGFORMAT_TWOCAN;
 	}
 	twoCanRegEx.Compile(CONST_CANDUMP_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
-		return CanDump;
+		return LOG_FILE_FORMAT::LOGFORMAT_CANDUMP;
 	}
 	twoCanRegEx.Compile(CONST_KEES_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT))  {
-		return Kees;
+		return LOG_FILE_FORMAT::LOGFORMAT_KEES;
 	}
 	twoCanRegEx.Compile(CONST_SIGNALK_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line, wxRE_DEFAULT)) {
-		return Kees;
+		return LOG_FILE_FORMAT::LOGFORMAT_KEES;
 	}
 	twoCanRegEx.Compile(CONST_YACHTDEVICES_REGEX, wxRE_ADVANCED |  wxRE_NEWLINE);
 	if (twoCanRegEx.Matches(line,wxRE_DEFAULT)) {
-		return YachtDevices;
+		return LOG_FILE_FORMAT::LOGFORMAT_YACHTDEVICES
 	}
-	return Undefined;
+
+	regularExpression.Compile(CONST_RAYMARINE_REGEX, wxRE_ADVANCED | wxRE_NEWLINE);
+	if (regularExpression.Matches(line, wxRE_DEFAULT)) {
+		return LOG_FILE_FORMAT::LOGFORMAT_RAYMARINE;
+	}
+
+	return LOG_FILE_FORMAT::UNDEFINED;
 }
 
 void TwoCanLogReader::Read() {
@@ -190,19 +217,22 @@ void TwoCanLogReader::Read() {
 		if (!TestDestroy()) {
 		// process the line
 			switch(logFileFormat) {
-				case TwoCanRaw:
+				case LOG_FILE_FORMAT::TWOCAN:
 					ParseTwoCan(inputLine);
 					break;
-				case CanDump:
+				case LOG_FILE_FORMAT::CANDUMP:
 					ParseCanDump(inputLine);
 					break;
-				case Kees:
+				case LOG_FILE_FORMAT::KEES:
 					ParseKees(inputLine);
 					break;
-				case YachtDevices:
+				case LOG_FILE_FORMAT::YACHTDEVICES:
 					ParseYachtDevices(inputLine);
 					break;
-				case Undefined:
+				case LOG_FILE_FORMAT::LOGFORMAT_RAYMARINE:
+					ParseRaymarine(inputLine);
+					break;
+				case LOG_FILE_FORMAT::UNDEFINED:
 					// should log invalid log file format message here.
 					break;
 			}

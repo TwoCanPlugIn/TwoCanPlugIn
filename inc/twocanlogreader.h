@@ -28,7 +28,18 @@
 #define CONST_KEES_REGEX "^[0-9]{4}-[0-9]{2}-[0-9]{2}[TZ][0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3},([0-9]),([0-9]{5,6}),([0-9]+),([0-9]+),([0-9]),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2})"
 #define CONST_YACHTDEVICES_REGEX "^[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}\\sR\\s([0-9A-F]{8})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})[\\s]([0-9A-F]{2})"
 #define CONST_SIGNALK_REGEX "^[0-9]{13};A;[0-9]{4}-[0-9]{2}-[0-9]{2}[TZ][0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}Z,([0-9]),([0-9]{5,6}),([0-9]+),([0-9]+),([0-9]),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2}),([0-9A-Fa-f]{2})"
-enum LogFileFormat { Undefined, TwoCanRaw, CanDump, Kees, YachtDevices};
+#define CONST_RAYMARINE_REGEX "^(Tx|Rx)\\s[0-9]{8}\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\s([0-9A-Fa-f]{2})\\sFrom:[0-9A-Fa-f]{2}.*"
+
+
+typedef enum _LogFileFormat {
+	LOGFORMAT_UNDEFINED,
+	LOGFORMAT_TWOCAN,
+	LOGFORMAT_CANDUMP,
+	LOGFORMAT_KEES,
+	LOGFORMAT_YACHTDEVICES,
+	LOGFORMAT_RAYMARINE
+} LOG_FILE_FORMAT;
+
 
 // Implements the generic log file reader on Linux & Mac OSX devices
 class TwoCanLogReader : public TwoCanInterface {
@@ -53,7 +64,8 @@ public:
 	void ParseCanDump(std::string str);
 	void ParseKees(std::string str);
 	void ParseYachtDevices(std::string str);
-	
+	void ParseRaymarine(std::string str);
+
 protected:
 	// TwoCan Interface overridden functions
 	virtual wxThread::ExitCode Entry();

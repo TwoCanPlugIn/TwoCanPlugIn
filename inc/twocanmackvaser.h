@@ -23,7 +23,8 @@
 #include "twocaninterface.h"
 
 // Mac-Can interfaces
-#include <KvaserCAN.h>
+// Changed from <KvaserCAN.h> as /usr/local/inc no longer exists
+#include "KvaserCAN.h"
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFNumber.h>

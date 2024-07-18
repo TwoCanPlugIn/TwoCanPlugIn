@@ -23,7 +23,8 @@
 #include "twocaninterface.h"
 
 // Mac-Can interfaces
-#include <TouCAN.h>
+// Changed from <TouCAN.h> as usr/local/inc no longer exists??
+#include "TouCAN.h"
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFNumber.h>

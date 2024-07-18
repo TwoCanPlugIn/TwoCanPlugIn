@@ -58,7 +58,9 @@ make all
 # perhaps unnecessary
 sudo make install
 # copy include files 
-sudo cp Includes/*.h /usr/local/include
+#sudo cp Includes/*.h /usr/local/include
+# Something changed with circleci
+sudo cp Includes/*.h /Users/distiller/project/inc/
 # back to the project build directory
 cd ..
 # copy the resulting Toucan library to the plugin data/drivers directory
@@ -85,7 +87,9 @@ make all
 # perhaps unnecessary
 sudo make install
 # copy include files - Note was cp -n Includes/*.h /usr/local/include 2>/dev/null || : to prevent over writing
-sudo cp Includes/*.h /usr/local/include
+# sudo cp Includes/*.h /usr/local/include
+# Something changed with circleci
+sudo cp Includes/*.h /Users/distiller/project/inc/
 # back to the project build directory
 cd ..
 # copy the resulting Kvaser library to the plugin data/drivers directory
