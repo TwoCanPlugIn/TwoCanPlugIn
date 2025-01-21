@@ -40,6 +40,33 @@
 
 #include "twocansettings.h"
 
+// Waypoint client data added to the Waypoint Check List Box. 
+WaypointItem::WaypointItem(wxString name, wxString description, double latitude, double longitude) {
+	waypointName = name;
+	waypointDescription = description;
+	waypointLatitude = latitude;
+	waypointLongitude = longitude;
+}
+
+WaypointItem::~WaypointItem() {
+}
+
+wxString WaypointItem::GetWaypointName() {
+	return waypointName;
+}
+
+wxString WaypointItem::GetWaypointDescription() {
+	return waypointDescription;
+}
+
+double WaypointItem::GetWaypointLatitude() {
+	return waypointLatitude;
+}
+
+double WaypointItem::GetWaypointLongitude() {
+	return waypointLongitude;
+}
+
 // Constructor and destructor implementation
 // inherits froms TwoCanSettingsBase which was implemented using wxFormBuilder
 TwoCanSettings::TwoCanSettings(wxWindow* parent, wxWindowID id, const wxString& title, \
@@ -251,10 +278,6 @@ void TwoCanSettings::OnCopy(wxCommandEvent &event) {
 	}
 }
 
-void TwoCanSettings::OnExportWaypoint(wxCommandEvent &event) {
-	wxMessageBox("Export Waypoint Settings Dialog");
-}
-
 // Set whether the device is an actve or passive node on the NMEA 2000 network
 void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
@@ -263,11 +286,8 @@ void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
 	chkGateway->SetValue(enableGateway);
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->SetValue(enableWaypoint);
-	// BUG BUG Not yet implemented
-	// chkMedia->Enable(chkDeviceMode->IsChecked());
-	// chkMedia->SetValue(enableMusic);
-	// chkAutopilot->Enable(chkDeviceMode->IsChecked());
-	// chkAutopilot->SetValue(enableAutopilot);
+	chkMedia->Enable(chkDeviceMode->IsChecked());
+	chkMedia->SetValue(enableMusic);
 	this->settingsDirty = TRUE;
 }
 
@@ -305,6 +325,130 @@ void TwoCanSettings::OnRightClick(wxMouseEvent& event) {
 	this->settingsDirty = TRUE;
 }
 
+// Populate the list box with saved waypoints
+void TwoCanSettings::OnWaypointFocus(wxFocusEvent& event) {
+	wxMessageBox("Waypint Set Focus");
+
+	chkListWaypoints->Clear();
+	PlugIn_Waypoint waypoint;
+	wxArrayString waypointGUIDS = GetWaypointGUIDArray();
+	int itemId;
+	for (auto waypointGUID : waypointGUIDS) {
+		GetSingleWaypoint(waypointGUID, &waypoint);
+		if (waypoint.m_IsVisible) {
+			itemId = chkListWaypoints->Append(waypoint.m_MarkName);
+			chkListWaypoints->SetClientData(itemId,
+				new WaypointItem(waypoint.m_MarkName, waypoint.m_MarkDescription, waypoint.m_lat, waypoint.m_lon));
+		}
+	}
+}
+
+void TwoCanSettings::OnWaypointCheck(wxCommandEvent& event) {
+
+}
+
+void TwoCanSettings::OnWaypointRightClick(wxMouseEvent& event) {
+	bool toggleCheck = chkListWaypoints->IsChecked(0);
+	for (unsigned int i = 0; i < chkListWaypoints->GetCount(); i++) {
+		chkListWaypoints->Check(i, !toggleCheck);
+	}
+}
+
+void TwoCanSettings::OnWaypointExport(wxCommandEvent& event) {
+	// Enumerate the check list box to determine checked items
+	wxArrayInt checkedItems;
+	chkListWaypoints->GetCheckedItems(checkedItems);
+
+	for (auto it : checkedItems) {
+		// Encode PGN 130074 Waypoint
+		WaypointItem* waypointItem = (WaypointItem*)chkListWaypoints->GetClientData(it);
+		EncodeWaypoint(waypointItem->GetWaypointName(), waypointItem->GetWaypointLatitude(),
+			waypointItem->GetWaypointLongitude());
+		// BUG BUG Now transmit it
+		//commandEvent->SetString(listWaypoints->GetString(it));
+		//commandEvent->SetClientData(waypointItem);
+		//wxQueueEvent(eventHandler, commandEvent);
+		wxMessageBox(wxString::Format("Waypoint: %d, Name: %s", it, waypointItem->GetWaypointName()));
+	}
+}
+
+void TwoCanSettings::OnPageChanged(wxNotebookEvent& event) {
+	if (event.GetSelection() == 4) {
+		chkListWaypoints->Clear();
+		PlugIn_Waypoint waypoint;
+		wxArrayString waypointGUIDS = GetWaypointGUIDArray();
+		int itemId;
+		for (auto waypointGUID : waypointGUIDS) {
+			GetSingleWaypoint(waypointGUID, &waypoint);
+			if (waypoint.m_IsVisible) {
+				itemId = chkListWaypoints->Append(waypoint.m_MarkName);
+				chkListWaypoints->SetClientData(itemId,
+					new WaypointItem(waypoint.m_MarkName, waypoint.m_MarkDescription, waypoint.m_lat, waypoint.m_lon));
+			}
+		}
+	}
+}
+
+
+
+void TwoCanSettings::EncodeWaypoint(wxString name, double lat, double lon) {
+	int latitude = lat * 1e7;
+	int longitude = lon * 1e7;
+
+	std::vector<byte> payload;
+
+	unsigned short startingWaypointId = 0;
+	payload.push_back(startingWaypointId & 0xFF);
+	payload.push_back((startingWaypointId >> 8) & 0xFF);
+
+	unsigned short items = 1;
+	payload.push_back(items & 0xFF);
+	payload.push_back((items << 8) & 0xFF);
+
+	unsigned short validItems = 1;
+	payload.push_back(validItems & 0xFF);
+	payload.push_back((validItems << 8) & 0xFF);
+
+	unsigned short databaseId = 0;
+	payload.push_back(databaseId & 0xFF);
+	payload.push_back((databaseId >> 8) & 0xFF);
+
+	// reserved;
+	payload.push_back(0xFF);
+	payload.push_back(0xFF);
+
+	// We'll make an id using the waypoint name
+	unsigned short waypointId;
+	unsigned short pair1 = 0;
+	unsigned short pair2 = 0;
+	for (unsigned int i = 0; i < name.size(); i++) {
+		pair1 = pair1 ^ (unsigned short)name.at(i);
+	}
+	for (int i = name.size() - 1; i >= 0; i--) {
+		pair2 = pair2 ^ (unsigned short)name.at(i);
+	}
+	waypointId = (((pair1 + pair2) * (pair1 + pair2 + 1)) / 2) + pair2;
+
+	payload.push_back(waypointId & 0xFF);
+	payload.push_back((waypointId << 8) & 0xFF);
+
+	// Text with length & control byte
+	payload.push_back(name.size() + 2);
+	payload.push_back(0x01); // Control byte  indicates ASCII or Unicode encoding
+
+	for (auto it = name.begin(); it != name.end(); ++it) {
+		payload.push_back((int)*it);
+	}
+
+	payload.push_back(latitude & 0xFF);
+	payload.push_back((latitude >> 8) & 0xFF);
+	payload.push_back((latitude >> 16) & 0xFF);
+	payload.push_back((latitude >> 24) & 0xFF);
+	payload.push_back(longitude & 0xFF);
+	payload.push_back((longitude >> 8) & 0xFF);
+	payload.push_back((longitude >> 16) & 0xFF);
+	payload.push_back((longitude >> 24) & 0xFF);
+}
 
 void TwoCanSettings::OnOK(wxCommandEvent &event) {
 	// Disable receiving of NMEA 2000 frames in the debug window, as we'll be closing
@@ -384,7 +528,7 @@ void TwoCanSettings::SaveSettings(void) {
 		enableWaypoint = TRUE;
 	}
 
-	autopilotModel = rdoBoxAutopilot->GetSelection();
+	autopilotModel = (AUTOPILOT_MODEL)rdoBoxAutopilot->GetSelection();
 
 	if (cmbInterfaces->GetSelection() != wxNOT_FOUND) {
 		canAdapter = adapters[cmbInterfaces->GetStringSelection()];

@@ -10,5 +10,4 @@ finish-args:
     - --socket=pulseaudio
     - --filesystem=home
     - --device=all
-	- --allow=canbus
 

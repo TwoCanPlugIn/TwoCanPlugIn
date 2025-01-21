@@ -26,6 +26,8 @@
 
 #include "twocanutils.h"
 
+#include "ocpn_plugin.h"
+
 #if defined (__LINUX__)
 #include "twocansocket.h"
 #endif
@@ -193,7 +195,7 @@ extern bool enableHeartbeat;
 extern bool enableGateway;
 
 // If we are in active mode, whether we can control an autopilot
-extern int autopilotModel;
+extern AUTOPILOT_MODEL autopilotModel;
 
 // If we are in active mode, whether we can control a Fusion Media Player
 extern bool enableMusic;
@@ -217,6 +219,23 @@ extern int networkAddress;
 extern wxBitmap *_img_Toucan_16;
 extern wxBitmap *_img_Toucan_64;
 
+// Class used for listbox & event client data to pass waypoint information
+class WaypointItem : public wxClientData {
+private:
+	wxString waypointName;
+	wxString waypointDescription;
+	double waypointLatitude;
+	double waypointLongitude;
+
+public:
+	WaypointItem(wxString name, wxString description, double latitude, double longitude);
+	~WaypointItem();
+	wxString GetWaypointName();
+	wxString GetWaypointDescription();
+	double GetWaypointLatitude();
+	double GetWaypointLongitude();
+};
+
 class TwoCanSettings : public TwoCanSettingsBase
 {
 	
@@ -229,6 +248,7 @@ protected:
 	void OnInit(wxInitDialogEvent& event);
 	void OnChoiceInterfaces(wxCommandEvent &event);
 	void OnCheckPGN(wxCommandEvent &event);
+	void OnRightClick(wxMouseEvent& event);
 	void OnChoiceLogging(wxCommandEvent &event);
 	void OnCheckMode(wxCommandEvent &event);
 	void OnCheckHeartbeat(wxCommandEvent &event);
@@ -241,14 +261,18 @@ protected:
 	void OnOK(wxCommandEvent &event);
 	void OnApply(wxCommandEvent &event);
 	void OnCancel(wxCommandEvent &event);
-	void OnRightClick(wxMouseEvent& event);
-	void OnExportWaypoint(wxCommandEvent &event);
+	void OnWaypointFocus(wxFocusEvent& event);
+	void OnWaypointCheck(wxCommandEvent& event);
+	void OnWaypointRightClick(wxMouseEvent& event);
+	void OnWaypointExport(wxCommandEvent& event);
+	void OnPageChanged(wxNotebookEvent& event);
 
 private:
 	void SaveSettings(void);
 	bool settingsDirty;
 	void GetDriverInfo(wxString fileName);
 	bool EnumerateDrivers(void);
+	void EncodeWaypoint(wxString name, double lat, double lon);
 	bool togglePGN;
 
 	wxWindow *parentWindow;

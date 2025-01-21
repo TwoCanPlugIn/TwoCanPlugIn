@@ -448,6 +448,9 @@ private:
 	//	Decode PGN 129798 AIS SAR Aircraft Position Report
 	bool DecodePGN129798(const byte *payload, std::vector<wxString> *nmeaSentences);
 
+	// Decode PGN 129799 Radio Frequency Mode and Power
+	bool DecodePGN129799(const byte* payload, std::vector<wxString>* nmeaSentences);
+
 	//	Decode PGN 129801 AIS Addressed Safety Related Message
 	bool DecodePGN129801(const byte *payload, std::vector<wxString> *nmeaSentences);
 
@@ -525,6 +528,10 @@ private:
 	
 	// Send NMEA 2000 Heartbeat
 	int SendHeartbeat(void);
+
+	// BUG BUG DEBUG
+	int SendNavXTE(void);
+	int SendNavAPB(void);
 
 	// Appends '*' and Checksum to NMEA 183 Sentence prior to sending to OpenCPN
 	void SendNMEASentence(wxString sentence);

@@ -505,8 +505,9 @@ bool TwoCan::LoadConfiguration(void) {
 		configSettings->Read(_T("Gateway"), &enableGateway, FALSE);
 		configSettings->Read(_T("Waypoint"), &enableWaypoint, FALSE);
 		configSettings->Read(_T("Music"), &enableMusic, FALSE);
-		configSettings->Read(_T("Autopilot"), &autopilotModel, 0);
-		// Not ready to implement yet, probably never will....
+		// Not ready to implement yet
+		//configSettings->Read(_T("Autopilot"), &enableAutopilot, FALSE);
+		autopilotModel = (AUTOPILOT_MODEL)configSettings->ReadLong(_T("AutopilotBrand"),0);
 		//configSettings->Read(_T("SignalK"), &enableSignalK, FALSE);
 		return TRUE;
 	}
@@ -521,7 +522,8 @@ bool TwoCan::LoadConfiguration(void) {
 		enableWaypoint = FALSE;
 		enableMusic = FALSE;
 		enableSignalK = FALSE;
-		autopilotModel = FLAGS_AUTOPILOT_NONE;
+		enableAutopilot = FALSE;
+		autopilotModel = AUTOPILOT_MODEL::NONE;
 
 		// BUG BUG Automagically find an installed adapter
 		canAdapter = _T("None");
@@ -541,8 +543,9 @@ bool TwoCan::SaveConfiguration(void) {
 		configSettings->Write(_T("Gateway"), enableGateway);
 		configSettings->Write(_T("Waypoint"), enableWaypoint);
 		configSettings->Write(_T("Music"), enableMusic);
-		configSettings->Write(_T("Autopilot"), autopilotModel);
 		// Not ready to implement yet....
+	
+		//configSettings->Read(_T("AutopilotBrand"), autopilotManufacturer);
 		//configSettings->Write(_T("SignalK"), enableSignalK);
 
 		return TRUE;
@@ -588,7 +591,7 @@ void TwoCan::StopDevice(void) {
 				}
 
 				// If the autopilot interface is enabled, cleanup
-				if ((deviceMode == TRUE) && (autopilotModel != FLAGS_AUTOPILOT_NONE)) {
+				if ((deviceMode == TRUE) && (autopilotModel != AUTOPILOT_MODEL::NONE)) {
 					if (twoCanAutopilot != nullptr) {
 						delete twoCanAutopilot;
 						twoCanAutopilot = nullptr;
@@ -627,7 +630,7 @@ void TwoCan::StartDevice(void) {
 			}
 
 			// Autopilot Integration
-			if ((deviceMode == TRUE) && (autopilotModel != FLAGS_AUTOPILOT_NONE)) {
+			if ((deviceMode == TRUE) && (enableAutopilot == TRUE)) {
 				twoCanAutopilot = new TwoCanAutopilot(autopilotModel);
 				wxLogMessage(_T("TwoCan Plugin, Created TwoCan Autopilot interface"));
 			}
