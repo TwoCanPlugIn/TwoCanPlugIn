@@ -26,6 +26,7 @@
 // 1.0 Initial Release
 // 1.8 10/5/2020. Derived from abstract class
 // 1.91 20/10/2020. Set to non blocking with timeouts
+// 2.0  07/02/2025  Fix GetUniqueNumber - buffer overflow on flatpak caused by snprintf.
 //
 
 #include <twocansocket.h>
@@ -84,12 +85,10 @@ int TwoCanSocket::GetUniqueNumber(unsigned long *uniqueNumber) {
 						close(fileDescriptor);
 						// use two halves of the mac address in a pairing function to derive a shorter integer value for the unique number
 						// as I'm not sure what is the maximum length for a NMEA 2000 unique address
-						char temp[9];
 						unsigned int pair1, pair2;
-						sprintf(temp,"%d%d%d",interfaceRequest.ifr_hwaddr.sa_data[0], interfaceRequest.ifr_hwaddr.sa_data[1], interfaceRequest.ifr_hwaddr.sa_data[2]);
-						pair1 = atoi(temp); 
-						sprintf(temp,"%d%d%d",interfaceRequest.ifr_hwaddr.sa_data[3], interfaceRequest.ifr_hwaddr.sa_data[4], interfaceRequest.ifr_hwaddr.sa_data[5]);
-						pair2 = atoi(temp); 
+						unsigned char* mac = reinterpret_cast<unsigned char*>(interfaceRequest.ifr_hwaddr.sa_data);
+						pair1 = mac[0] | (mac[1] <<8) | (mac[2] << 16);
+						pair2 = mac[3] | (mac[4]<< 8) | (mac[5] << 16); 
 						*uniqueNumber = (((pair1 + pair2) * (pair1 + pair2 + 1)) / 2) + pair2;;
 						break;
 					}
