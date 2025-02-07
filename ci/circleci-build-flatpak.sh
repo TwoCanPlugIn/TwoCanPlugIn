@@ -46,7 +46,7 @@ if test -f "$EXTRA_LIBS"; then
 fi
 
 git config --global protocol.file.allow always
-git submodule update --init opencpn-libs
+#git submodule update --init opencpn-libs
 
 if [ -n "$CI" ]; then
     sudo apt update
