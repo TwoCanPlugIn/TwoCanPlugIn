@@ -2611,7 +2611,7 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((waypointClosingVelocity >> 8) & 0xFF);
 			
 			wxLogMessage("Debug: Validity: %d", parser->Rmb.IsDataValid);
-			wxLogMessage("Debug: From %s", parser->Rmb.from);
+			wxLogMessage("Debug: From %s", parser->Rmb.From);
 			wxLogMessage("Debug: To: %s", parser->Rmb.To);
 			wxLogMessage("Debug: Range: %d", parser->Rmb.RangeToDestinationNauticalMiles);
 			wxLogMessage("Debug: Bearing: %f", parser->Rmb.BearingToDestinationDegreesTrue);
