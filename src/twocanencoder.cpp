@@ -2531,6 +2531,8 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 			unsigned short distance = 100 * parser->Rmb.RangeToDestinationNauticalMiles/ CONVERT_METRES_NAUTICAL_MILES;
 			n2kMessage->push_back(distance & 0xFF);
 			n2kMessage->push_back((distance >> 8) & 0xFF);
+			n2kMessage->push_back((distance >> 16) & 0xFF);
+			n2kMessage->push_back((distance >> 24) & 0xFF);
 		
 			byte bearingRef = HEADING_TRUE;
 
@@ -2542,13 +2544,19 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 	
 			n2kMessage->push_back(bearingRef | (perpendicularCrossed << 2) | (circleEntered << 4) | (calculationType << 6));
 
-			wxDateTime epochTime((time_t)0);
-			wxDateTime now = wxDateTime::Now();
+			unsigned short daysSinceEpoch = USHRT_MAX;
+			unsigned int secondsSinceMidnight = UINT_MAX;
 			
-			wxTimeSpan diff = now - epochTime;
-
-			unsigned short daysSinceEpoch = diff.GetDays();
-			unsigned int secondsSinceMidnight = ((diff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+			if (parser->Rmb.DestinationClosingVelocityKnots != 0) {
+				wxDateTime epoch(time_t(0));
+				wxDateTime now = wxDateTime::Now();
+				unsigned int seconds = 3600 * (parser->Rmb.RangeToDestinationNauticalMiles / parser->Rmb.DestinationClosingVelocityKnots);
+				now.Add(wxTimeSpan::Seconds(seconds));
+				wxTimeSpan diff;
+				diff = now - epoch;
+				daysSinceEpoch = diff.GetDays();
+				secondsSinceMidnight = ((diff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+			}
 
 			n2kMessage->push_back(secondsSinceMidnight & 0xFF);
 			n2kMessage->push_back((secondsSinceMidnight >> 8) & 0xFF);
