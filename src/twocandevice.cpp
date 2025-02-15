@@ -1,4 +1,5 @@
 // Copyright(C) 2018-2020 by Steven Adler
+// Copyright(C) 2018-2020 by Steven Adler
 //
 // This file is part of TwoCan, a plugin for OpenCPN.
 //
@@ -5834,6 +5835,8 @@ int TwoCanDevice::SendProductInformation() {
 	std::string tmpStr = std::to_string(PLUGIN_VERSION_MAJOR);
 	tmpStr += ".";
 	tmpStr += std::to_string(PLUGIN_VERSION_MINOR);
+	tmpStr += ".";
+	tmpStr += std::to_string(PLUGIN_VERSION_PATCH);
 	memcpy(&payload[36], tmpStr.c_str(), tmpStr.length());
 	
 	// Model Version Bytes [68] - [99]
