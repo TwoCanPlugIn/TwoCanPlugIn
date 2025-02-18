@@ -5828,12 +5828,13 @@ int TwoCanDevice::SendProductInformation() {
 	memcpy(&payload[4], hwVersion,strlen(hwVersion));
 	
 	// Software Version Bytes [36] - [67]
-	// BUG BUG Should derive from PLUGIN_VERSION_MAJOR and PLUGIN_VERSION_MINOR
 	memset(&payload[36],0,32);
 	//char const *swVersion = ;  
 	std::string tmpStr = std::to_string(PLUGIN_VERSION_MAJOR);
 	tmpStr += ".";
 	tmpStr += std::to_string(PLUGIN_VERSION_MINOR);
+	tmpStr += ".";
+	tmpStr += std::to_string(PLUGIN_VERSION_PATCH);
 	memcpy(&payload[36], tmpStr.c_str(), tmpStr.length());
 	
 	// Model Version Bytes [68] - [99]

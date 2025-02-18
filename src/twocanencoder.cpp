@@ -2518,7 +2518,7 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 //$--BOD, x.x, T, x.x, M, c--c, c--c*hh<CR><LF>
 //$--WCV, x.x, N, c--c, a*hh<CR><LF>
 
-// Not sure of this use case, as it implies there is already a chartplotter on board
+// Generated when OpenCPN is navigating to a waypoint or following a route
 bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
 	n2kMessage->clear();
 
@@ -2528,9 +2528,11 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 	
 			n2kMessage->push_back(sequenceId);
 
-			unsigned short distance = 100 * parser->Rmb.RangeToDestinationNauticalMiles/ CONVERT_METRES_NAUTICAL_MILES;
+			unsigned int distance = 100 * (parser->Rmb.RangeToDestinationNauticalMiles / CONVERT_METRES_NAUTICAL_MILES);
 			n2kMessage->push_back(distance & 0xFF);
 			n2kMessage->push_back((distance >> 8) & 0xFF);
+			n2kMessage->push_back((distance >> 16) & 0xFF);
+			n2kMessage->push_back((distance >> 24) & 0xFF);
 		
 			byte bearingRef = HEADING_TRUE;
 
@@ -2540,15 +2542,33 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 
 			byte calculationType = 0;
 	
-			n2kMessage->push_back(bearingRef | (perpendicularCrossed << 2) | (circleEntered << 4) | (calculationType << 6));
+			n2kMessage->push_back((bearingRef & 0x03)| ((perpendicularCrossed << 2) & 0x0C) | 
+				((circleEntered << 4) & 0x30 ) | ((calculationType << 6) & 0xC0) );
 
-			wxDateTime epochTime((time_t)0);
-			wxDateTime now = wxDateTime::Now();
-			
-			wxTimeSpan diff = now - epochTime;
+			unsigned short daysSinceEpoch;
+			unsigned int secondsSinceMidnight;
 
-			unsigned short daysSinceEpoch = diff.GetDays();
-			unsigned int secondsSinceMidnight = ((diff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+			if (parser->Rmb.DestinationClosingVelocityKnots != 0) {
+				wxDateTime epochTime((time_t)0);
+				wxDateTime now = wxDateTime::Now();
+
+				// Calculate time to destination in seconds
+				unsigned int seconds = 3600 * (parser->Rmb.RangeToDestinationNauticalMiles / parser->Rmb.DestinationClosingVelocityKnots);
+				
+				// Add to current time
+				now.Add(wxTimeSpan::Seconds(seconds));
+
+				// Calculate the time span with the Unix Epoch (1/1/1970)
+				wxTimeSpan diff;
+				diff = now - epochTime;
+	
+				daysSinceEpoch = diff.GetDays();
+				secondsSinceMidnight = ((diff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+			}
+			else {
+				daysSinceEpoch = USHRT_MAX;
+				secondsSinceMidnight = UINT_MAX;
+			}
 
 			n2kMessage->push_back(secondsSinceMidnight & 0xFF);
 			n2kMessage->push_back((secondsSinceMidnight >> 8) & 0xFF);
@@ -2568,16 +2588,16 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 
 			wxString originWaypointId = parser->Rmb.From;
 			// BUG BUG Need to get the waypointId
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
+			n2kMessage->push_back(0x01);
+			n2kMessage->push_back(0x00);
+			n2kMessage->push_back(0x00);
+			n2kMessage->push_back(0x00);
 
 			wxString destinationWaypointId = parser->Rmb.To;
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
+			n2kMessage->push_back(0x02);
+			n2kMessage->push_back(0x00);
+			n2kMessage->push_back(0x00);
+			n2kMessage->push_back(0x00);
 
 			int latitude = parser->Rmb.DestinationPosition.Latitude.Latitude * 1e7;
 			if (parser->Rmb.DestinationPosition.Latitude.Northing == NORTHSOUTH::South) {
@@ -2598,7 +2618,7 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((longitude >> 16) & 0xFF);
 			n2kMessage->push_back((longitude >> 24) & 0xFF);
 
-			unsigned short waypointClosingVelocity = 100 * parser->Rmb.DestinationClosingVelocityKnots/CONVERT_MS_KNOTS;
+			unsigned short waypointClosingVelocity = 100 * (parser->Rmb.DestinationClosingVelocityKnots/CONVERT_MS_KNOTS);
 			n2kMessage->push_back(waypointClosingVelocity & 0xFF);
 			n2kMessage->push_back((waypointClosingVelocity >> 8) & 0xFF);
 		
