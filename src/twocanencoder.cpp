@@ -28,6 +28,7 @@
 // 1.1 - 04/07/2021 Add AIS conversion
 // 1.2 - 20/05/2022 Add DSC & MOB conversion, Fix incorrect GGA PGN (caused random depth values), Fix APB flags
 //       Use NMEA 0183 v4.11 XDR standard transducer names
+// 1.3 - 20/02/2025 Fix PGN 129284 encoding (distance and ETA) and GSV parsing
 
 #include "twocanencoder.h"
 
@@ -2518,7 +2519,7 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 //$--BOD, x.x, T, x.x, M, c--c, c--c*hh<CR><LF>
 //$--WCV, x.x, N, c--c, a*hh<CR><LF>
 
-// Not sure of this use case, as it implies there is already a chartplotter on board
+// Generated when OpenCPN is navigating to a waypoint or following a route
 bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
 	n2kMessage->clear();
 
@@ -2528,9 +2529,11 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 	
 			n2kMessage->push_back(sequenceId);
 
-			unsigned short distance = 100 * parser->Rmb.RangeToDestinationNauticalMiles/ CONVERT_METRES_NAUTICAL_MILES;
+			unsigned int distance = 100 * (parser->Rmb.RangeToDestinationNauticalMiles / CONVERT_METRES_NAUTICAL_MILES);
 			n2kMessage->push_back(distance & 0xFF);
 			n2kMessage->push_back((distance >> 8) & 0xFF);
+			n2kMessage->push_back((distance >> 16) & 0xFF);
+			n2kMessage->push_back((distance >> 24) & 0xFF);
 		
 			byte bearingRef = HEADING_TRUE;
 
@@ -2540,15 +2543,33 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 
 			byte calculationType = 0;
 	
-			n2kMessage->push_back(bearingRef | (perpendicularCrossed << 2) | (circleEntered << 4) | (calculationType << 6));
+			n2kMessage->push_back((bearingRef & 0x03)| ((perpendicularCrossed << 2) & 0x0C) | 
+				((circleEntered << 4) & 0x30 ) | ((calculationType << 6) & 0xC0) );
 
-			wxDateTime epochTime((time_t)0);
-			wxDateTime now = wxDateTime::Now();
-			
-			wxTimeSpan diff = now - epochTime;
+			unsigned short daysSinceEpoch;
+			unsigned int secondsSinceMidnight;
 
-			unsigned short daysSinceEpoch = diff.GetDays();
-			unsigned int secondsSinceMidnight = ((diff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+			if (parser->Rmb.DestinationClosingVelocityKnots != 0) {
+				wxDateTime epochTime((time_t)0);
+				wxDateTime now = wxDateTime::Now();
+
+				// Calculate time to destination in seconds
+				unsigned int seconds = 3600 * (parser->Rmb.RangeToDestinationNauticalMiles / parser->Rmb.DestinationClosingVelocityKnots);
+				
+				// Add to current time
+				now.Add(wxTimeSpan::Seconds(seconds));
+
+				// Calculate the time span with the Unix Epoch (1/1/1970)
+				wxTimeSpan diff;
+				diff = now - epochTime;
+	
+				daysSinceEpoch = diff.GetDays();
+				secondsSinceMidnight = ((diff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+			}
+			else {
+				daysSinceEpoch = USHRT_MAX;
+				secondsSinceMidnight = UINT_MAX;
+			}
 
 			n2kMessage->push_back(secondsSinceMidnight & 0xFF);
 			n2kMessage->push_back((secondsSinceMidnight >> 8) & 0xFF);
@@ -2568,16 +2589,16 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 
 			wxString originWaypointId = parser->Rmb.From;
 			// BUG BUG Need to get the waypointId
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
+			n2kMessage->push_back(0x01);
+			n2kMessage->push_back(0x00);
+			n2kMessage->push_back(0x00);
+			n2kMessage->push_back(0x00);
 
 			wxString destinationWaypointId = parser->Rmb.To;
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
-			n2kMessage->push_back(0xFF);
+			n2kMessage->push_back(0x02);
+			n2kMessage->push_back(0x00);
+			n2kMessage->push_back(0x00);
+			n2kMessage->push_back(0x00);
 
 			int latitude = parser->Rmb.DestinationPosition.Latitude.Latitude * 1e7;
 			if (parser->Rmb.DestinationPosition.Latitude.Northing == NORTHSOUTH::South) {
@@ -2598,10 +2619,10 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((longitude >> 16) & 0xFF);
 			n2kMessage->push_back((longitude >> 24) & 0xFF);
 
-			unsigned short waypointClosingVelocity = 100 * parser->Rmb.DestinationClosingVelocityKnots/CONVERT_MS_KNOTS;
+			unsigned short waypointClosingVelocity = 100 * (parser->Rmb.DestinationClosingVelocityKnots/CONVERT_MS_KNOTS);
 			n2kMessage->push_back(waypointClosingVelocity & 0xFF);
 			n2kMessage->push_back((waypointClosingVelocity >> 8) & 0xFF);
-		
+			
 			return TRUE;
 		}
 	}
@@ -2694,97 +2715,107 @@ bool TwoCanEncoder::EncodePGN129285(const NMEA0183 *parser, std::vector<byte> *n
 bool TwoCanEncoder::EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
 	n2kMessage->clear();
 
-	int numberOfMessages = parser->Gsv.NumberOfMessages;
-	int messageNumber = parser->Gsv.MessageNumber;
+	int numberOfMessages;
+	int messageNumber;
+	
+	if (parser->LastSentenceIDParsed == _T("GSV")) {
+	
+		numberOfMessages = parser->Gsv.NumberOfMessages;
+		messageNumber = parser->Gsv.MessageNumber;
 
-	if (parser->Gsv.MessageNumber == 1) {
-		// This is the first message so reset everything
-		for (int i = 0; i < 12; i++) {
-			gpsSatelites[i].AzimuthDegreesTrue = 0;
-			gpsSatelites[i].ElevationDegrees = 0;
-			gpsSatelites[i].SatNumber = 0;
-			gpsSatelites->SignalToNoiseRatio = 0;
-		}
-		// Save the data
-		for (int i = 0; i < ((parser->Gsv.SatsInView > 4) ? 4 : parser->Gsv.SatsInView); i++ ) {
-			gpsSatelites[i].AzimuthDegreesTrue = parser->Gsv.SatInfo->AzimuthDegreesTrue;
-			gpsSatelites[i].ElevationDegrees = parser->Gsv.SatInfo->ElevationDegrees;
-			gpsSatelites[i].SatNumber = parser->Gsv.SatInfo->SatNumber;
-			gpsSatelites->SignalToNoiseRatio = parser->Gsv.SatInfo->SignalToNoiseRatio;
-		}
+		if (parser->Gsv.MessageNumber == 1) {
+			// This is the first message so reset everything
+			for (int i = 0; i < 12; i++) {
+				gpsSatelites[i].AzimuthDegreesTrue = 0;
+				gpsSatelites[i].ElevationDegrees = 0;
+				gpsSatelites[i].SatNumber = 0;
+				gpsSatelites[i].SignalToNoiseRatio = 0;
+			}
+			// Save the data
+			for (int i = 0; i < ((parser->Gsv.SatsInView > 4) ? 4 : parser->Gsv.SatsInView); i++ ) {
+				gpsSatelites[i].AzimuthDegreesTrue = parser->Gsv.SatInfo[i].AzimuthDegreesTrue;
+				gpsSatelites[i].ElevationDegrees = parser->Gsv.SatInfo[i].ElevationDegrees;
+				gpsSatelites[i].SatNumber = parser->Gsv.SatInfo[i].SatNumber;
+				gpsSatelites[i].SignalToNoiseRatio = parser->Gsv.SatInfo[i].SignalToNoiseRatio;
+			}
 
-	}
-	if (parser->Gsv.MessageNumber == 2) {
-		for (int i = 4; i < ((parser->Gsv.SatsInView > 8) ? 8 : parser->Gsv.SatsInView - 4); i++ ) {
-			gpsSatelites[i].AzimuthDegreesTrue = parser->Gsv.SatInfo->AzimuthDegreesTrue;
-			gpsSatelites[i].ElevationDegrees = parser->Gsv.SatInfo->ElevationDegrees;
-			gpsSatelites[i].SatNumber = parser->Gsv.SatInfo->SatNumber;
-			gpsSatelites->SignalToNoiseRatio = parser->Gsv.SatInfo->SignalToNoiseRatio;
 		}
-	}
-
-	if (parser->Gsv.MessageNumber == 3) {
-		for (int i = 8; i < ((parser->Gsv.SatsInView >= 12) ? 12 : parser->Gsv.SatsInView - 8); i++ ) {
-			gpsSatelites[i].AzimuthDegreesTrue = parser->Gsv.SatInfo->AzimuthDegreesTrue;
-			gpsSatelites[i].ElevationDegrees = parser->Gsv.SatInfo->ElevationDegrees;
-			gpsSatelites[i].SatNumber = parser->Gsv.SatInfo->SatNumber;
-			gpsSatelites->SignalToNoiseRatio = parser->Gsv.SatInfo->SignalToNoiseRatio;
-		}
-	}
-
-	if (messageNumber == numberOfMessages) {
-		// we have all the messages
 		
-		n2kMessage->push_back(sequenceId);
-
-		byte mode = 0; // Mode, 3 = range Residuals used to determine position
-		n2kMessage->push_back(mode & 0x03);
-
-		n2kMessage->push_back(parser->Gsv.SatsInView);
-
-		int index = 3;
-
-		for (int i = 0;i < parser->Gsv.SatsInView; i++) {
-			
-			n2kMessage->push_back(gpsSatelites[i].SatNumber);
-			index += 1;
-
-			unsigned short elevation = 10000 * DEGREES_TO_RADIANS(gpsSatelites[i].ElevationDegrees);
-			n2kMessage->push_back(elevation & 0xFF);
-			n2kMessage->push_back((elevation >> 8) & 0xFF);
-			index += 2;
-
-			unsigned short azimuth = 10000 * DEGREES_TO_RADIANS(gpsSatelites[i].AzimuthDegreesTrue);
-			n2kMessage->push_back(azimuth & 0xFF);
-			n2kMessage->push_back((azimuth >> 8) & 0xFF);
-			index += 2;
-
-			unsigned short snr = 100 * gpsSatelites[i].SignalToNoiseRatio;
-			n2kMessage->push_back(snr & 0xFF);
-			n2kMessage->push_back((snr >> 8) & 0xFF);
-			index += 2;
-
-			unsigned int rangeResiduals = UINT_MAX;
-			n2kMessage->push_back(rangeResiduals & 0xFF);
-			n2kMessage->push_back((rangeResiduals >> 8) & 0xFF);
-			n2kMessage->push_back((rangeResiduals >> 16) & 0xFF);
-			n2kMessage->push_back((rangeResiduals >> 24) & 0xFF);
-			index += 4;
-
-			// from canboat,
-			// 0 Not tracked
-			// 1 Tracked
-			// 2 Used
-			// 3 Not tracked+Diff
-			// 4 Tracked+Diff
-			// 5 Used+Diff
-			n2kMessage->push_back(1);
-			index += 1;
+		if (parser->Gsv.MessageNumber == 2) {
+			for (int i = 0; i < ((parser->Gsv.SatsInView > 8) ? 4 : parser->Gsv.SatsInView - 4); i++ ) {
+				gpsSatelites[i + 4].AzimuthDegreesTrue = parser->Gsv.SatInfo[i].AzimuthDegreesTrue;
+				gpsSatelites[i + 4].ElevationDegrees = parser->Gsv.SatInfo[i].ElevationDegrees;
+				gpsSatelites[i + 4].SatNumber = parser->Gsv.SatInfo[i].SatNumber;
+				gpsSatelites[i + 4].SignalToNoiseRatio = parser->Gsv.SatInfo[i].SignalToNoiseRatio;
+			}
 		}
 
-	}
+		// BUG BUG We only support 12 satellites 
+		if (parser->Gsv.MessageNumber == 3) {
+			for (int i = 0; i < ((parser->Gsv.SatsInView >12) ? 4 : parser->Gsv.SatsInView - 8) ; i++ ) {
+				gpsSatelites[i + 8].AzimuthDegreesTrue = parser->Gsv.SatInfo[i].AzimuthDegreesTrue;
+				gpsSatelites[i + 8].ElevationDegrees = parser->Gsv.SatInfo[i].ElevationDegrees;
+				gpsSatelites[i + 8].SatNumber = parser->Gsv.SatInfo[i].SatNumber;
+				gpsSatelites[i + 8].SignalToNoiseRatio = parser->Gsv.SatInfo[i].SignalToNoiseRatio;
+			}
+		}
+		
+		
+		if (messageNumber == numberOfMessages) {
+		
+			// we have all the messages
+			
+			n2kMessage->push_back(sequenceId);
 
-	return TRUE;
+			byte mode = 0; // Mode, 3 = range Residuals used to determine position
+			n2kMessage->push_back(mode & 0x03);
+
+			n2kMessage->push_back(parser->Gsv.SatsInView);
+
+			int index = 3;
+
+			for (int i = 0; i < parser->Gsv.SatsInView; i++) {
+				
+				n2kMessage->push_back(gpsSatelites[i].SatNumber);
+				index += 1;
+
+				unsigned short elevation = 10000 * DEGREES_TO_RADIANS(gpsSatelites[i].ElevationDegrees);
+				n2kMessage->push_back(elevation & 0xFF);
+				n2kMessage->push_back((elevation >> 8) & 0xFF);
+				index += 2;
+
+				unsigned short azimuth = 10000 * DEGREES_TO_RADIANS(gpsSatelites[i].AzimuthDegreesTrue);
+				n2kMessage->push_back(azimuth & 0xFF);
+				n2kMessage->push_back((azimuth >> 8) & 0xFF);
+				index += 2;
+
+				unsigned short snr = 100 * gpsSatelites[i].SignalToNoiseRatio;
+				n2kMessage->push_back(snr & 0xFF);
+				n2kMessage->push_back((snr >> 8) & 0xFF);
+				index += 2;
+
+				unsigned int rangeResiduals = UINT_MAX;
+				n2kMessage->push_back(rangeResiduals & 0xFF);
+				n2kMessage->push_back((rangeResiduals >> 8) & 0xFF);
+				n2kMessage->push_back((rangeResiduals >> 16) & 0xFF);
+				n2kMessage->push_back((rangeResiduals >> 24) & 0xFF);
+				index += 4;
+
+				// from canboat,
+				// 0 Not tracked
+				// 1 Tracked
+				// 2 Used
+				// 3 Not tracked+Diff
+				// 4 Tracked+Diff
+				// 5 Used+Diff
+				n2kMessage->push_back(1);
+				index += 1;
+				
+			}
+			return TRUE;
+		}
+	}
+	return FALSE;
 }
 
 // Encode payload for PGN 129808 NMEA DSC Call
