@@ -29,6 +29,7 @@
 // 1.2 - 20/05/2022 Add DSC & MOB conversion, Fix incorrect GGA PGN (caused random depth values), Fix APB flags
 //       Use NMEA 0183 v4.11 XDR standard transducer names
 // 1.3 - 20/02/2025 Fix PGN 129284 encoding (distance and ETA) and GSV parsing
+// 1.4 - 20/04/2025 Fix 126992 Time (UTC) and 129284 (only generate from RMB)
 
 #include "twocanencoder.h"
 
@@ -197,20 +198,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		if (nmeaParser.LastSentenceIDReceived == _T("APB")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_NAV)) {
-					// if (EncodePGN127237(&nmeaParser, &payload)) { // Heading/Track Control
-					//	header.pgn = 127237;
-					//	FragmentFastMessage(&header, &payload, canMessages);
-					// }
-					if (EncodePGN129283(&nmeaParser, &payload)) {
-						header.pgn = 129283;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
-
-					if (EncodePGN129284(&nmeaParser, &payload)) {
-						header.pgn = 129284;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
-				return TRUE;
+					// BUG BUG Ignored
 				}
 			}
 			else {
@@ -236,31 +224,15 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("BWC")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_ZDA)) {
-					if (EncodePGN126992(&nmeaParser, &payload)) {
-						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
-
-					if (EncodePGN129033(&nmeaParser, &payload)) {
-						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					// Ignored
 				}
 				if (!(supportedPGN & FLAGS_XTE)) {
-					if (EncodePGN129283(&nmeaParser, &payload)) {
-						header.pgn = 129283;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					// Ignored
 				}
 
 				if (!(supportedPGN & FLAGS_NAV)) {
-					if (EncodePGN129284(&nmeaParser, &payload)) {
-						header.pgn = 129284;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					//Ignored
 				}
-				
-				return TRUE;
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -272,32 +244,16 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("BWR")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_ZDA)) {
-					if (EncodePGN126992(&nmeaParser, &payload)) {
-						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
-	
-					if (EncodePGN129033(&nmeaParser, &payload)) {
-						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					// Ignored
 				}
 	
 				if (!(supportedPGN & FLAGS_XTE)) {
-					if (EncodePGN129283(&nmeaParser, &payload)) {
-						header.pgn = 129283;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					// Ignored
 				}
 	
 				if (!(supportedPGN & FLAGS_NAV)) {
-					if (EncodePGN129284(&nmeaParser, &payload)) {
-						header.pgn = 129284;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					// Ignored
 				}
-	
-				return TRUE;
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -309,7 +265,6 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("BWW")) {
 			if (nmeaParser.Parse()) {
 				// IGNORE
-
 			}
 			else {
 				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
@@ -375,8 +330,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 					if ((dseTimer->IsRunning()) && (dseMMSINumber == nmeaParser.Dse.mmsiNumber) && (nmeaParser.Dse.sentenceNumber == nmeaParser.Dse.totalSentences)) {
 						// We've received a DSE sentence that matches a preceding DSC sentence and within the time limit
 						// Add the DSE data pairs to the PGN 129808 payload
-						// Not sure if the DSE is limted to two items for NMEA 2000 ?
-						for (size_t i = 0; i < nmeaParser.Dse.codeFields.size(), i < 2; i++) {
+						for (size_t i = 0; i < nmeaParser.Dse.codeFields.size(); i++) {
 							dscPayload.push_back(nmeaParser.Dse.codeFields.at(i) + 100); // Code byte 
 							dscPayload.push_back(nmeaParser.Dse.dataFields.at(i).size() + 2); // Length byte includes length & control byte
 							dscPayload.push_back(0x01); // Control Byte, 0x01 = ASCII
@@ -416,15 +370,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("GGA")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_ZDA)) {
-					if (EncodePGN126992(&nmeaParser, &payload)) {
-						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
-
-					if (EncodePGN129033(&nmeaParser, &payload)) {
-						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					// Ignored
 				}
 
 				if (!(supportedPGN & FLAGS_GGA)) {
@@ -454,14 +400,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 			if (nmeaParser.Parse()) {
 				// Date & Time
 				if (!(supportedPGN & FLAGS_ZDA)) {
-					if (EncodePGN126992(&nmeaParser, &payload)) {
-						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
-					if (EncodePGN129033(&nmeaParser, &payload)) {
-						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					// Ignored
 				}
 				// Position
 				if (!(supportedPGN & FLAGS_GLL)) {
@@ -489,15 +428,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 				// Date and Time
 				if (!(supportedPGN & FLAGS_ZDA)) {
 				
-					if (EncodePGN126992(&nmeaParser, &payload)) {
-						header.pgn = 126992;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
-
-					if (EncodePGN129033(&nmeaParser, &payload)) {
-						header.pgn = 129033;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					// Ignored
 				}
 
 				// Position
@@ -716,10 +647,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 		else if (nmeaParser.LastSentenceIDReceived == _T("RMB")) {
 			if (nmeaParser.Parse()) {
 				if (!(supportedPGN & FLAGS_XTE)) {
-					if (EncodePGN129283(&nmeaParser, &payload)) {
-						header.pgn = 129283;
-						FragmentFastMessage(&header, &payload, canMessages);
-					}
+					// Ignored
 				}
 
 				if (!(supportedPGN & FLAGS_NAV)) {
@@ -873,30 +801,29 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 
 		// VDM AIS VHF Data Link Message
 		else if (nmeaParser.LastSentenceIDReceived == _T("VDM")) {
-			if (!(supportedPGN & FLAGS_AIS)) {
-				if (nmeaParser.Parse()) {
+			if (nmeaParser.Parse()) {
+				if (!(supportedPGN & FLAGS_AIS)) {
 					if (aisDecoder->ParseAisMessage(nmeaParser.Vdm, &payload, &header.pgn)) {
 						FragmentFastMessage(&header, &payload, canMessages);
 					}
-					return TRUE;
 				}
-				else {
-					wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
-				}
+				return TRUE;
+			}
+			else {
+				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
 			}
 			return FALSE;
 		}
 
 		// VDO AIS VHF Data Link Own Vessel Report
 		else if (nmeaParser.LastSentenceIDReceived == _T("VDO")) {
-			if (!(supportedPGN & FLAGS_AIS)) {
-				if (nmeaParser.Parse()) {
+			if (nmeaParser.Parse()) {
+				if (!(supportedPGN & FLAGS_AIS)) {
 					// IGNORE
-
 				}
-				else {
-					wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
-				}
+			}
+			else {
+				wxLogMessage(_T("TwoCan Encoder Parse Error, %s: %s"), sentence, nmeaParser.ErrorMessage);
 			}
 			return FALSE;
 		}
@@ -1529,6 +1456,7 @@ bool TwoCanEncoder::EncodeMessage(wxString sentence, std::vector<CanMessage> *ca
 
 // Encode PGN 126992 NMEA System Time
 bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("RMC")) {
@@ -1542,9 +1470,11 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 		
 			// BUG BUG should add the date time parser to NMEA 183....
 			// BUG BUG Note year 3000 bug, as NMEA 183 only supports two digits to represent the year
-			now.ParseDateTime(wxString::Format(_T("%s/%s/20%s %s:%s:%s"), 
+			now.ParseDateTime(wxString::Format(_T("%s/%s/20%s %s:%s:%s UTC"), 
 			parser->Rmc.Date.Mid(0,2), parser->Rmc.Date.Mid(2,2), parser->Rmc.Date.Mid(4,2),
 	 		parser->Rmc.UTCTime.Mid(0,2), parser->Rmc.UTCTime.Mid(2,2), parser->Rmc.UTCTime.Mid(4,2)));
+
+			now.MakeUTC();
 
 			wxTimeSpan dateDiff = now - epochTime;
 
@@ -1571,9 +1501,11 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 		wxDateTime epochTime((time_t)0);
 		wxDateTime now;
 
-		now.ParseDateTime(wxString::Format(_T("%s/%s/20%s %s:%s:%s"), 
+		now.ParseDateTime(wxString::Format(_T("%s/%s/20%s %s:%s:%s UTC"), 
 		parser->Zda.Day, parser->Zda.Month, parser->Zda.Year,
 		parser->Zda.UTCTime.Mid(0,2), parser->Zda.UTCTime.Mid(2,2), parser->Zda.UTCTime.Mid(4,2)));
+
+		now.MakeUTC();
 
 		wxTimeSpan dateDiff = now - epochTime;
 
@@ -1593,6 +1525,7 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 		return TRUE;
 	}
 
+	// Not invoked
 	else if (parser->LastSentenceIDParsed == _T("GLL")) {
 		if (parser->Gll.IsDataValid == NTrue) {
 			n2kMessage->push_back(sequenceId);
@@ -1623,6 +1556,7 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 		}
 	}
 
+	// Not invoked
 	else if (parser->LastSentenceIDParsed == _T("GGA")) {
 		n2kMessage->push_back(sequenceId);
 
@@ -1656,9 +1590,11 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 127233 NMEA Man Overboard (MOB)
 bool TwoCanEncoder::EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
-	if (parser->LastSentenceIDParsed == _T("MOB")) {
-		n2kMessage->clear();
 
+	n2kMessage->clear();
+
+	if (parser->LastSentenceIDParsed == _T("MOB")) {
+	
 		n2kMessage->push_back(sequenceId);
 
 		unsigned int emitterId = std::atoi(parser->Mob.EmitterID);
@@ -1746,8 +1682,11 @@ bool TwoCanEncoder::EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 127245 NMEA Rudder Position
 bool TwoCanEncoder::EncodePGN127245(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+
+	n2kMessage->clear();
+
 	if (parser->LastSentenceIDParsed == _T("RSA")) {
-		n2kMessage->clear();
+
 		// BUG BUG How to deal with multi rudder configurations
 		// Would need to issue two NMEA2000 messages.
 		if (parser->Rsa.IsStarboardDataValid) {
@@ -1780,7 +1719,9 @@ bool TwoCanEncoder::EncodePGN127245(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 127250 NMEA Vessel Heading
 bool TwoCanEncoder::EncodePGN127250(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
+	
 	if (parser->LastSentenceIDParsed == _T("HDG")) {
 		n2kMessage->push_back(sequenceId);			
 
@@ -1853,6 +1794,7 @@ bool TwoCanEncoder::EncodePGN127250(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 127251 NMEA Rate of Turn (ROT)
 bool TwoCanEncoder::EncodePGN127251(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("ROT")) {
@@ -1873,6 +1815,7 @@ bool TwoCanEncoder::EncodePGN127251(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 127257 NMEA Attitude
 bool TwoCanEncoder::EncodePGN127257(const short yaw, const short pitch, const short roll, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	n2kMessage->push_back(sequenceId);
@@ -1892,6 +1835,7 @@ bool TwoCanEncoder::EncodePGN127257(const short yaw, const short pitch, const sh
 
 // Encode payload for PGN 127258 NMEA Magnetic Variation
 bool TwoCanEncoder::EncodePGN127258(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("HDG")) {
@@ -1925,6 +1869,7 @@ bool TwoCanEncoder::EncodePGN127258(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 127488 Engine Rapid Update
 bool TwoCanEncoder::EncodePGN127488(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("RPM")) {
@@ -1957,6 +1902,7 @@ bool TwoCanEncoder::EncodePGN127488(const NMEA0183 *parser, std::vector<byte> *n
 // Encode payload for PGN 127489 Engine Static Parameters
 // BUG BUG Not all parameters are configured, assumes values are enumerated from NMEA 183 XDR sentence
 bool TwoCanEncoder::EncodePGN127250(const byte engineInstance, const unsigned short oilPressure, const unsigned short engineTemperature, const unsigned short alternatorPotential, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	n2kMessage->push_back(engineInstance);
@@ -2015,6 +1961,7 @@ bool TwoCanEncoder::EncodePGN127250(const byte engineInstance, const unsigned sh
 
 // Encode payload for PGN 128259 NMEA Speed & Heading
 bool TwoCanEncoder::EncodePGN128259(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("VHW")) {
@@ -2042,6 +1989,7 @@ bool TwoCanEncoder::EncodePGN128259(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 128267 NMEA Depth
 bool TwoCanEncoder::EncodePGN128267(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("DPT")) {
@@ -2087,6 +2035,7 @@ bool TwoCanEncoder::EncodePGN128267(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 128275 NMEA Distance Log
 bool TwoCanEncoder::EncodePGN128275(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("VLW")) {
@@ -2126,6 +2075,7 @@ bool TwoCanEncoder::EncodePGN128275(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 129025 NMEA Position Rapid Update
 bool TwoCanEncoder::EncodePGN129025(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (nmeaParser.LastSentenceIDParsed == _T("RMC")) {
@@ -2206,6 +2156,7 @@ bool TwoCanEncoder::EncodePGN129025(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 129026 NMEA COG SOG Rapid Update
 bool TwoCanEncoder::EncodePGN129026(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (nmeaParser.LastSentenceIDParsed == _T("RMC")) {
@@ -2231,6 +2182,7 @@ bool TwoCanEncoder::EncodePGN129026(const NMEA0183 *parser, std::vector<byte> *n
 }
 
 bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("GGA")) {
@@ -2335,15 +2287,19 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 129033 NMEA Date & Time
 bool TwoCanEncoder::EncodePGN129033(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
+	n2kMessage->clear();
+	
 	if (parser->LastSentenceIDParsed == _T("ZDA")) {
-		n2kMessage->clear();
 
 		wxDateTime epochTime((time_t)0);
 		wxDateTime now;
 
-		now.ParseDateTime(wxString::Format(_T("%d/%d/20%d %s:%s:%s"), 
+		now.ParseDateTime(wxString::Format(_T("%d/%d/20%d %s:%s:%s UTC"), 
 			parser->Zda.Day, parser->Zda.Month, parser->Zda.Year,
 	 		parser->Zda.UTCTime.Mid(0,2), parser->Zda.UTCTime.Mid(2,2), parser->Zda.UTCTime.Mid(4,2)));
+
+		now.MakeUTC();
 
 		wxTimeSpan dateDiff = now - epochTime;
 
@@ -2370,6 +2326,7 @@ bool TwoCanEncoder::EncodePGN129033(const NMEA0183 *parser, std::vector<byte> *n
 // Encode payload for PGN 129283 NMEA Cross Track Error
 // Generated by APB, RMB or XTE sentences
 bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("XTE")) {
@@ -2426,6 +2383,7 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 		}
 	}
 
+	// Not invoked
 	else if (parser->LastSentenceIDParsed == _T("APB")) {
 		n2kMessage->push_back(sequenceId);
 
@@ -2463,6 +2421,8 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 			return TRUE;
 		}
 	}
+
+	// Not invoked
 	else if (parser->LastSentenceIDParsed == _T("RMB")) {
 		
 		if (parser->Rmb.IsDataValid == NTrue) {
@@ -2521,6 +2481,7 @@ bool TwoCanEncoder::EncodePGN129283(const NMEA0183 *parser, std::vector<byte> *n
 
 // Generated when OpenCPN is navigating to a waypoint or following a route
 bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("RMB")) {
@@ -2553,6 +2514,8 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 				wxDateTime epochTime((time_t)0);
 				wxDateTime now = wxDateTime::Now();
 
+				now.MakeUTC();
+
 				// Calculate time to destination in seconds
 				unsigned int seconds = 3600 * (parser->Rmb.RangeToDestinationNauticalMiles / parser->Rmb.DestinationClosingVelocityKnots);
 				
@@ -2583,7 +2546,7 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back(bearingOrigin & 0xFF);
 			n2kMessage->push_back((bearingOrigin >> 8) & 0xFF);
 
-			unsigned short bearingPosition = 1000 * DEGREES_TO_RADIANS(parser->Rmb.BearingToDestinationDegreesTrue);
+			unsigned short bearingPosition = 10000 * DEGREES_TO_RADIANS(parser->Rmb.BearingToDestinationDegreesTrue);
 			n2kMessage->push_back(bearingPosition & 0xFF);
 			n2kMessage->push_back((bearingPosition >> 8) & 0xFF);
 
@@ -2713,6 +2676,7 @@ bool TwoCanEncoder::EncodePGN129285(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 129540 GNSS Satellites in View
 bool TwoCanEncoder::EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	int numberOfMessages;
@@ -2831,6 +2795,8 @@ bool TwoCanEncoder::EncodePGN129540(const NMEA0183 *parser, std::vector<byte> *n
 // $--DSE
 
 bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+
+	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("DSC")) {
 
@@ -3117,6 +3083,8 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 // Encode payload for PGN030306 NMEA Waypoint Location
 bool TwoCanEncoder::EncodePGN130074(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
 
+	n2kMessage->clear();
+
 	if (parser->LastSentenceIDParsed == _T("WPL")) {
 
 		unsigned short startingWaypointId = 0;
@@ -3189,6 +3157,7 @@ bool TwoCanEncoder::EncodePGN130074(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 130306 NMEA Wind
 bool TwoCanEncoder::EncodePGN130306(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("MWV")) {
@@ -3213,6 +3182,7 @@ bool TwoCanEncoder::EncodePGN130306(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 130310 NMEA Water & Air Temperature and Pressure
 bool TwoCanEncoder::EncodePGN130310(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("MTW")) {
@@ -3239,6 +3209,7 @@ bool TwoCanEncoder::EncodePGN130310(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 130311 NMEA Environment
 bool TwoCanEncoder::EncodePGN130311(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 	
 	if (parser->LastSentenceIDParsed == _T("MTW")) {
@@ -3268,6 +3239,7 @@ bool TwoCanEncoder::EncodePGN130311(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 130312 NMEA Temperature
 bool TwoCanEncoder::EncodePGN130312(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("MTW")) {
@@ -3296,6 +3268,7 @@ bool TwoCanEncoder::EncodePGN130312(const NMEA0183 *parser, std::vector<byte> *n
 
 // Encode payload for PGN 130316 NMEA Temperature Extended Range
 bool TwoCanEncoder::EncodePGN130316(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("MTW")) {
@@ -3322,6 +3295,7 @@ bool TwoCanEncoder::EncodePGN130316(const NMEA0183 *parser, std::vector<byte> *n
 // Encode payload for PGN 130577 NMEA Direction Data
 // BUG BUG Work out what to convert this to
 bool TwoCanEncoder::EncodePGN130577(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
+	
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("VDR")) {
