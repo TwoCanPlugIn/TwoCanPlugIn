@@ -39,6 +39,9 @@
 #include <bitset>
 #include <iostream>
 #include <functional>
+#include <iomanip>
+#include <ctime>
+#include <sstream>
 //#include <bits/stdc++.h> 
 //#include <typeinfo>
 
