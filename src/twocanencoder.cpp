@@ -1459,12 +1459,46 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 	
 	n2kMessage->clear();
 
+	// $GPRMC,013131.85,A,3825.88,S,14415.77,E,007.20,223.00,260425,8.5,E,A*21
+
 	if (parser->LastSentenceIDParsed == _T("RMC")) {
 
 		if (parser->Rmc.IsDataValid == NTrue) {
 
 			n2kMessage->push_back(sequenceId);
+			
+			// Initialize to zero
+			std::tm my_tm = { 0 };
 
+			// Years since 1900
+			my_tm.tm_year = std::atoi(parser->Rmc.Date.Mid(4, 2)) + 100;
+
+			// Months since January (0-11)
+			my_tm.tm_mon = std::atoi(parser->Rmc.Date.Mid(2, 2)) - 1; 
+
+			// Day of the month (1-31)
+			my_tm.tm_mday = std::atoi(parser->Rmc.Date.Mid(0, 2)); 
+
+			// Hours (0-23)
+			my_tm.tm_hour = std::atoi(parser->Rmc.UTCTime.Mid(0, 2));
+
+			// Minutes (0-59)
+			my_tm.tm_min = std::atoi(parser->Rmc.UTCTime.Mid(2, 2)); 
+
+			// Seconds (0-59)
+			my_tm.tm_sec = std::atoi(parser->Rmc.UTCTime.Mid(4, 2));
+
+			// No DST Offset
+			my_tm.tm_isdst = 0;
+
+			// Convert tm to time_t (seconds since epoch)
+			std::time_t epochSeconds = std::mktime(&my_tm);
+
+			// Calculate the number of days since epoch (integer division)
+			unsigned short daysSinceEpoch = static_cast<unsigned short>(epochSeconds / 86400);
+			unsigned int secondsSinceMidnight = static_cast<unsigned int>((epochSeconds - (daysSinceEpoch * 86400)) * 10000);
+
+			/*
 			wxDateTime epochTime((time_t)0);
 			wxDateTime now;
 		
@@ -1481,6 +1515,7 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 			unsigned short daysSinceEpoch = dateDiff.GetDays();
 			unsigned int secondsSinceMidnight = ((dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
 
+			*/
 			n2kMessage->push_back((TIME_SOURCE_GPS & 0x0F) << 4);
 
 			n2kMessage->push_back(daysSinceEpoch & 0xFF);
@@ -1498,6 +1533,39 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 	else if (parser->LastSentenceIDParsed == _T("ZDA")) {
 		n2kMessage->push_back(sequenceId);
 
+		// Initialize to zero
+		std::tm my_tm = { 0 };
+
+		// Years since 1900
+		my_tm.tm_year = parser->Zda.Year - 1900;
+
+		// Months since January (0-11)
+		my_tm.tm_mon = parser->Zda.Month - 1;
+
+		// Day of the month (1-31)
+		my_tm.tm_mday = parser->Zda.Day;
+
+		// Hours (0-23)
+		my_tm.tm_hour = std::atoi(parser->Zda.UTCTime.Mid(0, 2));
+
+		// Minutes (0-59)
+		my_tm.tm_min = std::atoi(parser->Zda.UTCTime.Mid(2, 2));
+
+		// Seconds (0-59)
+		my_tm.tm_sec = std::atoi(parser->Zda.UTCTime.Mid(4, 2));
+
+		// No DST Offset, but what about ZDA TimeZone ??
+		my_tm.tm_isdst = 0;
+
+		// Convert tm to time_t (seconds since epoch)
+		std::time_t epochSeconds = std::mktime(&my_tm);
+
+		// Calculate the number of days since epoch (integer division)
+		unsigned short daysSinceEpoch = static_cast<unsigned short>(epochSeconds / 86400);
+		unsigned int secondsSinceMidnight = static_cast<unsigned int>((epochSeconds - (daysSinceEpoch * 86400)) * 10000);
+
+
+		/*
 		wxDateTime epochTime((time_t)0);
 		wxDateTime now;
 
@@ -1511,6 +1579,8 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 
 		unsigned short daysSinceEpoch = dateDiff.GetDays();
 		unsigned int secondsSinceMidnight = ((dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+		*/
+
 
 		n2kMessage->push_back((TIME_SOURCE_GPS & 0x0F) << 4);
 
@@ -2292,6 +2362,39 @@ bool TwoCanEncoder::EncodePGN129033(const NMEA0183 *parser, std::vector<byte> *n
 	
 	if (parser->LastSentenceIDParsed == _T("ZDA")) {
 
+		// Initialize to zero
+		std::tm my_tm = { 0 };
+
+		// Years since 1900
+		my_tm.tm_year = parser->Zda.Year - 1900;
+
+		// Months since January (0-11)
+		my_tm.tm_mon = parser->Zda.Month - 1;
+
+		// Day of the month (1-31)
+		my_tm.tm_mday = parser->Zda.Day;
+
+		// Hours (0-23)
+		my_tm.tm_hour = std::atoi(parser->Zda.UTCTime.Mid(0,2));
+
+		// Minutes (0-59)
+		my_tm.tm_min = std::atoi(parser->Zda.UTCTime.Mid(2, 2));
+
+		// Seconds (0-59)
+		my_tm.tm_sec = std::atoi(parser->Zda.UTCTime.Mid(4, 2));
+
+		// No DST Offset
+		my_tm.tm_isdst = 0;
+
+		// Convert tm to time_t (seconds since epoch)
+		std::time_t epochSeconds = std::mktime(&my_tm);
+
+		// Calculate the number of days since epoch (integer division)
+		unsigned short daysSinceEpoch = static_cast<unsigned short>(epochSeconds / 86400);
+		unsigned int secondsSinceMidnight = static_cast<unsigned int>((epochSeconds - (daysSinceEpoch * 86400)) * 10000);
+
+
+		/*
 		wxDateTime epochTime((time_t)0);
 		wxDateTime now;
 
@@ -2305,6 +2408,9 @@ bool TwoCanEncoder::EncodePGN129033(const NMEA0183 *parser, std::vector<byte> *n
 
 		unsigned short daysSinceEpoch = dateDiff.GetDays();
 		unsigned int secondsSinceMidnight = ((dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+		*
+		*/
+
 
 		n2kMessage->push_back(daysSinceEpoch & 0xFF);
 		n2kMessage->push_back((daysSinceEpoch >> 8) & 0xFF);
