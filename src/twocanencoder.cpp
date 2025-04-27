@@ -1492,30 +1492,19 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 			my_tm.tm_isdst = 0;
 
 			// Convert tm to time_t (seconds since epoch)
-			std::time_t epochSeconds = std::mktime(&my_tm);
+
+#if defined (__WXMSW__) 
+			std::time_t epochSeconds = _mkgmtime(&my_tm);
+#endif
+
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+			std::time_t epochSeconds = timegm(&my_tm);
+#endif
 
 			// Calculate the number of days since epoch (integer division)
 			unsigned short daysSinceEpoch = static_cast<unsigned short>(epochSeconds / 86400);
 			unsigned int secondsSinceMidnight = static_cast<unsigned int>((epochSeconds - (daysSinceEpoch * 86400)) * 10000);
 
-			/*
-			wxDateTime epochTime((time_t)0);
-			wxDateTime now;
-		
-			// BUG BUG should add the date time parser to NMEA 183....
-			// BUG BUG Note year 3000 bug, as NMEA 183 only supports two digits to represent the year
-			now.ParseDateTime(wxString::Format(_T("%s/%s/20%s %s:%s:%s UTC"), 
-			parser->Rmc.Date.Mid(0,2), parser->Rmc.Date.Mid(2,2), parser->Rmc.Date.Mid(4,2),
-	 		parser->Rmc.UTCTime.Mid(0,2), parser->Rmc.UTCTime.Mid(2,2), parser->Rmc.UTCTime.Mid(4,2)));
-
-			now.MakeUTC();
-
-			wxTimeSpan dateDiff = now - epochTime;
-
-			unsigned short daysSinceEpoch = dateDiff.GetDays();
-			unsigned int secondsSinceMidnight = ((dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
-
-			*/
 			n2kMessage->push_back((TIME_SOURCE_GPS & 0x0F) << 4);
 
 			n2kMessage->push_back(daysSinceEpoch & 0xFF);
@@ -1558,29 +1547,17 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 		my_tm.tm_isdst = 0;
 
 		// Convert tm to time_t (seconds since epoch)
-		std::time_t epochSeconds = std::mktime(&my_tm);
+#if defined (__WXMSW__) 
+		std::time_t epochSeconds = _mkgmtime(&my_tm);
+#endif
+
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+		std::time_t epochSeconds = timegm(&my_tm);
+#endif
 
 		// Calculate the number of days since epoch (integer division)
 		unsigned short daysSinceEpoch = static_cast<unsigned short>(epochSeconds / 86400);
 		unsigned int secondsSinceMidnight = static_cast<unsigned int>((epochSeconds - (daysSinceEpoch * 86400)) * 10000);
-
-
-		/*
-		wxDateTime epochTime((time_t)0);
-		wxDateTime now;
-
-		now.ParseDateTime(wxString::Format(_T("%s/%s/20%s %s:%s:%s UTC"), 
-		parser->Zda.Day, parser->Zda.Month, parser->Zda.Year,
-		parser->Zda.UTCTime.Mid(0,2), parser->Zda.UTCTime.Mid(2,2), parser->Zda.UTCTime.Mid(4,2)));
-
-		now.MakeUTC();
-
-		wxTimeSpan dateDiff = now - epochTime;
-
-		unsigned short daysSinceEpoch = dateDiff.GetDays();
-		unsigned int secondsSinceMidnight = ((dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
-		*/
-
 
 		n2kMessage->push_back((TIME_SOURCE_GPS & 0x0F) << 4);
 
@@ -2387,30 +2364,17 @@ bool TwoCanEncoder::EncodePGN129033(const NMEA0183 *parser, std::vector<byte> *n
 		my_tm.tm_isdst = 0;
 
 		// Convert tm to time_t (seconds since epoch)
-		std::time_t epochSeconds = std::mktime(&my_tm);
+#if defined (__WXMSW__) 
+		std::time_t epochSeconds = _mkgmtime(&my_tm);
+#endif
+
+#if (defined (__APPLE__) && defined (__MACH__)) || defined (__LINUX__)
+		std::time_t epochSeconds = timegm(&my_tm);
+#endif
 
 		// Calculate the number of days since epoch (integer division)
 		unsigned short daysSinceEpoch = static_cast<unsigned short>(epochSeconds / 86400);
 		unsigned int secondsSinceMidnight = static_cast<unsigned int>((epochSeconds - (daysSinceEpoch * 86400)) * 10000);
-
-
-		/*
-		wxDateTime epochTime((time_t)0);
-		wxDateTime now;
-
-		now.ParseDateTime(wxString::Format(_T("%d/%d/20%d %s:%s:%s UTC"), 
-			parser->Zda.Day, parser->Zda.Month, parser->Zda.Year,
-	 		parser->Zda.UTCTime.Mid(0,2), parser->Zda.UTCTime.Mid(2,2), parser->Zda.UTCTime.Mid(4,2)));
-
-		now.MakeUTC();
-
-		wxTimeSpan dateDiff = now - epochTime;
-
-		unsigned short daysSinceEpoch = dateDiff.GetDays();
-		unsigned int secondsSinceMidnight = ((dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
-		*
-		*/
-
 
 		n2kMessage->push_back(daysSinceEpoch & 0xFF);
 		n2kMessage->push_back((daysSinceEpoch >> 8) & 0xFF);
