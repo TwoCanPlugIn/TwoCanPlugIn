@@ -37,16 +37,26 @@
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
 //
+// BUG BUG Note to self- bug in wxformbuilder, incorrect list check box event. use wxEVT_LIST_ITEM_CHECKED
 
 #include "twocansettings.h"
+// Waypoint List Control Sorting
+int wxCALLBACK SortWaypoints(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData) {
+	WaypointSorting* sortInfo = (WaypointSorting*)sortData;
+	wxString item1Text = sortInfo->listCtrl->GetItemText(item1, 0);
+	wxString item2Text = sortInfo->listCtrl->GetItemText(item2, 0);
+
+	return wxCmpNatural(item1Text, item2Text);
+}
+
 
 // Constructor and destructor implementation
 // inherits froms TwoCanSettingsBase which was implemented using wxFormBuilder
-TwoCanSettings::TwoCanSettings(wxWindow* parent, wxWindowID id, const wxString& title, \
+TwoCanSettings::TwoCanSettings(wxEvtHandler* handler, wxWindow* parent, wxWindowID id, const wxString& title, \
 	const wxPoint& pos, const wxSize& size, long style )
 	: TwoCanSettingsBase(parent, id, title, pos, size, style) {
 
-	parentWindow = parent;
+	eventHandlerAddress = handler;
 
 	// Set the dialog's 16x16 icon
 	wxIcon icon;
@@ -87,7 +97,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("130310 ") + _("Water Temperature") + _(" (MWT)"));
 	pgn->Add(_T("129808 ") + _("Digital Selective Calling") + _T(" (DSC)"));
 	pgn->Add(_T("129038..41 ") + _("AIS Class A & B messages") + _T(" (VDM)"));
-	pgn->Add(_T("129285 ") + _("Route/Waypoint") + _T(" (BWR/BOD/WPL/RTE)"));
+	pgn->Add(_T("129285 ") + _("Route/Waypoint") + _T(" (WPL/RTE)"));
 	pgn->Add(_T("127251 ") + _("Rate of Turn") + _T(" (ROT)"));
 	pgn->Add(_T("129283 ") + _("Cross Track Error") + _T(" (XTE)"));
 	pgn->Add(_T("127257 ") + _("Attitude") + _T(" (XDR)"));
@@ -95,7 +105,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	pgn->Add(_T("127505 ") + _("Fluid Levels") + _T(" (XDR) "));
 	pgn->Add(_T("127245 ") + _("Rudder Angle") + _T(" (RSA)"));
 	pgn->Add(_T("127508 ") + _("Battery Status") + _T(" (XDR)"));
-	pgn->Add(_T("129284 ") + _("Navigation Data") + _T(" (BWC/BWR/BOD/WCV)"));
+	pgn->Add(_T("129284 ") + _("Navigation Data") + _T(" (RMB)"));
 	pgn->Add(_T("128275 ") + _("Vessel Trip Details") +_T(" (VLW)"));
 	pgn->Add(_T("130323 ") + _("Meteorological Details") +_T(" (MDA)"));
 	pgn->Add(_T("127233 ") + _("Man Overboard") + _T(" (MOB)"));
@@ -164,9 +174,8 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	chkHeartbeat->Enable(chkDeviceMode->IsChecked());
 	chkGateway->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
-	// BUG BUG Not yet implemented
-	chkMedia->Enable(FALSE);
-	chkAutopilot->Enable(FALSE);
+	chkMedia->Enable(chkDeviceMode->IsChecked());
+	chkAutopilot->Enable(chkDeviceMode->IsChecked());
 	if (deviceMode == TRUE) {
 		chkHeartbeat->SetValue(enableHeartbeat);
 		chkGateway->SetValue(enableGateway);
@@ -198,6 +207,7 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 	logging["Candump"] = FLAGS_LOG_CANDUMP;
 	logging["YachtDevices"] = FLAGS_LOG_YACHTDEVICES;
 	logging["CSV"] = FLAGS_LOG_CSV;
+	logging["Actisense"] = FLAGS_LOG_ACTISENSE;
 
 	for (LoggingOptions::iterator it = this->logging.begin(); it != this->logging.end(); it++){
 		cmbLogging->Append(it->first);
@@ -206,25 +216,43 @@ void TwoCanSettings::OnInit(wxInitDialogEvent& event) {
 		}
 	}
 
+	// The Waypoint Tab
+	listWaypoints->EnableCheckBoxes(true);
+	listWaypoints->InsertColumn(0, "Name", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
+	listWaypoints->InsertColumn(1, "Description", wxLIST_FORMAT_LEFT, 150);
+	listWaypoints->InsertColumn(2, "Latitude", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
+	listWaypoints->InsertColumn(3, "Longitude", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE);
+
+	btnExport->Enable(false);
+
 	// BUG BUG I really don't understand wxWidgets sizers, but this seems to do what I want
 	wxSize newSize = this->GetSize();
 	dataGridNetwork->SetMinSize(wxSize(512, 20 * dataGridNetwork->GetDefaultRowSize()));
 	dataGridNetwork->SetMaxSize(wxSize(-1, 20 * dataGridNetwork->GetDefaultRowSize()));
 		
 	Fit();
-
-	// After we've fitted in everything adjust the dataGrid column widths
-	int colWidth = (int)((dataGridNetwork->GetSize().GetWidth() - dataGridNetwork->GetRowLabelSize() - wxSystemSettings::GetMetric(wxSYS_VSCROLL_X, NULL)) / 3);
-	dataGridNetwork->SetColSize(0, colWidth);
-	dataGridNetwork->SetColSize(1, colWidth);
-	dataGridNetwork->SetColSize(2, colWidth);
-	
+	CenterOnParent();	
 }
 
 // BUG BUG Should prevent the user from shooting themselves in the foot if they select a driver that is not present
 void TwoCanSettings::OnChoiceInterfaces(wxCommandEvent &event) {
 	// BUG BUG should only set the dirty flag if we've actually selected a different driver
 	this->settingsDirty = TRUE;
+}
+
+void TwoCanSettings::OnSize(wxSizeEvent& event) {
+	
+	int colWidth = (int)((dataGridNetwork->GetSize().GetWidth() - dataGridNetwork->GetRowLabelSize() - wxSystemSettings::GetMetric(wxSYS_VSCROLL_X, NULL)) / 3);
+	dataGridNetwork->SetColSize(0, colWidth);
+	dataGridNetwork->SetColSize(1, colWidth);
+	dataGridNetwork->SetColSize(2, colWidth);
+
+	colWidth = (listWaypoints->GetSize().GetWidth() - listWaypoints->GetColumnWidth(1)) / 3;
+	listWaypoints->SetColumnWidth(0, colWidth);
+	listWaypoints->SetColumnWidth(2, colWidth);
+	listWaypoints->SetColumnWidth(3, colWidth);
+
+	event.Skip();
 }
 
 // Select NMEA 2000 parameter group numbers to be converted to their respective NMEA 0183 sentences
@@ -252,8 +280,80 @@ void TwoCanSettings::OnCopy(wxCommandEvent &event) {
 	}
 }
 
-void TwoCanSettings::OnExportWaypoint(wxCommandEvent &event) {
-	wxMessageBox("Export Waypoint Settings Dialog");
+// When we move to the Waypoint tab, load all of the waypoints
+void TwoCanSettings::OnTabChanged(wxNotebookEvent& event) {
+	if (event.GetSelection() == 4) {
+
+		// Initialize the structure for sorting waypoints alphapbetically
+		// BUG BUG Consider Column click and toggling ascending/descending
+		waypointSorting.listCtrl = listWaypoints;
+		waypointSorting.sortAscending = true; 
+		
+		// Populate the list control
+		listWaypoints->DeleteAllItems();
+		// Retrieve all of the waypoints from OpenCPN
+		wxArrayString waypoints = GetWaypointGUIDArray();
+		std::unique_ptr<PlugIn_Waypoint> pluginWaypoint;
+		long index;
+		for (size_t i = 0; i < waypoints.GetCount(); i++) {
+			pluginWaypoint = GetWaypoint_Plugin(waypoints[i]);
+			if (pluginWaypoint != nullptr) {
+				index = listWaypoints->InsertItem(i, pluginWaypoint->m_MarkName);
+				listWaypoints->SetItem(index, 1, pluginWaypoint->m_MarkDescription);
+				// 1 - NE (Lat & Lon are Positive, 2 - SW - Lat & Lon are negative. 
+				// Weird API, As they are doubles could it not be determined from the sign ?
+				listWaypoints->SetItem(index, 2, toSDMM_PlugIn(1,pluginWaypoint->m_lat, true));
+				listWaypoints->SetItem(index, 3, toSDMM_PlugIn(2, pluginWaypoint->m_lon, true));
+			}
+		}
+		
+		// Once loaded, now sort alphabetically
+		listWaypoints->SortItems(SortWaypoints, (long)&waypointSorting);
+	}
+}
+
+// Iterate over the selected waypoints and export them via PGN 130074
+void TwoCanSettings::OnExportWaypoints(wxCommandEvent& event) {
+	
+	long item = listWaypoints->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
+	while (item != -1) {
+		if (listWaypoints->IsItemChecked(item)) {
+			Waypoint *waypoint = new Waypoint();
+			waypoint->waypointName = listWaypoints->GetItemText(item, 0);
+			waypoint->waypointLatitude = fromDMM_Plugin(listWaypoints->GetItemText(item, 2));
+			waypoint->waypointLongitude = fromDMM_Plugin(listWaypoints->GetItemText(item, 3));
+			
+			// BUG BUG DEBUG REMOVE
+			wxMessageBox(wxString::Format("Item: %d\nLat: %0.4f\nLon: %0.4f", item, 
+				waypoint->waypointLatitude,	waypoint->waypointLongitude), waypoint->waypointName);
+			
+			wxCommandEvent *event = new wxCommandEvent(wxEVT_SENTENCE_RECEIVED_EVENT, WAYPOINT_EXPORT_EVENT);
+			event->SetString(waypoint->waypointName);
+			event->SetClientData(static_cast<void*>(waypoint));
+			wxQueueEvent(eventHandlerAddress, event);
+
+			// Provide some visual indication that we have exported the item.
+			listWaypoints->CheckItem(item, false);
+		}
+		item = listWaypoints->GetNextItem(item, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
+	}
+}
+
+void TwoCanSettings::OnWaypointDeselected(wxListEvent& event) {
+	bool anyChecked = false;
+	long item = listWaypoints->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
+	while (item != -1) {
+		if (listWaypoints->IsItemChecked(item)) {
+			anyChecked = true;
+		}
+		item = listWaypoints->GetNextItem(item, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
+	}
+	btnExport->Enable(anyChecked);
+}
+
+
+void TwoCanSettings::OnWaypointSelected(wxListEvent& event) {
+	btnExport->Enable(true);
 }
 
 // Set whether the device is an actve or passive node on the NMEA 2000 network

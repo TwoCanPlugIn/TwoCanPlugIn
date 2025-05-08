@@ -57,7 +57,7 @@
 
 // Combine all of the data from NMEA 183 XTE, RMB and APB sentences into 
 // a single struct required for navigation (in particular autopilot control)
-typedef struct NavigationData {
+typedef struct {
 	unsigned int originWaypointId;
 	wxString originWaypointName;
 	unsigned int destinationWaypointId;
@@ -209,7 +209,7 @@ public:
 	bool EncodePGN127488(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
 
 	// Encode PGN 127489 NMEA Engine Static Parameters
-	bool EncodePGN127250(const byte engineInstance, const unsigned short oilPressure, const unsigned short engineTemperature, const unsigned short alternatorPotential, std::vector<byte> *n2kMessage);
+	bool EncodePGN127489(const NMEA0183* parser, const byte engineInstance, const unsigned short oilPressure, const unsigned short engineTemperature, const unsigned short alternatorPotential, std::vector<byte> *n2kMessage);
 
 	// Encode PGN 128259 NMEA Speed & Heading
 	bool EncodePGN128259(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
@@ -252,6 +252,8 @@ public:
 
 	// Encode PGN 130074 NMEA Route & Waypoint Service - Waypoint List
 	bool EncodePGN130074(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
+	// To support the Waypoint Export function, rather than having to construct a NMEA 0183 class
+	bool EncodePGN130074(wxString name, double latitude, double longitude, std::vector<byte>* n2kMessage);
 
 	// Encode PGN 130306 NMEA Wind
 	bool EncodePGN130306(const NMEA0183 *parser, std::vector<byte> *n2kMessage);
@@ -288,10 +290,13 @@ public:
 	// BUG BUG Is this used ??
 	NavigationData navigationData;
 
-	//If DSC sentence has a following DSE sentence, wait until it is received or times out, before transmitting PGN 129808 
+	// If DSC sentence has a following DSE sentence, wait until it is received or times out, before transmitting PGN 129808 
 	wxTimer *dseTimer;
 	unsigned long long dseMMSINumber;
 	std::vector<byte> dscPayload;
+
+	// Calculate Days since epoch and seconds since Midnight from the time components of a NMEA sentence
+	void ParseTime(const wxString timeString, unsigned short* days, unsigned int* seconds);
 	
 };
 

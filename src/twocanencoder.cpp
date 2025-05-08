@@ -96,7 +96,22 @@ void TwoCanEncoder::OnDseTimerExpired(wxEvent &event) {
 		// If MMSI Number equals zero, then we have already received the corresponding DSE sentence,
 		// constructed the remainder of PGN 129808 and transmitted it. The timer should have been stopped in anycase.
 	}
+}
 
+// Create a date given just the current time. Used for NMEA Sentences that only have a time component
+void TwoCanEncoder::ParseTime(const wxString timeString, unsigned short* days, unsigned int* seconds) {
+	
+	// Assume today
+	std::time_t epochSeconds = std::time(0);
+
+	// Days since epoch
+	*days = static_cast<unsigned short>(epochSeconds / 86400);
+
+	// Parse the time string from a NMEA sentence, usually something like 192745.00
+	unsigned int hour = std::atoi(timeString.SubString(0, 2));
+	unsigned int minute = std::atoi(timeString.SubString(2, 2));
+	*seconds = (std::atoi(timeString.SubString(4, 2)) +
+		(minute * 60) + (hour * 3600)) * 10000;
 }
 
 // BUG BUG Duplicated code from twocandevice.cpp. Should refactor & deduplicate
@@ -1577,17 +1592,10 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 		if (parser->Gll.IsDataValid == NTrue) {
 			n2kMessage->push_back(sequenceId);
 
-			wxDateTime epoch((time_t)0);
-			wxDateTime now = wxDateTime::Now();
+			unsigned short daysSinceEpoch;
+			unsigned int secondsSinceMidnight;
 
-			now.SetHour(std::atoi(parser->Gll.UTCTime.Mid(0,2)));
-			now.SetMinute(std::atoi(parser->Gll.UTCTime.Mid(2,2)));
-			now.SetSecond(std::atoi(parser->Gll.UTCTime.Mid(4,2)));
-
-			wxTimeSpan dateDiff = now - epoch;
-
-			unsigned short daysSinceEpoch = dateDiff.GetDays();
-			unsigned int secondsSinceMidnight = ((dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+			ParseTime(parser->Gll.UTCTime, &daysSinceEpoch, &secondsSinceMidnight);
 
 			n2kMessage->push_back((TIME_SOURCE_GPS & 0x0F) << 4);
 
@@ -1607,18 +1615,11 @@ bool TwoCanEncoder::EncodePGN126992(const NMEA0183 *parser, std::vector<byte> *n
 	else if (parser->LastSentenceIDParsed == _T("GGA")) {
 		n2kMessage->push_back(sequenceId);
 
-		wxDateTime epochTime((time_t)0);
+		unsigned short daysSinceEpoch;
+		unsigned int secondsSinceMidnight;
 
-		// GGA sentence only has utc time, not date, so assume today
-		wxDateTime now = wxDateTime::Now();
-		now.SetHour(std::atoi(parser->Gga.UTCTime.Mid(0,2)));
-		now.SetMinute(std::atoi(parser->Gga.UTCTime.Mid(2,2)));
-		now.SetSecond(std::atoi(parser->Gga.UTCTime.Mid(4,2)));
-		
-		wxTimeSpan dateDiff = now - epochTime;
+		ParseTime(parser->Gga.UTCTime, &daysSinceEpoch, &secondsSinceMidnight);
 
-		unsigned short daysSinceEpoch = dateDiff.GetDays();
-		unsigned int secondsSinceMidnight = ((dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
 		n2kMessage->push_back((TIME_SOURCE_GPS & 0x0F) << 4);
 
 		n2kMessage->push_back(daysSinceEpoch & 0xFF);
@@ -1657,7 +1658,7 @@ bool TwoCanEncoder::EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n
 		unsigned int minutes = std::atoi(parser->Mob.ActivationTime.Mid(2, 2));
 		unsigned int seconds = std::atoi(parser->Mob.ActivationTime.Mid(4, 2));
 
-		unsigned int timeOfDay = ((hours * 3600) + (minutes * 60) + seconds) * 1e4;
+		unsigned int timeOfDay = ((hours * 3600) + (minutes * 60) + seconds) * 10000;
 		n2kMessage->push_back(timeOfDay & 0xFF);
 		n2kMessage->push_back((timeOfDay >> 8) & 0xFF);
 		n2kMessage->push_back((timeOfDay >> 16) & 0xFF);
@@ -1666,12 +1667,10 @@ bool TwoCanEncoder::EncodePGN127233(const NMEA0183 *parser, std::vector<byte> *n
 		byte positionSource = parser->Mob.PositionReference;
 		n2kMessage->push_back((positionSource & 0x07) | 0xFE);
 
-		wxDateTime epochTime((time_t)0);
-		wxDateTime now = wxDateTime::Now();
-		wxTimeSpan diff = now - epochTime;
+		unsigned short daysSinceEpoch;
+		unsigned int secondsSinceMidnight;
 
-		unsigned short daysSinceEpoch = diff.GetDays();
-		unsigned int secondsSinceMidnight = (unsigned int)(diff.GetSeconds().ToLong() - (diff.GetDays() * 24 * 60 * 60)) * 10000;
+		ParseTime(parser->Mob.ActivationTime, &daysSinceEpoch, &secondsSinceMidnight);
 
 		n2kMessage->push_back(daysSinceEpoch & 0xFF);
 		n2kMessage->push_back((daysSinceEpoch >> 8) & 0xFF);
@@ -1946,63 +1945,69 @@ bool TwoCanEncoder::EncodePGN127488(const NMEA0183 *parser, std::vector<byte> *n
 	return FALSE;
 }
 
+// Not invoked, encoding performed elsewhere
 // Encode payload for PGN 127489 Engine Static Parameters
 // BUG BUG Not all parameters are configured, assumes values are enumerated from NMEA 183 XDR sentence
-bool TwoCanEncoder::EncodePGN127250(const byte engineInstance, const unsigned short oilPressure, const unsigned short engineTemperature, const unsigned short alternatorPotential, std::vector<byte> *n2kMessage) {
+bool TwoCanEncoder::EncodePGN127489(const NMEA0183* parser, const byte engineInstance, const unsigned short oilPressure, const unsigned short engineTemperature, const unsigned short alternatorPotential, std::vector<byte> *n2kMessage) {
 	
 	n2kMessage->clear();
 
-	n2kMessage->push_back(engineInstance);
-	
-	n2kMessage->push_back(oilPressure & 0xFF);
-	n2kMessage->push_back((oilPressure >> 8) & 0xFF);
+	if (parser->LastSentenceIDParsed == _T("XDR")) {
 
-	unsigned short oilTemperature = USHRT_MAX;
-	n2kMessage->push_back(oilTemperature & 0xFF);
-	n2kMessage->push_back((oilTemperature >> 8) & 0xFF);
+		n2kMessage->push_back(engineInstance);
 
-	n2kMessage->push_back(engineTemperature & 0xFF);
-	n2kMessage->push_back((engineTemperature >> 8) & 0xFF);
+		n2kMessage->push_back(oilPressure & 0xFF);
+		n2kMessage->push_back((oilPressure >> 8) & 0xFF);
 
-	n2kMessage->push_back(alternatorPotential & 0xFF);
-	n2kMessage->push_back((alternatorPotential >> 8) & 0xFF);
+		unsigned short oilTemperature = USHRT_MAX;
+		n2kMessage->push_back(oilTemperature & 0xFF);
+		n2kMessage->push_back((oilTemperature >> 8) & 0xFF);
 
-	unsigned short fuelRate = USHRT_MAX; // 0.1 Litres/hour
-	n2kMessage->push_back(fuelRate & 0xFF);
-	n2kMessage->push_back((fuelRate >> 8) &0xFF);
+		n2kMessage->push_back(engineTemperature & 0xFF);
+		n2kMessage->push_back((engineTemperature >> 8) & 0xFF);
 
-	unsigned int totalEngineHours = UINT_MAX;  // seconds
-	n2kMessage->push_back(totalEngineHours & 0xFF);
-	n2kMessage->push_back((totalEngineHours >> 8) & 0xFF);
-	n2kMessage->push_back((totalEngineHours >> 16) & 0xFF);
-	n2kMessage->push_back((totalEngineHours >> 24) & 0xFF);
+		n2kMessage->push_back(alternatorPotential & 0xFF);
+		n2kMessage->push_back((alternatorPotential >> 8) & 0xFF);
 
-	unsigned short coolantPressure = USHRT_MAX; // hPA
-	n2kMessage->push_back(coolantPressure & 0xFF);
-	n2kMessage->push_back((coolantPressure >> 8) & 0xFF);
+		unsigned short fuelRate = USHRT_MAX; // 0.1 Litres/hour
+		n2kMessage->push_back(fuelRate & 0xFF);
+		n2kMessage->push_back((fuelRate >> 8) & 0xFF);
 
-	unsigned short fuelPressure = USHRT_MAX; // hPa
-	n2kMessage->push_back(fuelPressure & 0xFF);
-	n2kMessage->push_back((fuelPressure >> 8) & 0xFF);
+		unsigned int totalEngineHours = UINT_MAX;  // seconds
+		n2kMessage->push_back(totalEngineHours & 0xFF);
+		n2kMessage->push_back((totalEngineHours >> 8) & 0xFF);
+		n2kMessage->push_back((totalEngineHours >> 16) & 0xFF);
+		n2kMessage->push_back((totalEngineHours >> 24) & 0xFF);
 
-	byte reserved = UCHAR_MAX;
-	n2kMessage->push_back(reserved & 0xFF);
+		unsigned short coolantPressure = USHRT_MAX; // hPA
+		n2kMessage->push_back(coolantPressure & 0xFF);
+		n2kMessage->push_back((coolantPressure >> 8) & 0xFF);
 
-	unsigned short statusOne = USHRT_MAX;
-	n2kMessage->push_back(statusOne & 0xFF);
-	n2kMessage->push_back((statusOne >> 8) & 0xFF);
+		unsigned short fuelPressure = USHRT_MAX; // hPa
+		n2kMessage->push_back(fuelPressure & 0xFF);
+		n2kMessage->push_back((fuelPressure >> 8) & 0xFF);
 
-	unsigned short statusTwo = USHRT_MAX;
-	n2kMessage->push_back(statusTwo & 0xFF);
-	n2kMessage->push_back((statusTwo >> 8) & 0xFF);
+		byte reserved = UCHAR_MAX;
+		n2kMessage->push_back(reserved & 0xFF);
 
-	byte engineLoad = UCHAR_MAX;  // percentage
-	n2kMessage->push_back(engineLoad & 0xFF);
+		unsigned short statusOne = USHRT_MAX;
+		n2kMessage->push_back(statusOne & 0xFF);
+		n2kMessage->push_back((statusOne >> 8) & 0xFF);
 
-	byte engineTorque = UCHAR_MAX; // percentage
-	n2kMessage->push_back(engineTorque & 0xFF);
+		unsigned short statusTwo = USHRT_MAX;
+		n2kMessage->push_back(statusTwo & 0xFF);
+		n2kMessage->push_back((statusTwo >> 8) & 0xFF);
 
-	return TRUE;
+		byte engineLoad = UCHAR_MAX;  // percentage
+		n2kMessage->push_back(engineLoad & 0xFF);
+
+		byte engineTorque = UCHAR_MAX; // percentage
+		n2kMessage->push_back(engineTorque & 0xFF);
+
+		return TRUE;
+	}
+
+	return FALSE;
 
 }
 
@@ -2015,7 +2020,7 @@ bool TwoCanEncoder::EncodePGN128259(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(sequenceId);
 
-		unsigned short speedWaterReferenced = (unsigned short) (100 * parser->Vhw.Knots / CONVERT_MS_KNOTS);
+		unsigned short speedWaterReferenced = static_cast<unsigned short>(100 * parser->Vhw.Knots / CONVERT_MS_KNOTS);
 		n2kMessage->push_back(speedWaterReferenced & 0xFF);
 		n2kMessage->push_back((speedWaterReferenced >> 8) & 0xFF);
 
@@ -2025,7 +2030,7 @@ bool TwoCanEncoder::EncodePGN128259(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(0); // VHW does not indicate speed source, so assume paddle wheel
 
-		unsigned short heading = (unsigned short)(10000 * DEGREES_TO_RADIANS(parser->Vhw.DegreesMagnetic));
+		unsigned short heading = static_cast<unsigned short>(10000 * DEGREES_TO_RADIANS(parser->Vhw.DegreesMagnetic));
 		n2kMessage->push_back(heading & 0xFF);
 		n2kMessage->push_back((heading >> 8) & 0xFF);
 
@@ -2043,17 +2048,17 @@ bool TwoCanEncoder::EncodePGN128267(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(sequenceId);
 
-		unsigned int depth = (unsigned int)(100 * parser->Dpt.DepthMeters);
+		unsigned int depth = static_cast<unsigned int>(100 * parser->Dpt.DepthMeters);
 		n2kMessage->push_back(depth & 0xFF);
 		n2kMessage->push_back((depth >> 8) & 0xFF);
 		n2kMessage->push_back((depth >> 16) & 0xFF);
 		n2kMessage->push_back((depth >> 24) & 0xFF);
 		
-		short offset = (short)(1000 * nmeaParser.Dpt.OffsetFromTransducerMeters);
+		short offset = static_cast<unsigned short>(1000 * nmeaParser.Dpt.OffsetFromTransducerMeters);
 		n2kMessage->push_back(offset & 0xFF);
 		n2kMessage->push_back((offset >> 8) & 0xFF);
 
-		byte maxRange = (byte)(0.1 * nmeaParser.Dpt.MaximumRangeMeters);
+		byte maxRange = static_cast<byte>(0.1 * nmeaParser.Dpt.MaximumRangeMeters);
 		n2kMessage->push_back(maxRange & 0xFF);
 
 		return TRUE;
@@ -2062,7 +2067,7 @@ bool TwoCanEncoder::EncodePGN128267(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(sequenceId);
 			
-		unsigned int depth = (unsigned int)(100 * parser->Dbt.DepthMeters);
+		unsigned int depth = static_cast<unsigned int>(100 * parser->Dbt.DepthMeters);
 		n2kMessage->push_back(depth & 0xFF);
 		n2kMessage->push_back((depth >> 8) & 0xFF);
 		n2kMessage->push_back((depth >> 16) & 0xFF);
@@ -2086,14 +2091,12 @@ bool TwoCanEncoder::EncodePGN128275(const NMEA0183 *parser, std::vector<byte> *n
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("VLW")) {
-		wxDateTime epochTime((time_t)0);
-		wxDateTime now = wxDateTime::Now();
 
-		wxTimeSpan dateDiff = now - epochTime;
-
-		unsigned short daysSinceEpoch = dateDiff.GetDays();
-		unsigned int secondsSinceMidnight = ((dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
-
+		// Assume now
+		std::time_t epochSeconds = std::time(0);
+		unsigned short daysSinceEpoch = static_cast<unsigned short>(epochSeconds / 86400);
+		unsigned int secondsSinceMidnight = static_cast<unsigned int>((epochSeconds - (daysSinceEpoch * 86400) * 10000));
+		
 		n2kMessage->push_back(daysSinceEpoch & 0xFF);
 		n2kMessage->push_back((daysSinceEpoch >> 8) & 0xFF);
 
@@ -2178,7 +2181,7 @@ bool TwoCanEncoder::EncodePGN129025(const NMEA0183 *parser, std::vector<byte> *n
 	else if (nmeaParser.LastSentenceIDParsed == _T("GGA")) {
 		if (parser->Gga.GPSQuality != 0) { // 0 indicates fix not available
 	
-			int latitude = (int)(parser->Gga.Position.Latitude.Latitude * 1e7);
+			int latitude = static_cast<int>(parser->Gga.Position.Latitude.Latitude * 1e7);
 			if (parser->Gga.Position.Latitude.Northing == South) {
 				latitude = -latitude;
 			}
@@ -2187,7 +2190,7 @@ bool TwoCanEncoder::EncodePGN129025(const NMEA0183 *parser, std::vector<byte> *n
 			n2kMessage->push_back((latitude >> 16) & 0xFF);
 			n2kMessage->push_back((latitude >> 24) & 0xFF);
 
-			int longitude = (int)(parser->Gga.Position.Longitude.Longitude * 1e7);
+			int longitude = static_cast<int>(parser->Gga.Position.Longitude.Longitude * 1e7);
 			if (parser->Gga.Position.Longitude.Easting == West) {
 				longitude = -longitude;
 			}
@@ -2206,7 +2209,7 @@ bool TwoCanEncoder::EncodePGN129026(const NMEA0183 *parser, std::vector<byte> *n
 	
 	n2kMessage->clear();
 
-	if (nmeaParser.LastSentenceIDParsed == _T("RMC")) {
+	if (parser->LastSentenceIDParsed == _T("RMC")) {
 		if (parser->Rmc.IsDataValid) {
 	
 			n2kMessage->push_back(sequenceId);
@@ -2235,18 +2238,11 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 	if (parser->LastSentenceIDParsed == _T("GGA")) {
 
 		n2kMessage->push_back(sequenceId);
-
+		
 		unsigned short daysSinceEpoch;
 		unsigned int secondsSinceMidnight;
-	
-		wxDateTime epochTime((time_t)0);
-		wxDateTime now;
 
-		now.ParseDateTime(parser->Gga.UTCTime);
-		wxTimeSpan dateDiff = now - epochTime;
-
-		daysSinceEpoch = dateDiff.GetDays();
-		secondsSinceMidnight = (dateDiff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue();
+		ParseTime(parser->Gga.UTCTime, &daysSinceEpoch, &secondsSinceMidnight);
 
 		n2kMessage->push_back(daysSinceEpoch & 0xFF);
 		n2kMessage->push_back((daysSinceEpoch >> 8) & 0xFF);
@@ -2256,7 +2252,7 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 		n2kMessage->push_back((secondsSinceMidnight >> 16) & 0xFF);
 		n2kMessage->push_back((secondsSinceMidnight >> 24) & 0xFF);
 	
-		long long latitude = parser->Gga.Position.Latitude.Latitude;
+		long long latitude = parser->Gga.Position.Latitude.Latitude * 1e16;
 		if (parser->Gga.Position.Latitude.Northing == South) {
 			latitude = -latitude;
 		}
@@ -2269,7 +2265,7 @@ bool TwoCanEncoder::EncodePGN129029(const NMEA0183 *parser, std::vector<byte> *n
 		n2kMessage->push_back((latitude >> 48) & 0xFF);
 		n2kMessage->push_back((latitude >> 56) & 0xFF);
 
-		long long longitude = parser->Gga.Position.Longitude.Longitude ;
+		long long longitude = parser->Gga.Position.Longitude.Longitude * 1e16;
 		if (parser->Gga.Position.Longitude.Easting == West) {
 			longitude = -longitude;
 		}
@@ -2581,23 +2577,19 @@ bool TwoCanEncoder::EncodePGN129284(const NMEA0183 *parser, std::vector<byte> *n
 			unsigned int secondsSinceMidnight;
 
 			if (parser->Rmb.DestinationClosingVelocityKnots != 0) {
-				wxDateTime epochTime((time_t)0);
-				wxDateTime now = wxDateTime::Now();
-
-				now.MakeUTC();
-
-				// Calculate time to destination in seconds
-				unsigned int seconds = 3600 * (parser->Rmb.RangeToDestinationNauticalMiles / parser->Rmb.DestinationClosingVelocityKnots);
 				
-				// Add to current time
-				now.Add(wxTimeSpan::Seconds(seconds));
+				// Calculate time to destination in seconds
+				unsigned int voyageSeconds = 3600 * (parser->Rmb.RangeToDestinationNauticalMiles / parser->Rmb.DestinationClosingVelocityKnots);
+				unsigned short voyageDays = (voyageSeconds / 86400);
 
-				// Calculate the time span with the Unix Epoch (1/1/1970)
-				wxTimeSpan diff;
-				diff = now - epochTime;
-	
-				daysSinceEpoch = diff.GetDays();
-				secondsSinceMidnight = ((diff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+				std::time_t epochSeconds = std::time(0);
+				daysSinceEpoch = static_cast<unsigned short>(epochSeconds / 86400);
+				secondsSinceMidnight = static_cast<unsigned int>(epochSeconds - (daysSinceEpoch * 86400));
+
+				// Add the Days & Seconds on voyage
+				daysSinceEpoch += voyageDays;
+				secondsSinceMidnight += (voyageSeconds - (voyageDays * 86400));
+				secondsSinceMidnight *= 1000;
 			}
 			else {
 				daysSinceEpoch = USHRT_MAX;
@@ -3018,7 +3010,7 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 		// Field 11 - Time of transmission
 		if (parser->Dsc.timeOrTelephone.Length() == 4) {
 			if (parser->Dsc.timeOrTelephone != "8888") {
-
+				// 4 digit time, HHmm
 				unsigned int secondsSinceMidnight = ((std::atoi(parser->Dsc.timeOrTelephone.SubString(0, 2)) * 3600) +
 					(std::atoi(parser->Dsc.timeOrTelephone.SubString(2, 2)) * 60)) * 10000;
 
@@ -3050,7 +3042,6 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 				n2kMessage->push_back(0xFF);
 			}
 		}
-
 
 		// Field 13 - End of Sequence
 		byte endOfSequence;
@@ -3089,13 +3080,10 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 		}
 
 		// We'll just use now as the date & time of receipt
-		wxDateTime epochTime((time_t)0);
-		wxDateTime now = wxDateTime::Now();
+		std::time_t epochSeconds = std::time(0);
 
-		wxTimeSpan diff = now - epochTime;
-
-		unsigned short daysSinceEpoch = diff.GetDays();
-		unsigned int secondsSinceMidnight = ((diff.GetSeconds() - (daysSinceEpoch * 86400)).GetValue()) * 10000;
+		unsigned short daysSinceEpoch = static_cast<unsigned short>(epochSeconds / 86400);
+		unsigned int secondsSinceMidnight = static_cast<unsigned int>((epochSeconds - (daysSinceEpoch * 86400)) * 10000);
 
 		// Field 18 - Time of receipt
 		n2kMessage->push_back(secondsSinceMidnight & 0xFF);
@@ -3150,77 +3138,86 @@ bool TwoCanEncoder::EncodePGN129808(const NMEA0183 *parser, std::vector<byte> *n
 
 }
 
-// Encode payload for PGN030306 NMEA Waypoint Location
+bool TwoCanEncoder::EncodePGN130074(wxString name, double waypointLatitude, double waypointLongitude, std::vector<byte>* n2kMessage) {
+	n2kMessage->clear();
+
+	unsigned short startingWaypointId = 0;
+	n2kMessage->push_back(startingWaypointId & 0xFF);
+	n2kMessage->push_back((startingWaypointId >> 8) & 0xFF);
+
+	unsigned short items = 1;
+	n2kMessage->push_back(items & 0xFF);
+	n2kMessage->push_back((items << 8) & 0xFF);
+
+	unsigned short validItems = 1;
+	n2kMessage->push_back(validItems & 0xFF);
+	n2kMessage->push_back((validItems << 8) & 0xFF);
+
+	unsigned short databaseId = USHRT_MAX;
+	n2kMessage->push_back(databaseId & 0xFF);
+	n2kMessage->push_back((databaseId >> 8) & 0xFF);
+
+	// reserved;
+	n2kMessage->push_back(0xFF);
+	n2kMessage->push_back(0xFF);
+
+	// We'll make an id using the waypoint name
+	// Wouldn't it be nice if there was a unique GUID ?
+	unsigned short waypointId;
+	unsigned short pair1 = 0;
+	unsigned short pair2 = 0;
+	for (unsigned int i = 0; i < name.size(); i++) {
+		pair1 = pair1 ^ (unsigned short)name.at(i);
+	}
+	for (int i = name.size() - 1; i >= 0; i--) {
+		pair2 = pair2 ^ (unsigned short)name.at(i);
+	}
+	waypointId = (((pair1 + pair2) * (pair1 + pair2 + 1)) / 2) + pair2;
+
+	n2kMessage->push_back(waypointId & 0xFF);
+	n2kMessage->push_back((waypointId << 8) & 0xFF);
+
+	// Text with length & control byte
+	n2kMessage->push_back(name.size() + 2);
+	n2kMessage->push_back(0x01); // First byte of Waypoint Name indicates ASCII or UUnicode encoding
+	for (auto it = name.begin(); it != name.end(); ++it) {
+		n2kMessage->push_back(*it);
+	}
+
+	int latitude = waypointLatitude * 1e7;
+	n2kMessage->push_back(latitude & 0xFF);
+	n2kMessage->push_back((latitude >> 8) & 0xFF);
+	n2kMessage->push_back((latitude >> 16) & 0xFF);
+	n2kMessage->push_back((latitude >> 24) & 0xFF);
+
+	int longitude = waypointLongitude * 1e7;
+
+	n2kMessage->push_back(longitude & 0xFF);
+	n2kMessage->push_back((longitude >> 8) & 0xFF);
+	n2kMessage->push_back((longitude >> 16) & 0xFF);
+	n2kMessage->push_back((longitude >> 24) & 0xFF);
+
+	return TRUE;
+}
+
+// Encode payload for PGN130074 NMEA Waypoint Location
 bool TwoCanEncoder::EncodePGN130074(const NMEA0183 *parser, std::vector<byte> *n2kMessage) {
 
 	n2kMessage->clear();
 
 	if (parser->LastSentenceIDParsed == _T("WPL")) {
-
-		unsigned short startingWaypointId = 0;
-		n2kMessage->push_back(startingWaypointId & 0xFF);
-		n2kMessage->push_back((startingWaypointId >> 8) & 0xFF);
-
-		unsigned short items = 1;
-		n2kMessage->push_back(items & 0xFF);
-		n2kMessage->push_back((items << 8) & 0xFF);
-
-		unsigned short validItems = 1;
-		n2kMessage->push_back(validItems & 0xFF);
-		n2kMessage->push_back((validItems << 8) & 0xFF);
-
-		unsigned short databaseId = 0;
-		n2kMessage->push_back(databaseId & 0xFF);
-		n2kMessage->push_back((databaseId >> 8) & 0xFF);
-
-		// reserved;
-		n2kMessage->push_back(0xFF);
-		n2kMessage->push_back(0xFF);
-
-		// We'll make an id using the waypoint name
-		// Wouldn't it be nice if there was a unique GUID ?
-		unsigned short waypointId;
-		unsigned short pair1 = 0;
-		unsigned short pair2 = 0;
-		for (unsigned int i = 0; i < parser->Wpl.To.size(); i++) {
-			pair1 = pair1 ^ (unsigned short)parser->Wpl.To[i];
-		}
-		for (int i = parser->Wpl.To.size() - 1; i >= 0; i--) {
-			pair2 = pair2 ^ (unsigned short)parser->Wpl.To[i];
-		}
-		waypointId = (((pair1 + pair2) * (pair1 + pair2 + 1)) / 2) + pair2;
-
-		n2kMessage->push_back(waypointId & 0xFF);
-		n2kMessage->push_back((waypointId << 8) & 0xFF);
-
-		// Text with length & control byte
-		n2kMessage->push_back(parser->Wpl.To.size() + 2);
-		n2kMessage->push_back(0x01); // First byte of Waypoint Name indicates ASCII or UUnicode encoding
-		for (auto it = parser->Wpl.To.begin(); it != parser->Wpl.To.end(); ++it) {
-			n2kMessage->push_back(*it);
-		}
-
-		int latitude = parser->Wpl.Position.Latitude.Latitude * 1e7;
+		double latitude = parser->Wpl.Position.Latitude.Latitude;
+		double longitude = parser->Wpl.Position.Longitude.Longitude;
 
 		if (parser->Wpl.Position.Latitude.Northing == South) {
 			latitude = -latitude;
 		}
-		n2kMessage->push_back(latitude & 0xFF);
-		n2kMessage->push_back((latitude >> 8) & 0xFF);
-		n2kMessage->push_back((latitude >> 16) & 0xFF);
-		n2kMessage->push_back((latitude >> 24) & 0xFF);
-
-		int longitude = parser->Wpl.Position.Longitude.Longitude * 1e7;
-
+		
 		if (parser->Wpl.Position.Longitude.Easting == West) {
 			longitude = -longitude;
 		}
-		n2kMessage->push_back(longitude & 0xFF);
-		n2kMessage->push_back((longitude >> 8) & 0xFF);
-		n2kMessage->push_back((longitude >> 16) & 0xFF);
-		n2kMessage->push_back((longitude >> 24) & 0xFF);
-
-		return TRUE;
+		
+		return EncodePGN130074(parser->Wpl.To, latitude, longitude, n2kMessage);
 	}
 	return FALSE;
 }
@@ -3234,11 +3231,11 @@ bool TwoCanEncoder::EncodePGN130306(const NMEA0183 *parser, std::vector<byte> *n
 
 		n2kMessage->push_back(sequenceId);
 
-		unsigned short windSpeed = (unsigned short)(100 * parser->Mwv.WindSpeed / CONVERT_MS_KNOTS);
+		unsigned short windSpeed = static_cast<unsigned short>(100 * parser->Mwv.WindSpeed / CONVERT_MS_KNOTS);
 		n2kMessage->push_back(windSpeed & 0xFF);
 		n2kMessage->push_back((windSpeed >> 8) & 0xFF);
 
-		unsigned short windAngle = (unsigned short)(10000 * DEGREES_TO_RADIANS(parser->Mwv.WindAngle));
+		unsigned short windAngle = static_cast<unsigned short>(10000 * DEGREES_TO_RADIANS(parser->Mwv.WindAngle));
 		n2kMessage->push_back(windAngle & 0xFF);
 		n2kMessage->push_back((windAngle >> 8) & 0xFF);
 

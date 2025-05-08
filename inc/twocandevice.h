@@ -174,7 +174,7 @@ typedef int(*LPFNDLLWrite)(const unsigned int id, const int length, const byte *
 #endif
 
 // Buffer used to re-assemble sequences of multi frame Fast Packet messages
-typedef struct FastMessageEntry {
+typedef struct {
 	byte isFree; // indicate whether this entry is free
 	unsigned long long timeArrived; // time of last message in microseconds.
 	CanHeader header; // the header of the message. Used to "map" the incoming fast message fragments
@@ -185,7 +185,7 @@ typedef struct FastMessageEntry {
 } FastMessageEntry;
 
 // Used to determine the preferred GPS if multiple sources present (eg. GPS receiver and AIS transceiver)
-typedef struct PreferredGPS {
+typedef struct {
 	byte sourceAddress;
 	unsigned short hdop;
 	unsigned int hdopRetry;

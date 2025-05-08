@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Oct 26 2018)
+// C++ code generated with wxFormBuilder (version 4.2.1-0-g80c4cb6)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -8,6 +8,7 @@
 #include "twocansettingsbase.h"
 
 ///////////////////////////////////////////////////////////////////////////
+
 
 TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
 {
@@ -82,10 +83,10 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	dataGridNetwork->SetColSize( 2, 120 );
 	dataGridNetwork->EnableDragColMove( false );
 	dataGridNetwork->EnableDragColSize( true );
-	dataGridNetwork->SetColLabelSize( 30 );
 	dataGridNetwork->SetColLabelValue( 0, wxT("Unique Id") );
 	dataGridNetwork->SetColLabelValue( 1, wxT("Manufacturer") );
 	dataGridNetwork->SetColLabelValue( 2, wxT("Model Id") );
+	dataGridNetwork->SetColLabelSize( 30 );
 	dataGridNetwork->SetColLabelAlignment( wxALIGN_LEFT, wxALIGN_CENTER );
 
 	// Rows
@@ -129,8 +130,22 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	chkMedia = new wxCheckBox( sizerDevice->GetStaticBox(), wxID_ANY, wxT("Fusion Media Player Integration"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerDevice->Add( chkMedia, 0, wxALL, 5 );
 
+	chkAutopilot = new wxCheckBox( sizerDevice->GetStaticBox(), wxID_ANY, wxT("Autopilot Integration"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerDevice->Add( chkAutopilot, 0, wxALL, 5 );
+
 
 	sizerPanelDevice->Add( sizerDevice, 0, wxEXPAND, 5 );
+
+	wxStaticBoxSizer* sizerRawLogging;
+	sizerRawLogging = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("Raw Logging") ), wxHORIZONTAL );
+
+	wxArrayString cmbLoggingChoices;
+	cmbLogging = new wxChoice( sizerRawLogging->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, cmbLoggingChoices, 0 );
+	cmbLogging->SetSelection( 0 );
+	sizerRawLogging->Add( cmbLogging, 0, wxALL, 5 );
+
+
+	sizerPanelDevice->Add( sizerRawLogging, 0, wxEXPAND, 5 );
 
 	wxStaticBoxSizer* sizerDetails;
 	sizerDetails = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("NMEA 2000 Device Details") ), wxVERTICAL );
@@ -166,40 +181,51 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 
 	sizerPanelDevice->Add( sizerDetails, 0, wxEXPAND, 5 );
 
-	wxStaticBoxSizer* sizerRawLogging;
-	sizerRawLogging = new wxStaticBoxSizer( new wxStaticBox( panelDevice, wxID_ANY, wxT("Raw Logging") ), wxHORIZONTAL );
-
-	wxArrayString cmbLoggingChoices;
-	cmbLogging = new wxChoice( sizerRawLogging->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize, cmbLoggingChoices, 0 );
-	cmbLogging->SetSelection( 0 );
-	sizerRawLogging->Add( cmbLogging, 0, wxALL, 5 );
-
-
-	sizerPanelDevice->Add( sizerRawLogging, 0, wxEXPAND, 5 );
-
 
 	panelDevice->SetSizer( sizerPanelDevice );
 	panelDevice->Layout();
 	sizerPanelDevice->Fit( panelDevice );
 	notebookTabs->AddPage( panelDevice, wxT("Device"), false );
 	panelAutopilot = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
-	wxStaticBoxSizer* sizerAutopilot;
-	sizerAutopilot = new wxStaticBoxSizer( new wxStaticBox( panelAutopilot, wxID_ANY, wxT("NMEA 2000 Autopilot Settings") ), wxVERTICAL );
+	wxBoxSizer* sizerPanelAutopilot;
+	sizerPanelAutopilot = new wxBoxSizer( wxVERTICAL );
 
-	chkAutopilot = new wxCheckBox( sizerAutopilot->GetStaticBox(), wxID_ANY, wxT("Enable Autopilot Control"), wxDefaultPosition, wxDefaultSize, 0 );
-	sizerAutopilot->Add( chkAutopilot, 0, wxALL, 5 );
+	wxBoxSizer* sizerAutopilot;
+	sizerAutopilot = new wxBoxSizer( wxVERTICAL );
 
-	wxString rdoBoxAutopilotChoices[] = { wxT("Garmin"), wxT("Raymarine"), wxT("Simrad AC-12"), wxT("Navico NAC-3"), wxT("Furuno") };
+	wxString rdoBoxAutopilotChoices[] = { wxT("None"), wxT("Garmin (Reactor)"), wxT("Raymarine (Evo)"), wxT("Simrad (AC-12)"), wxT("Navico (NAC-3)"), wxT("Furuno") };
 	int rdoBoxAutopilotNChoices = sizeof( rdoBoxAutopilotChoices ) / sizeof( wxString );
-	rdoBoxAutopilot = new wxRadioBox( sizerAutopilot->GetStaticBox(), wxID_ANY, wxT("Autopilot Model"), wxDefaultPosition, wxDefaultSize, rdoBoxAutopilotNChoices, rdoBoxAutopilotChoices, 1, wxRA_SPECIFY_COLS );
-	rdoBoxAutopilot->SetSelection( 1 );
+	rdoBoxAutopilot = new wxRadioBox( panelAutopilot, wxID_ANY, wxT("Autopilot Model"), wxDefaultPosition, wxDefaultSize, rdoBoxAutopilotNChoices, rdoBoxAutopilotChoices, 1, wxRA_SPECIFY_COLS );
+	rdoBoxAutopilot->SetSelection( 0 );
 	sizerAutopilot->Add( rdoBoxAutopilot, 0, wxALL, 5 );
 
 
-	panelAutopilot->SetSizer( sizerAutopilot );
+	sizerPanelAutopilot->Add( sizerAutopilot, 1, wxEXPAND, 5 );
+
+
+	panelAutopilot->SetSizer( sizerPanelAutopilot );
 	panelAutopilot->Layout();
-	sizerAutopilot->Fit( panelAutopilot );
+	sizerPanelAutopilot->Fit( panelAutopilot );
 	notebookTabs->AddPage( panelAutopilot, wxT("Autopilot"), false );
+	panelWaypoints = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
+	wxBoxSizer* sizerPanelWaypoints;
+	sizerPanelWaypoints = new wxBoxSizer( wxVERTICAL );
+
+	labelWaypoints = new wxStaticText( panelWaypoints, wxID_ANY, wxT("Waypoints"), wxDefaultPosition, wxDefaultSize, 0 );
+	labelWaypoints->Wrap( -1 );
+	sizerPanelWaypoints->Add( labelWaypoints, 0, wxALL, 5 );
+
+	listWaypoints = new wxListCtrl( panelWaypoints, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_SORT_ASCENDING);
+	sizerPanelWaypoints->Add( listWaypoints, 1, wxALL| wxEXPAND, 5 );
+
+	btnExport = new wxButton( panelWaypoints, wxID_ANY, wxT("Export"), wxDefaultPosition, wxDefaultSize, 0 );
+	sizerPanelWaypoints->Add( btnExport, 0, wxALL, 5 );
+
+
+	panelWaypoints->SetSizer( sizerPanelWaypoints );
+	panelWaypoints->Layout();
+	sizerPanelWaypoints->Fit( panelWaypoints );
+	notebookTabs->AddPage( panelWaypoints, wxT("Waypoints"), false );
 	panelDebug = new wxPanel( notebookTabs, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
 	wxBoxSizer* sizerPanelDebug;
 	sizerPanelDebug = new wxBoxSizer( wxVERTICAL );
@@ -258,7 +284,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	sizerTextAbout->Add( txtAbout, 0, wxALL, 5 );
 
 
-	sizerAbout->Add( sizerTextAbout, 0, wxFIXED_MINSIZE, 5 );
+	sizerAbout->Add( sizerTextAbout, 1, wxFIXED_MINSIZE, 5 );
 
 
 	panelAbout->SetSizer( sizerAbout );
@@ -297,39 +323,57 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 
 	// Connect Events
 	this->Connect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
+	this->Connect( wxEVT_SIZE, wxSizeEventHandler( TwoCanSettingsBase::OnSize ) );
+	notebookTabs->Connect( wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, wxNotebookEventHandler( TwoCanSettingsBase::OnTabChanged ), NULL, this );
 	cmbInterfaces->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceInterfaces ), NULL, this );
 	chkListPGN->Connect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
 	chkListPGN->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( TwoCanSettingsBase::OnRightClick ), NULL, this );
+	dataGridNetwork->Connect( wxEVT_GRID_CELL_LEFT_DCLICK, wxGridEventHandler( TwoCanSettingsBase::OnDoubleClick ), NULL, this );
 	chkDeviceMode->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );
 	chkHeartbeat->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckHeartbeat ), NULL, this );
 	chkGateway->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckGateway ), NULL, this );
 	chkWaypoint->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckWaypoint ), NULL, this );
-	chkAutopilot->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	chkMedia->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMedia ), NULL, this );
+	chkAutopilot->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	cmbLogging->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceLogging ), NULL, this );
 	rdoBoxAutopilot->Connect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
+	listWaypoints->Connect( wxEVT_LIST_ITEM_CHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointSelected ), NULL, this );
+	listWaypoints->Connect( wxEVT_LIST_ITEM_UNCHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointDeselected ), NULL, this );
+	listWaypoints->Connect( wxEVT_SET_FOCUS, wxFocusEventHandler( TwoCanSettingsBase::OnHasFocus ), NULL, this );
+	btnExport->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnExportWaypoints ), NULL, this );
 	btnPause->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
 	btnOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnOK ), NULL, this );
 	btnApply->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnApply ), NULL, this );
 	btnCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCancel ), NULL, this );
+
+	
 }
+
+
 
 TwoCanSettingsBase::~TwoCanSettingsBase()
 {
 	// Disconnect Events
 	this->Disconnect( wxEVT_INIT_DIALOG, wxInitDialogEventHandler( TwoCanSettingsBase::OnInit ) );
+	this->Disconnect( wxEVT_SIZE, wxSizeEventHandler( TwoCanSettingsBase::OnSize ) );
+	notebookTabs->Disconnect( wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, wxNotebookEventHandler( TwoCanSettingsBase::OnTabChanged ), NULL, this );
 	cmbInterfaces->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceInterfaces ), NULL, this );
 	chkListPGN->Disconnect( wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckPGN ), NULL, this );
 	chkListPGN->Disconnect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( TwoCanSettingsBase::OnRightClick ), NULL, this );
+	dataGridNetwork->Disconnect( wxEVT_GRID_CELL_LEFT_DCLICK, wxGridEventHandler( TwoCanSettingsBase::OnDoubleClick ), NULL, this );
 	chkDeviceMode->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMode ), NULL, this );
 	chkHeartbeat->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckHeartbeat ), NULL, this );
 	chkGateway->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckGateway ), NULL, this );
 	chkWaypoint->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckWaypoint ), NULL, this );
-	chkAutopilot->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	chkMedia->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckMedia ), NULL, this );
+	chkAutopilot->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	cmbLogging->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceLogging ), NULL, this );
 	rdoBoxAutopilot->Disconnect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
+	listWaypoints->Disconnect( wxEVT_LIST_ITEM_CHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointSelected ), NULL, this );
+	listWaypoints->Disconnect( wxEVT_LIST_ITEM_UNCHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointDeselected ), NULL, this );
+	listWaypoints->Disconnect( wxEVT_SET_FOCUS, wxFocusEventHandler( TwoCanSettingsBase::OnHasFocus ), NULL, this );
+	btnExport->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnExportWaypoints ), NULL, this );
 	btnPause->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
 	btnOK->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnOK ), NULL, this );

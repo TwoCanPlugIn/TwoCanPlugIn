@@ -47,9 +47,12 @@
 // For common folders
 #include <wx/stdpaths.h>
 
+#include "ocpn_plugin.h"
+
 // STL
 // For a dictionary of registered NMEA 2000 manufacturers
 #include <unordered_map>
+#include <mutex>
 
 // List of Manufacturer Id's
 static std::unordered_map<int, std::string> deviceManufacturers = {
@@ -213,20 +216,42 @@ extern unsigned long uniqueId;
 // The current NMEA 2000 network address of this device
 extern int networkAddress;
 
+// Internal Events
+extern const wxEventType wxEVT_SENTENCE_RECEIVED_EVENT;
+
+
 // The icons for the dialog
 extern wxBitmap *_img_Toucan_16;
 extern wxBitmap *_img_Toucan_64;
+
+// Enough waypoint information for PGN 130074, no need to pass around a whole PlugIn_Waypoint
+typedef struct {
+	wxString waypointName;
+	double waypointLatitude;
+	double waypointLongitude;
+} Waypoint;
+
+// Waypoint List Control Sorting - Only suppot sorting on column 0; the waypoint name
+typedef struct {
+	wxListCtrl* listCtrl; // the list control to sort
+	bool sortAscending; // the order in which to sort the items (at present only ascending...
+} WaypointSorting;
+
+// The List Control Callback function to implement sorting
+int wxCALLBACK SortWaypoints(wxIntPtr  item1, wxIntPtr item2, wxIntPtr sortingData);
 
 class TwoCanSettings : public TwoCanSettingsBase
 {
 	
 public:
-	TwoCanSettings(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Two Can Preferences"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE);
-	~TwoCanSettings() ;
+	TwoCanSettings(wxEvtHandler* handler, wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Two Can Preferences"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE);
+	~TwoCanSettings();
+	WaypointSorting waypointSorting;
 	
 protected:
 	//overridden methods from the base class
 	void OnInit(wxInitDialogEvent& event);
+	void OnSize(wxSizeEvent& event);
 	void OnChoiceInterfaces(wxCommandEvent &event);
 	void OnCheckPGN(wxCommandEvent &event);
 	void OnChoiceLogging(wxCommandEvent &event);
@@ -236,22 +261,24 @@ protected:
 	void OnCheckMedia(wxCommandEvent &event);
 	void OnCheckAutopilot(wxCommandEvent &event);
 	void OnCheckWaypoint(wxCommandEvent &event);
+	void OnWaypointSelected(wxListEvent& event);
+	void OnWaypointDeselected(wxListEvent& event);
 	void OnPause(wxCommandEvent &event);
 	void OnCopy(wxCommandEvent &event);
 	void OnOK(wxCommandEvent &event);
 	void OnApply(wxCommandEvent &event);
 	void OnCancel(wxCommandEvent &event);
 	void OnRightClick(wxMouseEvent& event);
-	void OnExportWaypoint(wxCommandEvent &event);
+	void OnTabChanged(wxNotebookEvent& event);
+	void OnExportWaypoints(wxCommandEvent &event);
 
 private:
+	wxEvtHandler *eventHandlerAddress;
 	void SaveSettings(void);
 	bool settingsDirty;
 	void GetDriverInfo(wxString fileName);
 	bool EnumerateDrivers(void);
 	bool togglePGN;
-
-	wxWindow *parentWindow;
 	
 	// To obtain the "friendly" name of Windows CAN driver
 	typedef wxChar *(*LPFNDLLDriverName)(void);

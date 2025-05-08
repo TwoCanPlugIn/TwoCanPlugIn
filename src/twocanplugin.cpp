@@ -442,7 +442,32 @@ void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 				}
 			}
 			break;
+		case WAYPOINT_EXPORT_EVENT: {
+			CanHeader header;
+			header.source = networkAddress;
+			header.destination = CONST_GLOBAL_ADDRESS;
+			header.priority = CONST_PRIORITY_MEDIUM;
+			header.pgn = 130074;
 
+			std::vector<byte> payload;
+
+			Waypoint* waypoint = static_cast<Waypoint*>(event.GetClientData());
+
+			// BUG BUG DEBUG REMOVE
+			wxMessageBox(wxString::Format("Name: %s\nLat: %0.4f\nLon: %0.4f", 
+				waypoint->waypointName, waypoint->waypointLatitude,
+				waypoint->waypointLongitude), event.GetString());
+			/*
+			if (twoCanEncoder->EncodePGN130074(waypoint->waypointName, waypoint->waypointLatitude,
+				waypoint->waypointLongitude, &payload)) {
+				int returnCode = twoCanDevice->FragmentFastMessage(&header, payload.size(), payload.data());
+				if (returnCode != TWOCAN_RESULT_SUCCESS) {
+					wxLogMessage("TwoCan Plugin, Error sending waypoint: %d", returnCode);
+				}
+			}*/
+			delete waypoint;
+			break;
+		}
 		default:
 			event.Skip();
 			break;
@@ -452,7 +477,7 @@ void TwoCan::OnSentenceReceived(wxCommandEvent &event) {
 // Display TwoCan preferences dialog
 void TwoCan::ShowPreferencesDialog(wxWindow* parent) {
 	
-	settingsDialog = new TwoCanSettings(parent);
+	settingsDialog = new TwoCanSettings(this, parent);
 
 	if (settingsDialog->ShowModal() == wxID_OK) {
 

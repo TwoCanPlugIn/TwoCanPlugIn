@@ -253,6 +253,7 @@
 #define FLAGS_LOG_CANDUMP 3 // Candump, a Linux utility
 #define FLAGS_LOG_YACHTDEVICES 4 // Found some samples from their Voyage Data Recorder
 #define FLAGS_LOG_CSV 5 // Comma Separted Variables
+#define FLAGS_LOG_ACTISENSE 6 // Actisense EBL, as used by Actisense Reader software
 
 // Autpilot Models
 typedef enum _AUTOPILOT_MODEL {
@@ -280,7 +281,7 @@ const int DSE_EXPIRED_EVENT = wxID_HIGHEST + 3;
 typedef unsigned char byte;
 
 // CAN v2.0 29 bit header as used by NMEA 2000
-typedef struct CanHeader {
+typedef struct {
 	byte priority;
 	byte source;
 	byte destination;
@@ -288,13 +289,13 @@ typedef struct CanHeader {
 } CanHeader;
 
 // CAN v2.0 Message (used by TwoCanEncoder)
-typedef struct CanMessage {
+typedef struct {
 	CanHeader header;
 	std::vector<byte> payload;
 } CanMessage;
 
 // NMEA 2000 Product Information, transmitted in PGN 126996 NMEA Product Information
-typedef struct ProductInformation {
+typedef struct {
 	unsigned int dataBaseVersion;
 	unsigned int productCode;
 	// Note these are transmitted as unterminated 32 bit strings, allow for the additional terminating NULL
@@ -307,7 +308,7 @@ typedef struct ProductInformation {
 } ProductInformation;
 
 // NMEA 2000 Device Information, transmitted in PGN 60928 ISO Address Claim
-typedef struct DeviceInformation {
+typedef struct {
 	unsigned long uniqueId;
 	unsigned int deviceClass;
 	unsigned int deviceFunction;
@@ -322,7 +323,7 @@ typedef struct DeviceInformation {
 } DeviceInformation;
 
 // Used  to store the data for the Network Map, combines elements from address claim & product information
-typedef struct NetworkInformation {
+typedef struct  {
 	unsigned long uniqueId;
 	unsigned int manufacturerId;
 	ProductInformation productInformation;
