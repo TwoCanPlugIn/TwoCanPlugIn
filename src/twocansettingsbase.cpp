@@ -215,7 +215,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	labelWaypoints->Wrap( -1 );
 	sizerPanelWaypoints->Add( labelWaypoints, 0, wxALL, 5 );
 
-	listWaypoints = new wxListCtrl( panelWaypoints, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_SORT_ASCENDING);
+	listWaypoints = new wxListCtrl( panelWaypoints, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT);
 	sizerPanelWaypoints->Add( listWaypoints, 1, wxALL| wxEXPAND, 5 );
 
 	btnExport = new wxButton( panelWaypoints, wxID_ANY, wxT("Export"), wxDefaultPosition, wxDefaultSize, 0 );
@@ -340,6 +340,7 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	listWaypoints->Connect( wxEVT_LIST_ITEM_CHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointSelected ), NULL, this );
 	listWaypoints->Connect( wxEVT_LIST_ITEM_UNCHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointDeselected ), NULL, this );
 	listWaypoints->Connect( wxEVT_SET_FOCUS, wxFocusEventHandler( TwoCanSettingsBase::OnHasFocus ), NULL, this );
+	listWaypoints->Connect(wxEVT_LIST_COL_CLICK, wxListEventHandler(TwoCanSettingsBase::OnColumnClick), NULL, this);
 	btnExport->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnExportWaypoints ), NULL, this );
 	btnPause->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
@@ -373,6 +374,7 @@ TwoCanSettingsBase::~TwoCanSettingsBase()
 	listWaypoints->Disconnect( wxEVT_LIST_ITEM_CHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointSelected ), NULL, this );
 	listWaypoints->Disconnect( wxEVT_LIST_ITEM_UNCHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointDeselected ), NULL, this );
 	listWaypoints->Disconnect( wxEVT_SET_FOCUS, wxFocusEventHandler( TwoCanSettingsBase::OnHasFocus ), NULL, this );
+	listWaypoints->Disconnect(wxEVT_LIST_COL_CLICK, wxListEventHandler(TwoCanSettingsBase::OnColumnClick), NULL, this);
 	btnExport->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnExportWaypoints ), NULL, this );
 	btnPause->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );

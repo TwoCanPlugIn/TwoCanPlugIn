@@ -71,7 +71,7 @@
 #define AIS_INVALID_LATITUDE 0x3412140
 
 // Used to re-assemble AIS multi sentence messages
-typedef struct  {
+typedef struct AisSentenceStruct {
 	int sentenceNumber = 0;
 	int totalSentences = 0;
 	wxString message = wxEmptyString;

@@ -238,7 +238,7 @@ typedef struct {
 } WaypointSorting;
 
 // The List Control Callback function to implement sorting
-int wxCALLBACK SortWaypoints(wxIntPtr  item1, wxIntPtr item2, wxIntPtr sortingData);
+int wxCALLBACK SortWaypoints(long  item1, long item2, long sortingData);
 
 class TwoCanSettings : public TwoCanSettingsBase
 {
@@ -270,6 +270,7 @@ protected:
 	void OnCancel(wxCommandEvent &event);
 	void OnRightClick(wxMouseEvent& event);
 	void OnTabChanged(wxNotebookEvent& event);
+	void OnColumnClick(wxListEvent& event);
 	void OnExportWaypoints(wxCommandEvent &event);
 
 private:

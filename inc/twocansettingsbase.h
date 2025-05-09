@@ -107,6 +107,7 @@ class TwoCanSettingsBase : public wxDialog
 		virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnApply( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnColumnClick(wxListEvent& event) { event.Skip(); }
 
 
 	public:

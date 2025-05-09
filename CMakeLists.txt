@@ -146,7 +146,8 @@ SET(SOURCES src/twocanerror.cpp
             src/twocanencoder.cpp
             src/twocanautopilot.cpp
             src/twocanais.cpp
-            src/twocanmedia.cpp)
+            src/twocanmedia.cpp
+            src/twocanactisense.cpp)
 
 SET(HEADERS inc/twocanerror.h
             inc/twocandevice.h
@@ -158,7 +159,8 @@ SET(HEADERS inc/twocanerror.h
             inc/twocanencoder.h
             inc/twocanautopilot.h
             inc/twocanais.h
-            inc/twocanmedia.h)
+            inc/twocanmedia.h
+            inc/twocanactisense.h)
 
 SET(NMEA183_SRC nmea183/src/apb.cpp
                 nmea183/src/bod.cpp

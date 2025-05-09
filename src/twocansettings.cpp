@@ -33,6 +33,7 @@
 // 1.9 - 20/08/2020 Rusoku adapter support on Mac OSX, OCPN 5.2 Plugin Manager support
 // 2.0 - 04/07/2021 Bi-directional gateway, PCAP log files
 // 2.1 - 20/05/2022 Add configuration items for Media Player, Waypoint Creation and Autopilot (not yet implemented)
+// 2.3 - 25/04/2025 Waypoint Export, Actisense EBL Log Option
 // Outstanding Features: 
 // 1. Prevent selection of driver that is not physically present
 // 2. Prevent user selecting both LogFile reader and Log Raw frames !
@@ -40,13 +41,18 @@
 // BUG BUG Note to self- bug in wxformbuilder, incorrect list check box event. use wxEVT_LIST_ITEM_CHECKED
 
 #include "twocansettings.h"
-// Waypoint List Control Sorting
-int wxCALLBACK SortWaypoints(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData) {
-	WaypointSorting* sortInfo = (WaypointSorting*)sortData;
-	wxString item1Text = sortInfo->listCtrl->GetItemText(item1, 0);
-	wxString item2Text = sortInfo->listCtrl->GetItemText(item2, 0);
 
-	return wxCmpNatural(item1Text, item2Text);
+// Waypoint List Control Sorting
+int wxCALLBACK SortWaypoints(long item1, long item2, long sortData) {
+	WaypointSorting* waypointSorting = (WaypointSorting*)sortData;
+	wxString item1Text = waypointSorting->listCtrl->GetItemText(item1, 0);
+	wxString item2Text = waypointSorting->listCtrl->GetItemText(item2, 0);
+	if (waypointSorting->sortAscending) {
+		return wxCmpNatural(item1Text, item2Text);
+	}
+	else {
+		return wxCmpNatural(item2Text, item1Text);
+	}
 }
 
 
@@ -280,7 +286,7 @@ void TwoCanSettings::OnCopy(wxCommandEvent &event) {
 	}
 }
 
-// When we move to the Waypoint tab, load all of the waypoints
+// When the Waypoint tab is selected, load all of the waypoints
 void TwoCanSettings::OnTabChanged(wxNotebookEvent& event) {
 	if (event.GetSelection() == 4) {
 
@@ -291,10 +297,12 @@ void TwoCanSettings::OnTabChanged(wxNotebookEvent& event) {
 		
 		// Populate the list control
 		listWaypoints->DeleteAllItems();
+
 		// Retrieve all of the waypoints from OpenCPN
 		wxArrayString waypoints = GetWaypointGUIDArray();
 		std::unique_ptr<PlugIn_Waypoint> pluginWaypoint;
 		long index;
+		
 		for (size_t i = 0; i < waypoints.GetCount(); i++) {
 			pluginWaypoint = GetWaypoint_Plugin(waypoints[i]);
 			if (pluginWaypoint != nullptr) {
@@ -304,27 +312,28 @@ void TwoCanSettings::OnTabChanged(wxNotebookEvent& event) {
 				// Weird API, As they are doubles could it not be determined from the sign ?
 				listWaypoints->SetItem(index, 2, toSDMM_PlugIn(1,pluginWaypoint->m_lat, true));
 				listWaypoints->SetItem(index, 3, toSDMM_PlugIn(2, pluginWaypoint->m_lon, true));
+				listWaypoints->SetItemData(index, index);
 			}
 		}
 		
 		// Once loaded, now sort alphabetically
-		listWaypoints->SortItems(SortWaypoints, (long)&waypointSorting);
+		listWaypoints->SortItems(SortWaypoints, (wxIntPtr)&waypointSorting);
 	}
 }
 
 // Iterate over the selected waypoints and export them via PGN 130074
 void TwoCanSettings::OnExportWaypoints(wxCommandEvent& event) {
 	
-	long item = listWaypoints->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
-	while (item != -1) {
-		if (listWaypoints->IsItemChecked(item)) {
+	long index = listWaypoints->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
+	while (index != -1) {
+		if (listWaypoints->IsItemChecked(index)) {
 			Waypoint *waypoint = new Waypoint();
-			waypoint->waypointName = listWaypoints->GetItemText(item, 0);
-			waypoint->waypointLatitude = fromDMM_Plugin(listWaypoints->GetItemText(item, 2));
-			waypoint->waypointLongitude = fromDMM_Plugin(listWaypoints->GetItemText(item, 3));
+			waypoint->waypointName = listWaypoints->GetItemText(index, 0);
+			waypoint->waypointLatitude = fromDMM_Plugin(listWaypoints->GetItemText(index, 2));
+			waypoint->waypointLongitude = fromDMM_Plugin(listWaypoints->GetItemText(index, 3));
 			
 			// BUG BUG DEBUG REMOVE
-			wxMessageBox(wxString::Format("Item: %d\nLat: %0.4f\nLon: %0.4f", item, 
+			wxMessageBox(wxString::Format("Item: %d\nLat: %0.4f\nLon: %0.4f", index, 
 				waypoint->waypointLatitude,	waypoint->waypointLongitude), waypoint->waypointName);
 			
 			wxCommandEvent *event = new wxCommandEvent(wxEVT_SENTENCE_RECEIVED_EVENT, WAYPOINT_EXPORT_EVENT);
@@ -333,28 +342,45 @@ void TwoCanSettings::OnExportWaypoints(wxCommandEvent& event) {
 			wxQueueEvent(eventHandlerAddress, event);
 
 			// Provide some visual indication that we have exported the item.
-			listWaypoints->CheckItem(item, false);
+			listWaypoints->CheckItem(index, false);
 		}
-		item = listWaypoints->GetNextItem(item, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
+		index = listWaypoints->GetNextItem(index, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
 	}
 }
 
+// These two functions toggle the Export button depeding on whether a waypoint is checked
 void TwoCanSettings::OnWaypointDeselected(wxListEvent& event) {
 	bool anyChecked = false;
-	long item = listWaypoints->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
-	while (item != -1) {
-		if (listWaypoints->IsItemChecked(item)) {
+	long index = listWaypoints->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
+	while (index != -1) {
+		if (listWaypoints->IsItemChecked(index)) {
 			anyChecked = true;
 		}
-		item = listWaypoints->GetNextItem(item, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
+		index = listWaypoints->GetNextItem(index, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
 	}
 	btnExport->Enable(anyChecked);
 }
 
-
 void TwoCanSettings::OnWaypointSelected(wxListEvent& event) {
-	btnExport->Enable(true);
+	if (listWaypoints->IsItemChecked(event.GetItem())) {
+		btnExport->Enable(true);
+	}
 }
+
+// Toggle the sort order for the waypoint names
+void TwoCanSettings::OnColumnClick(wxListEvent& event) {
+	if (event.GetColumn() == 0) {
+		waypointSorting.sortAscending = !waypointSorting.sortAscending;
+		long index = listWaypoints->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_DONTCARE);
+		while (index != -1) {
+			listWaypoints->SetItemData(index, index);
+			index = listWaypoints->GetNextItem(index);
+		}
+
+		listWaypoints->SortItems(SortWaypoints, (wxIntPtr)&waypointSorting);
+	}
+}
+
 
 // Set whether the device is an actve or passive node on the NMEA 2000 network
 void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
@@ -364,11 +390,10 @@ void TwoCanSettings::OnCheckMode(wxCommandEvent &event) {
 	chkGateway->SetValue(enableGateway);
 	chkWaypoint->Enable(chkDeviceMode->IsChecked());
 	chkWaypoint->SetValue(enableWaypoint);
-	// BUG BUG Not yet implemented
-	// chkMedia->Enable(chkDeviceMode->IsChecked());
-	// chkMedia->SetValue(enableMusic);
-	// chkAutopilot->Enable(chkDeviceMode->IsChecked());
-	// chkAutopilot->SetValue(enableAutopilot);
+	chkMedia->Enable(chkDeviceMode->IsChecked());
+	chkMedia->SetValue(enableMusic);
+	chkAutopilot->Enable(chkDeviceMode->IsChecked());
+	chkAutopilot->SetValue(enableAutopilot);
 	this->settingsDirty = TRUE;
 }
 
