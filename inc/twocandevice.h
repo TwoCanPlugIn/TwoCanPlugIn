@@ -33,6 +33,9 @@
 // Fusion Media Player
 #include "twocanmedia.h"
 
+// Actisense EBL file logging
+#include "twocanactisense.h"
+
 // Error constants and macros
 #include "twocanerror.h"
 

@@ -98,13 +98,25 @@ TwoCanDevice::TwoCanDevice(wxEvtHandler *handler) : wxThread(wxTHREAD_JOINABLE) 
 	// Any raw logging ?
 	if (logLevel > FLAGS_LOG_NONE) {
 		wxDateTime tm = wxDateTime::Now();
-		// construct a filename with the following format twocan-2018-12-31_210735.log
-		wxString fileName = tm.Format("twocan-%Y-%m-%d_%H%M%S.log");
+		// Construct a filename with the following format twocan-2018-12-31_210735.log or .ebl
+		wxString fileName = tm.Format("twocan-%Y-%m-%d_%H%M%S");
+		if (logLevel == FLAGS_LOG_ACTISENSE) {
+			fileName.Append(".ebl");
+		}
+		else {
+			fileName.Append(".log");
+		}
+
+		// Open the file and write a header if necessary
 		if (rawLogFile.Open(wxString::Format("%s//%s", wxStandardPaths::Get().GetDocumentsDir(), fileName), wxFile::write)) {
 			wxLogMessage(_T("TwoCan Device, Created log file: %s"), fileName);
 			// If a CSV format initialize with a header row
 			if (logLevel == FLAGS_LOG_CSV) {
 				rawLogFile.Write("Source,Destination,PGN,Priority,D1,D2,D3,D4,D5,D6,D7,D8\r\n");
+			}
+			// If Actisense EBL, write EBL header
+			if (logLevel == FLAGS_LOG_ACTISENSE) {
+				TwoCanActisense::WriteHeader(&rawLogFile);
 			}
 		}
 		else {
@@ -853,6 +865,9 @@ void TwoCanDevice::AssembleFastMessage(const CanHeader header, const byte *paylo
 	}
 	// This is a single frame message, parse it
 	else {
+		if (logLevel == FLAGS_LOG_ACTISENSE) {
+			TwoCanActisense::WriteData(header, payload, 8, &rawLogFile);
+		}
 		ParseMessage(header, payload);
 	}
 }
@@ -950,6 +965,10 @@ int TwoCanDevice::MapAppendEntry(const CanHeader header, const byte *data, const
 		fastMessages[position].cursor += 7; 
 		// Is this the last message ?
 		if (fastMessages[position].cursor >= fastMessages[position].expectedLength) {
+			if (logLevel == FLAGS_LOG_ACTISENSE) {
+				TwoCanActisense::WriteData(header, fastMessages[position].data, 
+					fastMessages[position].expectedLength, &rawLogFile);
+			}
 			// Send for parsing
 			ParseMessage(header, fastMessages[position].data);
 			// Clear the entry
@@ -1022,6 +1041,7 @@ int TwoCanDevice::MapGarbageCollector(void) {
 	return staleEntries;
 }
 
+// Note to self, Actisense EBL uses assembled frames, do EBL logging is performed in Fast Message functions
 void TwoCanDevice::LogReceivedFrames(const CanHeader *header, const byte *frame) {
 	// TwoCan Raw format 0x01,0x01,0xF8,0x09,0x64,0xD9,0xDF,0x19,0xC7,0xB9,0x0A,0x04
 	if (logLevel == FLAGS_LOG_RAW) {
