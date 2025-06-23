@@ -138,9 +138,9 @@ void TwoCanActisense::WriteHeader(wxFile *logFile) {
 }
 
 // Log a complete NMEA 2000 message including header, checksum and escaping special characters
-bool TwoCanActisense::WriteData(const CanHeader header, const byte *data, const int dataLen, wxFile *logFile) {
+bool TwoCanActisense::WriteData(const CanHeader header, const byte *data, const unsigned int dataLen, wxFile *logFile) {
 
-	int payloadLength = dataLen + 11; // actual data plus additional packet data bytes
+	unsigned int payloadLength = dataLen + 11; // actual data plus additional packet data bytes
 	int checksum = 0;
 
 	// An example Actisense data packet
@@ -177,7 +177,6 @@ bool TwoCanActisense::WriteData(const CanHeader header, const byte *data, const 
 #if defined (__WXMSW__)
 	SYSTEMTIME st;
 	GetSystemTime(&st);
-	
 	eblData.push_back(st.wMilliseconds & 0xFF);
 	eblData.push_back((st.wMilliseconds >> 8) & 0xFF);
 	eblData.push_back((st.wMilliseconds >> 16) & 0xFF);

@@ -346,6 +346,9 @@ private:
 	// Decode PGN 126720 Manufacturer Proprietary Message
 	bool DecodePGN126720(const byte *payload);
 
+	// Decode PGN 126985 NMEA Alert Text
+	bool DecodePGN126985(const byte* payload);
+
 	// Decode PGN 126992 NMEA System Time
 	bool DecodePGN126992(const byte *payload, std::vector<wxString> *nmeaSentences);
 	

@@ -9,7 +9,6 @@
 
 ///////////////////////////////////////////////////////////////////////////
 
-
 TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
 {
 	this->SetSizeHints( wxDefaultSize, wxSize( -1,-1 ) );
@@ -215,8 +214,8 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	labelWaypoints->Wrap( -1 );
 	sizerPanelWaypoints->Add( labelWaypoints, 0, wxALL, 5 );
 
-	listWaypoints = new wxListCtrl( panelWaypoints, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT);
-	sizerPanelWaypoints->Add( listWaypoints, 1, wxALL| wxEXPAND, 5 );
+	listWaypoints = new wxListCtrl( panelWaypoints, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxLC_SORT_ASCENDING|wxLC_SORT_DESCENDING );
+	sizerPanelWaypoints->Add( listWaypoints, 0, wxALL|wxEXPAND, 5 );
 
 	btnExport = new wxButton( panelWaypoints, wxID_ANY, wxT("Export"), wxDefaultPosition, wxDefaultSize, 0 );
 	sizerPanelWaypoints->Add( btnExport, 0, wxALL, 5 );
@@ -337,21 +336,17 @@ TwoCanSettingsBase::TwoCanSettingsBase( wxWindow* parent, wxWindowID id, const w
 	chkAutopilot->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	cmbLogging->Connect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceLogging ), NULL, this );
 	rdoBoxAutopilot->Connect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
-	listWaypoints->Connect( wxEVT_LIST_ITEM_CHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointSelected ), NULL, this );
-	listWaypoints->Connect( wxEVT_LIST_ITEM_UNCHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointDeselected ), NULL, this );
+	listWaypoints->Connect( wxEVT_COMMAND_LIST_COL_CLICK, wxListEventHandler( TwoCanSettingsBase::OnColClick ), NULL, this );
+	listWaypoints->Connect( wxEVT_COMMAND_LIST_ITEM_CHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointSelected ), NULL, this );
+	listWaypoints->Connect( wxEVT_COMMAND_LIST_ITEM_UNCHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointDeselected ), NULL, this );
 	listWaypoints->Connect( wxEVT_SET_FOCUS, wxFocusEventHandler( TwoCanSettingsBase::OnHasFocus ), NULL, this );
-	listWaypoints->Connect(wxEVT_LIST_COL_CLICK, wxListEventHandler(TwoCanSettingsBase::OnColumnClick), NULL, this);
 	btnExport->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnExportWaypoints ), NULL, this );
 	btnPause->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );
 	btnOK->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnOK ), NULL, this );
 	btnApply->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnApply ), NULL, this );
 	btnCancel->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCancel ), NULL, this );
-
-	
 }
-
-
 
 TwoCanSettingsBase::~TwoCanSettingsBase()
 {
@@ -371,10 +366,10 @@ TwoCanSettingsBase::~TwoCanSettingsBase()
 	chkAutopilot->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCheckAutopilot ), NULL, this );
 	cmbLogging->Disconnect( wxEVT_COMMAND_CHOICE_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnChoiceLogging ), NULL, this );
 	rdoBoxAutopilot->Disconnect( wxEVT_COMMAND_RADIOBOX_SELECTED, wxCommandEventHandler( TwoCanSettingsBase::OnAutopilotModelChanged ), NULL, this );
-	listWaypoints->Disconnect( wxEVT_LIST_ITEM_CHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointSelected ), NULL, this );
-	listWaypoints->Disconnect( wxEVT_LIST_ITEM_UNCHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointDeselected ), NULL, this );
+	listWaypoints->Disconnect( wxEVT_COMMAND_LIST_COL_CLICK, wxListEventHandler( TwoCanSettingsBase::OnColClick ), NULL, this );
+	listWaypoints->Disconnect( wxEVT_COMMAND_LIST_ITEM_CHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointSelected ), NULL, this );
+	listWaypoints->Disconnect( wxEVT_COMMAND_LIST_ITEM_UNCHECKED, wxListEventHandler( TwoCanSettingsBase::OnWaypointDeselected ), NULL, this );
 	listWaypoints->Disconnect( wxEVT_SET_FOCUS, wxFocusEventHandler( TwoCanSettingsBase::OnHasFocus ), NULL, this );
-	listWaypoints->Disconnect(wxEVT_LIST_COL_CLICK, wxListEventHandler(TwoCanSettingsBase::OnColumnClick), NULL, this);
 	btnExport->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnExportWaypoints ), NULL, this );
 	btnPause->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnPause ), NULL, this );
 	btnCopy->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( TwoCanSettingsBase::OnCopy ), NULL, this );

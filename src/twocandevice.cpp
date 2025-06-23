@@ -784,6 +784,9 @@ void TwoCanDevice::RaiseEvent(wxString sentence) {
 // 126208 - NMEA Request/Command/Acknowledge group function
 // 126464 - PGN List (Transmit and Receive)
 // 126720 - Manufacturer Proprietary (Garmin, Raymarine)
+// 126983 - NMEA Alert
+// 126984 - NMEA Alert Response
+// 126985 - NMEA Alert Text
 // 126996 - Product information
 // 126998 - Configuration information
 // 127233 - Man Overboard (MOB)
@@ -820,10 +823,11 @@ void TwoCanDevice::RaiseEvent(wxString sentence) {
 // 130850 - Manufacturer Proprietary (Simrad Event Command)
 // 130851 - Manufacturer Proprietary (Simrad Event Reply)
 // 130856 - Manufacturer Proprietary (Simrad Alarm)
+
 // Checks whether a frame is a single frame message or multiframe Fast Packet message
 bool TwoCanDevice::IsFastMessage(const CanHeader header) {
-	static const unsigned int nmeafastMessages[] = { 
-		65240, 126208, 126464, 126720, 126996, 126998, 
+	static const unsigned int nmeafastMessages[] = { 65240, 
+		126208, 126464, 126720, 126983, 126984, 126985, 126996, 126998, 
 		127233, 127237, 127489, 127496, 127506, 128275, 129029, 129038,
 		129039, 129040, 129041, 129284, 129285, 129540, 129793, 129794,
 		129795, 129797, 129798, 129799, 129801, 129802, 129808, 129809, 
@@ -1915,6 +1919,66 @@ bool TwoCanDevice::DecodePGN126993(const int source, const byte *payload) {
 	else {
 		return FALSE;
 	}
+}
+
+// Decode PGN 126985 NMEA Alarm Text (We con't worry about 126983 & 126985 because to generate a 
+// NMEA 1083 ALR message would require snippts from each PGN. Just raise an OpenCPN Alert
+bool TwoCanDevice::DecodePGN126985(const byte* payload) {
+	if (payload != NULL) {
+
+		byte alertType = payload[0] & 0x0F;
+		
+		byte alertCategory = (payload[0] >> 4) & 0x0F;
+
+		byte alertSystem = payload[1] & 0xFF;
+
+		byte alertSubSystem = payload[2] & 0xFF;
+
+		unsigned short alertId = payload[3] | (payload[4] << 8);
+
+		unsigned long long networkName = payload[5] | (payload[6] << 8) |
+			((unsigned long long)payload[7] << 16) | ((unsigned long long)payload[8] << 24) | ((unsigned long long)payload[9] << 32) |
+			((unsigned long long)payload[10] << 40) | ((unsigned long long)payload[11] << 48) | ((unsigned long long)payload[12] << 56);
+
+		byte deviceInstance = payload[13] & 0xFF;
+
+		byte deviceIndex = payload[14] & 0xFF;
+
+		byte occurrence = payload[15] & 0xFF;
+
+		byte languageId = payload[16] & 0xFF;
+
+		size_t index = 17;
+		unsigned int descriptionLength = payload[index];
+		wxString description;
+		index += 1;
+		if (payload[index] == 0x01) { // ASCII Encoding
+			index += 1;
+			for (size_t i = 0; i < descriptionLength - 2; i++) {
+				description.append(1, (char)payload[index]);
+				index++;
+			}
+		}
+
+		unsigned int locationLength = payload[index];
+		wxString location;
+		index += 1;
+		if (payload[index] == 0x01) { // ASCII Encoding
+			index += 1;
+			for (size_t i = 0; i < locationLength - 2; i++) {
+				location.append(1, (char)payload[index]);
+				index++;
+			}
+		}
+
+		wxString notificationText = wxString::Format("Alert Type: %d, Alert Id: %d, %s from %s",
+			alertType, alertId, description, location);
+		// BUG BUG ToDo.
+		//RaiseNotification();
+	}
+
+	// No NMEA sentences to return
+	return FALSE; 
 }
 
 // Decode PGN 126996 NMEA Product Information

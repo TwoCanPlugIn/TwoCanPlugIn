@@ -98,6 +98,7 @@ class TwoCanSettingsBase : public wxDialog
 		virtual void OnCheckAutopilot( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnChoiceLogging( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnAutopilotModelChanged( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnColClick( wxListEvent& event ) { event.Skip(); }
 		virtual void OnWaypointSelected( wxListEvent& event ) { event.Skip(); }
 		virtual void OnWaypointDeselected( wxListEvent& event ) { event.Skip(); }
 		virtual void OnHasFocus( wxFocusEvent& event ) { event.Skip(); }
@@ -107,7 +108,6 @@ class TwoCanSettingsBase : public wxDialog
 		virtual void OnOK( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnApply( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnCancel( wxCommandEvent& event ) { event.Skip(); }
-		virtual void OnColumnClick(wxListEvent& event) { event.Skip(); }
 
 
 	public:

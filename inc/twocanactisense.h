@@ -57,7 +57,7 @@ public:
       
 static bool VerifyChecksum(std::vector<byte> data, int verify);
 static void WriteHeader(wxFile *logFile);
-static bool WriteData(const CanHeader header, const byte *data, const int dataLen, wxFile *logFile);
+static bool WriteData(const CanHeader header, const byte *data, const unsigned int dataLen, wxFile *logFile);
 
 };
 
